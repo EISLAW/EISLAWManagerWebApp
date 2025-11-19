@@ -34,5 +34,15 @@ docker compose -f tools/monitoring/docker-compose.yml down
 - Available at http://localhost:7700 (no API key set; enable if needed).
 - Backend uses it automatically for `/email/search` when up. Trigger a full reindex via `POST /email/reindex_search` if needed.
 
+## Azure App Service log streaming
+
+- Use `tools/azure_log_stream.py` when `az webapp log tail` is flaky. It streams from the Kudu endpoint with auto-reconnect and optional file logging.
+- Requirements: App Service deployment credentials (set `AZURE_KUDU_USERNAME`/`AZURE_KUDU_PASSWORD` env vars or pass `--username/--password`) and the site name (e.g., `eislaw-api-01`).
+- Example:
+  ```bash
+  python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log
+  ```
+- Add `--slot staging` for slot-specific hosts. Use `--channel http` for HTTP request traces, or `--channel all` for the combined stream.
+
 ## Security
 - For local dev only. Do not expose publicly without authentication, TLS, and restricted network access.

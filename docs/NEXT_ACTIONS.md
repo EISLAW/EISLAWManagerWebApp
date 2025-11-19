@@ -23,6 +23,7 @@ Last updated: 2025-11-04
   - Web App `eislaw-api-01` now has the latest code + secrets, but `/health` still returns 503. Fix the backend startup (uvicorn should run directly without Gunicorn fallback) and confirm the vendored `.python_packages` path works.
   - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the cloud.
   - Once `/health` is green, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
+  - Use `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to keep streaming logs with auto-reconnect during diagnostics.
 
 - Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
 - Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
