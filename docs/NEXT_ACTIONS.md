@@ -24,6 +24,7 @@ Last updated: 2025-11-04
   - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the cloud.
   - Once `/health` is green, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
   - Use `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to keep streaming logs with auto-reconnect during diagnostics.
+  - Current failure (`RuntimeError: Form data requires "python-multipart"`) is fixed by redeploying `build/webapp_package.zip` generated after `python-multipart==0.0.9` was vendored under `.python_packages/`; run `infra/deploy_privacy_only.ps1` once the new zip is staged.
 
 - Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
 - Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
