@@ -11,6 +11,7 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - Infra/Backups: Added Airtable snapshot CLI (Azure Blob upload + retention GC) and scheduled GitHub Action to run every 6h or on-demand; backup plan + deploy runbook updated with steps.
 - DevEx: Documented how to run local snapshots and metadata-based `--all-tables` option (requires Airtable metadata scope).
 - DevEx/Process: Created the main GitHub repo (`EISLAW/EISLAWManagerWebApp`) and wrote down the push workflow so code + automations rely on the same remote.
+- DevEx/Infra: Fixed `infra/deploy_privacy_only.ps1` to vendor backend deps automatically and fall back to `powershell.exe` when `pwsh` is missing, so Azure deploys no longer choke on missing packages.
 - Infra/Azure: Added `tools/azure_log_stream.py` + docs so we can stream App Service logs via Kudu when `az webapp log tail` flakes (auto-reconnect + file output) while chasing the `/health` failure on `eislaw-api-01`.
 
 ## 2025-11-19
