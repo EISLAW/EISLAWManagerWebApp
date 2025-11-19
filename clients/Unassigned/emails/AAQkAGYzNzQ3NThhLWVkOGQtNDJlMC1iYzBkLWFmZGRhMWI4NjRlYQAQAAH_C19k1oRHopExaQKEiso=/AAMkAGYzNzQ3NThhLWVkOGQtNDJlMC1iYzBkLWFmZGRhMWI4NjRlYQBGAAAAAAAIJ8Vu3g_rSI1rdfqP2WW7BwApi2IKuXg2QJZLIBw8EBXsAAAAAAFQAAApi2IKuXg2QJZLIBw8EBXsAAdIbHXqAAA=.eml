@@ -1,0 +1,660 @@
+Received: from AM8PR01MB7507.eurprd01.prod.exchangelabs.com
+ (2603:10a6:20b:24a::13) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Wed, 11 Jun 2025 13:32:26 +0000
+Received: from DU2PR04CA0222.eurprd04.prod.outlook.com (2603:10a6:10:2b1::17)
+ by AM8PR01MB7507.eurprd01.prod.exchangelabs.com (2603:10a6:20b:24a::13) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8835.19; Wed, 11 Jun
+ 2025 13:32:23 +0000
+Received: from DB1PEPF000509EB.eurprd03.prod.outlook.com
+ (2603:10a6:10:2b1:cafe::fb) by DU2PR04CA0222.outlook.office365.com
+ (2603:10a6:10:2b1::17) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8792.33 via Frontend Transport; Wed,
+ 11 Jun 2025 13:32:23 +0000
+Authentication-Results: spf=pass (sender IP is 2a00:1450:4864:20::332)
+ smtp.mailfrom=gmail.com; dkim=pass (signature was verified)
+ header.d=gmail.com;dmarc=pass action=none header.from=gmail.com;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of gmail.com designates
+ 2a00:1450:4864:20::332 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a00:1450:4864:20::332; helo=mail-wm1-x332.google.com; pr=C
+Received: from mail-wm1-x332.google.com (2a00:1450:4864:20::332) by
+ DB1PEPF000509EB.mail.protection.outlook.com (2603:10a6:18:3::625) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.8835.15 via Frontend Transport; Wed, 11 Jun 2025 13:32:23 +0000
+Received: by mail-wm1-x332.google.com with SMTP id 5b1f17b1804b1-4508287895dso6135455e9.1
+        for <eitan@eislaw.co.il>; Wed, 11 Jun 2025 06:32:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1749648742; x=1750253542; darn=eislaw.co.il;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=aliuIpeK/xBGH6haXRkcNfCJ/Sx7ijFtJnXwWCe0Dl4=;
+        b=hAuhELj+BptgD1Qn/W2Q76yJlhY3PoumbcDljtTiWlEQ1vUI6OES1GqbK/EdPScHz8
+         XNeIvHeIm9hXDHC7lMxCaDy3nwbivkVmdujRtPCU+5n+l9Kzl/4Ha8qelCvMFdNiiilm
+         uxTNuRBNKATfR7j5RHkU3XKQEYY5Q41TByfF27qRtM1Jz9O3W6iqcCfH/LD0OUf/1lDv
+         WKzIRK1v/5EurGG6Zq9JxxtDYCEIo58B9ZNxRII8gNalCKFS9TV1Wppwj+WE6foQEjdg
+         zVVBulA7drlFlYm/p+dove1KkaeWGJp97syDA/aJApG/qyXPw1/aseJ9aKcY0ECPEKsT
+         vYdw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1749648742; x=1750253542;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=aliuIpeK/xBGH6haXRkcNfCJ/Sx7ijFtJnXwWCe0Dl4=;
+        b=nM6yjBsUlGuUC6Qhli775yUUXEXthP1xxptIMGcKh4wWonCzYRSmtTpwQ97ydkMGMh
+         0+o3FKf+uy/Wzabz4nHx3ue8RfJsdxFJAS3xuP8bCi2u7dyR+lsJJhcfgExkiNPxSGG5
+         bjDZYDk4UMFC0HIk626MERXYnOSjuRCzlkIR+2lqg3oDj+tFeZ9WC8FK4h2SNJsvZtlR
+         2H5DR5iRUoBEE3gvvK8C304U2QvO6V9Xem1Q7etH1jJzen7PG3SygU5/ZsYYkMzYkoVi
+         FhhYWP5n/LN4NbSGUN92plcEAo87xyftCZz4Sa59U+vCF86L6hz5eELYz+wJsZ4L8LSM
+         IFbg==
+X-Gm-Message-State: AOJu0YyyvcaeNa+v7xByb9g5eX2Uaj86JYt0ZdJibdKJDIVg25gog8oN
+	qcidK8XZea6goRpgaaVoHBPq6ldvweDxHO+o1v/i8GR4UOpRTP1nij3M+dJ8F3sJIquP9gfiUez
+	meP/528JB8WReDNPvqTryKqLmKx2W+L/l7hVP
+X-Gm-Gg: ASbGncvCpkRl7ltJ1AaZ8REJro+1JlUTW9WJW+NSBxbK06m+UcFfIHns6fQdFHhG8lc
+	zZqiipXRB/88rd1W7TZlsU920TnsKID/xdqSzOi8mn5RAyKyVrKLL7XD1yy+9KWl2bq5/ywXWNu
+	3rgFEJrb0dryLP9s1Qgtzf147QkaMZYaEttmOgqqalwlw=
+X-Google-Smtp-Source: AGHT+IFzusiqhT+Gn6JIJR+Tdo7VXjX1IpUZSulVTtK3xXB2ck2NbSLmqP/AUNOm33q5CDk4JPcsY/2H6fa50zg1drM=
+X-Received: by 2002:a05:600c:4818:b0:440:69f5:f179 with SMTP id
+ 5b1f17b1804b1-453241c6289mr20368055e9.7.1749648742058; Wed, 11 Jun 2025
+ 06:32:22 -0700 (PDT)
+From: =?UTF-8?B?15nXqNeT158g15zXldeZ158=?= <yardenlevin.business@gmail.com>
+Date: Wed, 11 Jun 2025 16:32:09 +0300
+X-Gm-Features: AX0GCFuNzrgTKWdL1XebktkwExcZmYG85RkQ7dEX_4D9aCxreXli8vrmeTWlp48
+Message-ID: <CAHSusVUoV0G=ND_8bh+eL_uLhgYMjs-LseytoCxtOyvM3ZRFyg@mail.gmail.com>
+Subject: =?UTF-8?B?15TXqteZ15nXotem15XXqiDXnNeS15HXmSDXodeZ15XXnSDXlNei16HXp9eUINep15wg?=
+	=?UTF-8?B?16LXldeR15PXqiDXoNeZ16fXmdeV158=?=
+To: Eitan Shamir <eitan@eislaw.co.il>
+Content-Type: multipart/alternative; boundary="000000000000c0911306374bd7a3"
+Return-Path: yardenlevin.business@gmail.com
+X-MS-Exchange-Organization-ExpirationStartTime: 11 Jun 2025 13:32:23.6038
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 11113207-c94c-4d3c-affd-08dda8ec6626
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DB1PEPF000509EB:EE_|AM8PR01MB7507:EE_|AS8PR01MB10319:EE_
+X-MS-Exchange-Organization-AuthSource: DB1PEPF000509EB.eurprd03.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: 11113207-c94c-4d3c-affd-08dda8ec6626
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|1032899013|7093399015|69100299015|13003099007|2066899003|8096899003;
+X-Forefront-Antispam-Report: CIP:2a00:1450:4864:20::332;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-wm1-x332.google.com;PTR:mail-wm1-x332.google.com;CAT:NONE;SFS:(13230040)(1032899013)(7093399015)(69100299015)(13003099007)(2066899003)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 11 Jun 2025 13:32:23.0446
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 11113207-c94c-4d3c-affd-08dda8ec6626
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DB1PEPF000509EB.eurprd03.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM8PR01MB7507
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.7773913
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8835.006
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?NzNneC9uaTN2dklEZnp2aHMvRUpTRmQwZW1IMVIrQXZsTDA1VDZ3RzQyL2xp?=
+ =?utf-8?B?b3E3TFJsYnc2b241MTVvOVEyajJSN0JpSzZmREowd2VPSGRDUHBUK0d1d3ZO?=
+ =?utf-8?B?WWcvOERhb0xnMGxXN2swQ0NuY0xOSUVIRnNRcSszZFE4SWxHbXZ6NjBBTUN2?=
+ =?utf-8?B?b2lnbjI4VTMxQ0Uyb0xibXpaRFZyakRDMWZZRjhJV0RKMjR6aWw1UzFpNXR1?=
+ =?utf-8?B?cEFKNXVOU2JvaWVGZzBuU0k1dElqQzJYemVQUGV3bzJvQk1hN1d6d0hyZThh?=
+ =?utf-8?B?ZXlSUzRwRytmS0ovL3g4WFd4cHJ6U1BLaCs5RDdaL1BPc2w1bW9Fdnc0N2p0?=
+ =?utf-8?B?QTNOU1dVQ0MxUFlqQVdNTTk4QUhYaVJMeHM2OUs0NTBBWm4wMG1rb2JUUHFz?=
+ =?utf-8?B?dmx2Y0Mvci85OCtaM0FWUUt0aWFCY3VheUdNbW5xVU9VMXY0MkdWeGZ3c1Vh?=
+ =?utf-8?B?N29zUHNHM0lMQUlVMjJWdzRCVmd4UUg4bStMMlN6YnArR3lFdDhubHVObllo?=
+ =?utf-8?B?aGdhbXBkZW9xR3czSGFGMFNTaUxVUmk3MUlzdmVHamRqU0tWNnA0N3N1WVRJ?=
+ =?utf-8?B?WkJydzE1ZUdHSXczK3FpejEzOURXdkJ0RkxhQ0UvOHVOWWRCdUpKdXdyQXNm?=
+ =?utf-8?B?Nzl0YS9BRnVDTmJDU3Bld0pYV3ZoUzBtVHdLUlo1OE9IMlRlRG9Pc1hSMGtm?=
+ =?utf-8?B?YVBWTnZsQ24yUjZYRDd6SGlWNTFVViswWVVrVG1SRVFjWW9nYnpSSUlsUWZ0?=
+ =?utf-8?B?NFJjdVppM3Q1eXlzT3hSUXhtMUFrQXhNdloyQ1FLVHVJU2sydVBrNTdYTjNa?=
+ =?utf-8?B?S3p0dDN2OVdJM0RtNE9RcUt2OXBicDJ1UkU2VHR4a0doV3YyaktRMCtCUGdG?=
+ =?utf-8?B?Zk1kRFJMV0FBeW14aWNHOWlQUEUycUFITW83Q0RCZE9Fbm1TRHFYeHNoOHdX?=
+ =?utf-8?B?SGdNYmJqczA0RnFxaEhuV1Qxczg4QnNqaHhYK0M3eWFacGxHd0k2aURUenI0?=
+ =?utf-8?B?U2RndThmbzNzbzJoUDl6RFZTaHF2aThFa0ptL1V2ZEdYMWs0clJFYUlYSU5J?=
+ =?utf-8?B?dXM2dDhLODB0dEVDWUFBNm4xVjdkaitkcHhnV2p2MEx4anA2blRWNkE4UjRW?=
+ =?utf-8?B?SFd4MFQ5aytGb241U1BYQ09NTWdzM2k4VkZucmRqV2VJRTZxQ1Jtd1JvSUcx?=
+ =?utf-8?B?aENXRHA0djNzaTgyOHBjNzFOL3A3dWhEdFlPNFYyKzJXRjZiWGRrdUVrei91?=
+ =?utf-8?B?K3doaWFoSWJsSjB5MWY3bjM1L3l4amZwbThISm54R2ZSVUFIVE1UQ2N5SWVL?=
+ =?utf-8?B?WDlCNndRYVhlWXZtQmkrL2xIdHZ3S2d2V29oQmwyYm1ESzdGTVZoTGlucldY?=
+ =?utf-8?B?a2hBek5CZmdoMytjYWI1bk5LZ3hhdTM2c0JMNS9TaUJKamw4UERCOEhGYm83?=
+ =?utf-8?B?cUQ1TmJTdHZTWE1lWkx6S0dOSzZZOUtKbjhBT2UxakZLTGRoSXpkOFJYY1By?=
+ =?utf-8?B?dVVycEcvRmc4SklVRzI4clFiMUxubS9JK2FmWjFsdEtGVVFoR0UwN3Q3UDNm?=
+ =?utf-8?B?ZzJPampiUmtOTmg5RVlxMENVNlhvcEVXUExUdVNQTTd2cU03aDdQQmJkM0pj?=
+ =?utf-8?B?ZUZNM1V3bmtNbXNXY1BkeEJmZkdFV2krL0RTaytPOUpJdjRETHRxMFpsSFRH?=
+ =?utf-8?B?Rlg0T3BJaEFIUHIzVlNLc0Z5ejZEQmh3T2I5bko4MlpMSzZWSDlsbHpFbldT?=
+ =?utf-8?B?RTJJR241V2QvY3J0MHRWT200b2lndk1HMW5NOHFOcXhuRTR5aVdWbkRKdERG?=
+ =?utf-8?B?VjNla0tvYXBFV0FYRlVBMnUzM1A3clVwTFZ1SythT2puSExZR0JFSm1mWWZD?=
+ =?utf-8?B?UitLZ2YyRWpkZENXYnZ3M0NwOUc3NW1jQTBQaU8vejl5U1J4K2s2bkVRVlBn?=
+ =?utf-8?B?NGEzNVhYQ1ZpL0p0T0FQd2MyWlhnTitMeXByVXk2eSsyUzNVakhXT3czVzJK?=
+ =?utf-8?B?ZmFPUTBjaDBmY2dlQ2JFcEsycmhFaDRYcTRvT1pINXhXdnQrRndZU0xnMFlR?=
+ =?utf-8?B?em8xSWNIT0RPRG5Xc09OSUc3YzY5bEZEdllzY0dwRGRHSGVyNDBHQWdxY1lR?=
+ =?utf-8?B?UWE0K1dlaDN2S1hDZWxiamw5VDZYRm5hcEFLM0ZyUmlrbmEvRzdncnJxY09j?=
+ =?utf-8?B?cW5kb0dUeG1Tb2dOQ1lTRFFtR2FCQzNmOFJmSjFuR0RWbFNHWWsvYWdsTXNN?=
+ =?utf-8?B?ckJqb0EzNjUvTnVVNkhPaEFUTkdzd0FVaE8vYm5sZGV1VTM4Ynk3ZEJIU21h?=
+ =?utf-8?B?NlJ2QnlUNzZobWZGNHgzaldDM21CQ0o1R2dRL1MyQ3ZPV2VQS0dzeEZad0Er?=
+ =?utf-8?B?UlhnQ2NNTUl4Y0VGT2pWcTJSSTZGc1hDeGRYK3dKcVdRK0FQcFBXV3UyNWcx?=
+ =?utf-8?B?dnY5THF1Tyt4L0FHZkxYT3g5RTlad1NsQ2NQS0lFRDl2VWxCZ0s5TksxbzF3?=
+ =?utf-8?B?Ymd6ajZmTno0QVpDeXR0RjdlazUwRUZscmg0OUgzN3V4c0R2MDVIRTJDQW9I?=
+ =?utf-8?B?c0JNQzdwd2xNcC9rUWVuQUdZN2ZIVjRIeHNMUFdOTlF3bmNmUGhRRDdUT3Mw?=
+ =?utf-8?B?NUdwTmNTandqKzVTUkhTY0lXQWs5VEc5SjMwTTlLbWVzcEVqWFlQUWdKRzQ4?=
+ =?utf-8?B?dS8rZU9XNVhtUUdOWlBOZmh5MW4xa2Q5ZXZzWVpyb1JxWUUrNGZxdkFSTGky?=
+ =?utf-8?B?MGw0Q0Y4Wi9KZzJmelpsRExOZFJHbmVSTHliS0dWV0ZFVjRWb2plWjEwbUZR?=
+ =?utf-8?B?UFZaeXZJL09jNHNmS0JxWUh6MnBVZExPNVdWYnZRTWxCR2I5alN6ZWdqVUhC?=
+ =?utf-8?Q?0ttKN5rdmw5xNYxK7sO/Hzpl/rTrlQMz+j5yk9vw=3D?=
+MIME-Version: 1.0
+
+--000000000000c0911306374bd7a3
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+15TXmdeZINeQ15nXqtefLA0K15HXlNee16nXmiDXnNep15nXl9eq16DXlSDXnNeS15HXmSDXnteo
+16rXlCDXlNee16DXp9eULQ0K157Xpteo16TXqiDXmNeR15zXlCDXotedINep16LXldeqINeU16LX
+kdeV15PXlCDXqdec15Qg157XmdeT15nXmSDXl9eV15PXqS4NCteh15TXtNebINec15DXldeo15og
+15vXnCDXlNeq16fXldek15Qg15TXmdeQINei15HXk9eUIDg5LjMzINep16LXldeqLCDXntee15XX
+pteiINec15fXldeT16kgNS41OC4NCg0KKtep16DXlCoqLSoq15fXldeT16kqDQoNCirXqdei15XX
+qiogKtei15HXldeT15QqDQoNCioyMDI0LTAzKg0KDQo0LjANCg0KKjIwMjQtMDQqDQoNCjYuMA0K
+DQoqMjAyNC0wNSoNCg0KOS42Nw0KDQoqMjAyNC0wNioNCg0KMy41DQoNCioyMDI0LTA3Kg0KDQo2
+LjANCg0KKjIwMjQtMDgqDQoNCjYuNzUNCg0KKjIwMjQtMDkqDQoNCjYuMA0KDQoqMjAyNC0xMCoN
+Cg0KMy41DQoNCioyMDI0LTExKg0KDQo3LjgzDQoNCioyMDI0LTEyKg0KDQozLjANCg0KKjIwMjUt
+MDEqDQoNCjQuOTINCg0KKjIwMjUtMDIqDQoNCjcuMjUNCg0KKjIwMjUtMDMqDQoNCjQuMA0KDQoq
+MjAyNS0wNCoNCg0KNi43NQ0KDQoqMjAyNS0wNSoNCg0KNi45Mg0KDQoqMjAyNS0wNioNCg0KMy4y
+NQ0KDQrXldeq15XXk9eUINecR1BUINep15TXkdeZ15DXldeg15kg16LXkyAg15TXnNeV150uDQoN
+Ctee15bXm9eZ16jXlCDXqdeU16nXm9eoINec16nXoteUINeU15nXlCA2MCDXqde015cgKyAyMCDX
+qde015cg16DXodeZ16LXldeqLA0K15TXmdeQINeU15nXmdeq15Qg157XkteZ16LXlCDXpNei150g
+15HXqdeR15XXoteZ15nXnS4NCteU16rXqdec15XXnteZ150g15TXqteR16bXoteVINeR15HXmdeY
+INeQ15fXqNeZINeb15wg16TXotedINep15TXkteZ16LXlCAo15zXkCDXqtep15zXldedINeX15XX
+k9ep15kpLg0K15zXnteZ15jXkSDXmdeT15nXoteq16DXlSwg15TXmdeQINee15XXkteT16jXqiDX
+m9ei15XXkdeT16og15bXqNeUICjXnteX15vXlCDXnNeq16nXldeR15Qg16nXnNeUINeV15vXnteV
+15HXnyDXqdeQ16LXk9eb158pLg0K16DXqdee15cg15zXk9ei16og157XlCDXnteS15nXoiDXnNeU
+INei17TXpCDXl9eV16cg15vXldec15wg15TXm9ecINeb15PXmSDXqdeg15XXm9ecINec15TXodeT
+15nXqCDXkNeZ16rXlCDXlNeb15wg15HXpteV16jXlCDXqdee15vXodeUDQrXkNeV16rXoNeVICjX
+m9eV15zXnCDXlNeq16jXkNeUINee15XXp9eT157XqiDXkdee15nXk9eUINeV16bXqNeZ15og15zX
+qteqKS4NCg0K16rXldeT15Qg16jXkdeUISEhDQoNCi0tIA0KDQoNCg0KINeZ16jXk9efINec15XX
+mdefINee15DXnteg16og16LXoden15nXqg0KMDU0LTk1MjkzMDANCg0KICAgICA8aHR0cHM6Ly93
+d3cuZmFjZWJvb2suY29tL2xldmlueWFyZGVuPg0KPGh0dHBzOi8vd3d3Lmluc3RhZ3JhbS5jb20v
+eWFyZGVuX2xldmluLz4NCjxodHRwczovL3d3dy50aWt0b2suY29tL0B5YXJkZW5fbGV2aW4+DQo=
+--000000000000c0911306374bd7a3
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><d=
+iv dir=3D"rtl"><div>=D7=94=D7=99=D7=99 =D7=90=D7=99=D7=AA=D7=9F,</div><div>=
+=D7=91=D7=94=D7=9E=D7=A9=D7=9A =D7=9C=D7=A9=D7=99=D7=97=D7=AA=D7=A0=D7=95 =
+=D7=9C=D7=92=D7=91=D7=99 =D7=9E=D7=A8=D7=AA=D7=94 =D7=94=D7=9E=D7=A0=D7=A7=
+=D7=94-<br>=D7=9E=D7=A6=D7=A8=D7=A4=D7=AA =D7=98=D7=91=D7=9C=D7=94 =D7=A2=
+=D7=9D =D7=A9=D7=A2=D7=95=D7=AA =D7=94=D7=A2=D7=91=D7=95=D7=93=D7=94 =D7=A9=
+=D7=9C=D7=94 =D7=9E=D7=99=D7=93=D7=99=D7=99 =D7=97=D7=95=D7=93=D7=A9.<br>=
+=D7=A1=D7=94=D7=B4=D7=9B =D7=9C=D7=90=D7=95=D7=A8=D7=9A =D7=9B=D7=9C =D7=94=
+=D7=AA=D7=A7=D7=95=D7=A4=D7=94 =D7=94=D7=99=D7=90 =D7=A2=D7=91=D7=93=D7=94 =
+89.33 =D7=A9=D7=A2=D7=95=D7=AA, =D7=9E=D7=9E=D7=95=D7=A6=D7=A2 =D7=9C=D7=97=
+=D7=95=D7=93=D7=A9 5.58.</div><div><br><table cellspacing=3D"0" cellpadding=
+=3D"0" style=3D"border-collapse:collapse">
+<tbody>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(176=
+,179,178);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Lucida Grande" color=3D"#000000" styl=
+e=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;fo=
+nt-variant-east-asian:normal;font-variant-alternates:normal;font-size-adjus=
+t:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;f=
+ont-size:10px;line-height:normal;font-family:&quot;Lucida Grande&quot;;colo=
+r:rgb(0,0,0)"><b>=D7=A9=D7=A0=D7=94</b></font><font face=3D"Helvetica Neue"=
+ color=3D"#000000" style=3D"font-variant-ligatures:common-ligatures;font-va=
+riant-numeric:normal;font-variant-east-asian:normal;font-variant-alternates=
+:normal;font-size-adjust:none;font-kerning:auto;font-feature-settings:norma=
+l;font-stretch:normal;font-size:10px;line-height:normal;font-family:&quot;H=
+elvetica Neue&quot;;color:rgb(0,0,0)"><b>-</b></font><font face=3D"Lucida G=
+rande" color=3D"#000000" style=3D"font-variant-ligatures:common-ligatures;f=
+ont-variant-numeric:normal;font-variant-east-asian:normal;font-variant-alte=
+rnates:normal;font-size-adjust:none;font-kerning:auto;font-feature-settings=
+:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:&=
+quot;Lucida Grande&quot;;color:rgb(0,0,0)"><b>=D7=97=D7=95=D7=93=D7=A9</b><=
+/font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;background-color:rgb(176=
+,179,178);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Lucida Grande" color=3D"#000000" styl=
+e=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;fo=
+nt-variant-east-asian:normal;font-variant-alternates:normal;font-size-adjus=
+t:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;f=
+ont-size:10px;line-height:normal;font-family:&quot;Lucida Grande&quot;;colo=
+r:rgb(0,0,0)"><b>=D7=A9=D7=A2=D7=95=D7=AA</b></font><font face=3D"Helvetica=
+ Neue" color=3D"#000000" style=3D"font-variant-ligatures:common-ligatures;f=
+ont-variant-numeric:normal;font-variant-east-asian:normal;font-variant-alte=
+rnates:normal;font-size-adjust:none;font-kerning:auto;font-feature-settings=
+:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:&=
+quot;Helvetica Neue&quot;;color:rgb(0,0,0)"><b> </b></font><font face=3D"Lu=
+cida Grande" color=3D"#000000" style=3D"font-variant-ligatures:common-ligat=
+ures;font-variant-numeric:normal;font-variant-east-asian:normal;font-varian=
+t-alternates:normal;font-size-adjust:none;font-kerning:auto;font-feature-se=
+ttings:normal;font-stretch:normal;font-size:10px;line-height:normal;font-fa=
+mily:&quot;Lucida Grande&quot;;color:rgb(0,0,0)"><b>=D7=A2=D7=91=D7=95=D7=
+=93=D7=94</b></font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:12px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-03</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:12px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">4.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-04</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-05</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">9.67</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-06</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">3.5</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-07</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-08</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.75</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-09</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-10</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">3.5</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-11</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">7.83</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2024-12</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">3.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-01</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">4.92</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-02</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">7.25</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-03</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">4.0</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-04</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.75</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:12px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-05</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:12px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">6.92</font></p>
+</td>
+</tr>
+<tr>
+<td valign=3D"top" style=3D"width:47px;height:11px;background-color:rgb(212=
+,212,212);border-style:solid;border-width:1px;border-color:rgb(0,0,0);paddi=
+ng:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)"><b>2025-06</b></font></p>
+</td>
+<td valign=3D"top" style=3D"width:56px;height:11px;border-style:solid;borde=
+r-width:1px;border-color:rgb(0,0,0);padding:4px">
+<p style=3D"margin:0px"><font face=3D"Helvetica Neue" color=3D"#000000" sty=
+le=3D"font-variant-ligatures:common-ligatures;font-variant-numeric:normal;f=
+ont-variant-east-asian:normal;font-variant-alternates:normal;font-size-adju=
+st:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;=
+font-size:10px;line-height:normal;font-family:&quot;Helvetica Neue&quot;;co=
+lor:rgb(0,0,0)">3.25</font></p>
+</td>
+</tr>
+</tbody>
+</table></div><span class=3D"gmail_signature_prefix"><div><span class=3D"gm=
+ail_signature_prefix"><br></span></div><div><span class=3D"gmail_signature_=
+prefix">=D7=95=D7=AA=D7=95=D7=93=D7=94 =D7=9CGPT&nbsp;=D7=A9=D7=94=D7=91=D7=
+=99=D7=90=D7=95=D7=A0=D7=99 =D7=A2=D7=93&nbsp; =D7=94=D7=9C=D7=95=D7=9D.</s=
+pan></div><div><span class=3D"gmail_signature_prefix"><br></span></div><div=
+><span class=3D"gmail_signature_prefix">=D7=9E=D7=96=D7=9B=D7=99=D7=A8=D7=
+=94 =D7=A9=D7=94=D7=A9=D7=9B=D7=A8 =D7=9C=D7=A9=D7=A2=D7=94 =D7=94=D7=99=D7=
+=94 60 =D7=A9=D7=B4=D7=97&nbsp;+ 20 =D7=A9=D7=B4=D7=97 =D7=A0=D7=A1=D7=99=
+=D7=A2=D7=95=D7=AA,<br>=D7=94=D7=99=D7=90 =D7=94=D7=99=D7=99=D7=AA=D7=94 =
+=D7=9E=D7=92=D7=99=D7=A2=D7=94 =D7=A4=D7=A2=D7=9D =D7=91=D7=A9=D7=91=D7=95=
+=D7=A2=D7=99=D7=99=D7=9D.<br>=D7=94=D7=AA=D7=A9=D7=9C=D7=95=D7=9E=D7=99=D7=
+=9D =D7=94=D7=AA=D7=91=D7=A6=D7=A2=D7=95 =D7=91=D7=91=D7=99=D7=98 =D7=90=D7=
+=97=D7=A8=D7=99 =D7=9B=D7=9C =D7=A4=D7=A2=D7=9D =D7=A9=D7=94=D7=92=D7=99=D7=
+=A2=D7=94 (=D7=9C=D7=90 =D7=AA=D7=A9=D7=9C=D7=95=D7=9D =D7=97=D7=95=D7=93=
+=D7=A9=D7=99).<br>=D7=9C=D7=9E=D7=99=D7=98=D7=91 =D7=99=D7=93=D7=99=D7=A2=
+=D7=AA=D7=A0=D7=95, =D7=94=D7=99=D7=90 =D7=9E=D7=95=D7=92=D7=93=D7=A8=D7=AA=
+ =D7=9B=D7=A2=D7=95=D7=91=D7=93=D7=AA =D7=96=D7=A8=D7=94 (=D7=9E=D7=97=D7=
+=9B=D7=94 =D7=9C=D7=AA=D7=A9=D7=95=D7=91=D7=94 =D7=A9=D7=9C=D7=94 =D7=95=D7=
+=9B=D7=9E=D7=95=D7=91=D7=9F =D7=A9=D7=90=D7=A2=D7=93=D7=9B=D7=9F).<br>=D7=
+=A0=D7=A9=D7=9E=D7=97 =D7=9C=D7=93=D7=A2=D7=AA =D7=9E=D7=94 =D7=9E=D7=92=D7=
+=99=D7=A2 =D7=9C=D7=94 =D7=A2=D7=B4=D7=A4 =D7=97=D7=95=D7=A7 =D7=9B=D7=95=
+=D7=9C=D7=9C =D7=94=D7=9B=D7=9C =D7=9B=D7=93=D7=99 =D7=A9=D7=A0=D7=95=D7=9B=
+=D7=9C =D7=9C=D7=94=D7=A1=D7=93=D7=99=D7=A8 =D7=90=D7=99=D7=AA=D7=94 =D7=94=
+=D7=9B=D7=9C =D7=91=D7=A6=D7=95=D7=A8=D7=94 =D7=A9=D7=9E=D7=9B=D7=A1=D7=94 =
+=D7=90=D7=95=D7=AA=D7=A0=D7=95 (=D7=9B=D7=95=D7=9C=D7=9C =D7=94=D7=AA=D7=A8=
+=D7=90=D7=94 =D7=9E=D7=95=D7=A7=D7=93=D7=9E=D7=AA =D7=91=D7=9E=D7=99=D7=93=
+=D7=94 =D7=95=D7=A6=D7=A8=D7=99=D7=9A =D7=9C=D7=AA=D7=AA).</span></div><div=
+><span class=3D"gmail_signature_prefix"><br></span></div><div><span class=
+=3D"gmail_signature_prefix">=D7=AA=D7=95=D7=93=D7=94 =D7=A8=D7=91=D7=94!!!<=
+br></span></div><div><span class=3D"gmail_signature_prefix"><br></span></di=
+v>-- </span><br><div dir=3D"rtl" class=3D"gmail_signature" data-smartmail=
+=3D"gmail_signature"><div dir=3D"rtl"><p dir=3D"rtl" style=3D"line-height:1=
+.2;margin-top:0pt;margin-bottom:0pt"><span style=3D"font-size:11pt;font-fam=
+ily:Arial;color:rgb(0,0,0);background-color:transparent;vertical-align:base=
+line;white-space:pre-wrap"><img src=3D"https://lh6.googleusercontent.com/WU=
+3OHai_JT9QywW9dcod3M8HEfsF9Mw2EGn1GEvqy7qTKMy9U_l45hHnR4ZXFmTTtms9g1GYi3ith=
+1tWGhCeAaG-074Mdo5KDJY4D4Up0gBCYBERQQJkxyA1n8cnv7P_XVEsNRVnjtYHjPVnjwr996BM=
+PoVgSe3bpYwi0UwoHRrkDo0UoMX1psijbQ" width=3D"200" height=3D"200" style=3D"f=
+ont-family:Arial,Helvetica,sans-serif;margin-left:0px;margin-top:0px"><br><=
+/span></p><br><p dir=3D"rtl" style=3D"line-height:1.2;margin-top:0pt;margin=
+-bottom:0pt"><span style=3D"font-size:11pt;font-family:&quot;Noto Sans Hebr=
+ew&quot;,sans-serif;color:rgb(0,0,0);background-color:transparent;vertical-=
+align:baseline;white-space:pre-wrap">&nbsp;</span><span style=3D"font-size:=
+14pt;font-family:&quot;Noto Sans Hebrew&quot;,sans-serif;color:rgb(32,40,80=
+);background-color:transparent;font-weight:700;vertical-align:baseline;whit=
+e-space:pre-wrap">=D7=99=D7=A8=D7=93=D7=9F =D7=9C=D7=95=D7=99=D7=9F
+=D7=9E=D7=90=D7=9E=D7=A0=D7=AA =D7=A2=D7=A1=D7=A7=D7=99=D7=AA</span><span s=
+tyle=3D"font-size:11pt;font-family:&quot;Noto Sans Hebrew&quot;,sans-serif;=
+color:rgb(32,40,80);background-color:transparent;vertical-align:baseline;wh=
+ite-space:pre-wrap"><br></span><span style=3D"font-size:11pt;font-family:&q=
+uot;Noto Sans Hebrew&quot;,sans-serif;color:rgb(32,40,80);background-color:=
+transparent;vertical-align:baseline;white-space:pre-wrap">054-9529300</span=
+><span style=3D"font-size:11pt;font-family:&quot;Noto Sans Hebrew&quot;,san=
+s-serif;color:rgb(32,40,80);background-color:transparent;vertical-align:bas=
+eline;white-space:pre-wrap"><br><br></span></p><p dir=3D"rtl" style=3D"line=
+-height:1.2;margin-top:0pt;margin-bottom:0pt"><span style=3D"font-size:11pt=
+;font-family:Arial;color:rgb(0,0,0);background-color:transparent;vertical-a=
+lign:baseline;white-space:pre-wrap">&nbsp;&nbsp;&nbsp;&nbsp;</span><a href=
+=3D"https://www.facebook.com/levinyarden" target=3D"_blank"><span style=3D"=
+font-size:11pt;font-family:Arial;color:rgb(17,85,204);background-color:tran=
+sparent;vertical-align:baseline;white-space:pre-wrap"><span style=3D"border=
+:none;display:inline-block;overflow:hidden;width:33px;height:33px"><img src=
+=3D"https://lh5.googleusercontent.com/RktVhE4huSZXV6MawaYsKL5J8fKCiZBEvAbaE=
+vg1yxC72zxiLVJTrhMGJlVaNViQ7JEjkjBMuWGHJOYUu2xoK6DqvmQfbPenSKEd4J9zcgSrqApp=
+IX1dd_ebiUbVZCY3BZCzOkN3bHzSTo6ls-y1MBR73lB3rqUN2ZeW-W34uxEkF4Z9BusgPu53HA"=
+ width=3D"33" height=3D"33" style=3D"margin-left:0px;margin-top:0px"></span=
+></span></a>&nbsp;<a href=3D"https://www.instagram.com/yarden_levin/" targe=
+t=3D"_blank"><span style=3D"font-size:11pt;font-family:Arial;color:rgb(17,8=
+5,204);background-color:transparent;vertical-align:baseline;white-space:pre=
+-wrap"><span style=3D"border:none;display:inline-block;overflow:hidden;widt=
+h:31px;height:31px"><img src=3D"https://lh3.googleusercontent.com/OYGRd8pYr=
+yaeF5-_Qed5x1llxjT9YpWFeWdUfxRcNkAlHCA5MO9izsS1rGBkVbfpg4W9eX1DT9tgFX9UELcb=
+33x08FLBJM0TktQo4LB9E49Xb3T3GInf_avzLhzYjTIj22z_SzUBmMATE5pgj_Tw2Fc" width=
+=3D"31" height=3D"31" style=3D"margin-left:0px;margin-top:0px"></span></spa=
+n></a>&nbsp;&nbsp;<a href=3D"https://www.tiktok.com/@yarden_levin" target=
+=3D"_blank"><span style=3D"font-size:11pt;font-family:Arial;color:rgb(17,85=
+,204);background-color:transparent;vertical-align:baseline;white-space:pre-=
+wrap"><span style=3D"border:none;display:inline-block;overflow:hidden;width=
+:30px;height:30px"><img src=3D"https://lh4.googleusercontent.com/t0hBDaQdQW=
+AS9I9VQldbxd6mdbtc3pWAFYLgYGXEi9NjpRlg2sAoPELihXKWZjgrPIONfe65hc7VDBzY1aKvo=
+Z9ar9GN7X6lLvTKaAu-cR9Uvvwoh2WvG3DenFYwfB1ioZTbyDRTqsxWPrByjw1gwcNGXQI681bY=
+in_C0snqVzo6Hrnshkkd8apVwA" width=3D"30" height=3D"30" style=3D"margin-left=
+:0px;margin-top:0px"></span></span></a></p></div></div></div>
+
+--000000000000c0911306374bd7a3--

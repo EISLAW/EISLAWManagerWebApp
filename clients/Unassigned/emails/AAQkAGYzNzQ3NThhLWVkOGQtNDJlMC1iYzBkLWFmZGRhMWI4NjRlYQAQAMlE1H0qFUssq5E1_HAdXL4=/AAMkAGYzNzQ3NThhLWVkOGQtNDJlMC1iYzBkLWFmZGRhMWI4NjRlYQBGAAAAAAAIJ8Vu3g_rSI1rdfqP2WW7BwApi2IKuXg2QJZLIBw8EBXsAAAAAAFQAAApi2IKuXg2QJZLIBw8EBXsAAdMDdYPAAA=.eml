@@ -1,0 +1,661 @@
+Received: from DU4PR01MB10978.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:58d::18) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Mon, 23 Jun 2025 13:59:19 +0000
+Received: from DB8PR04CA0008.eurprd04.prod.outlook.com (2603:10a6:10:110::18)
+ by DU4PR01MB10978.eurprd01.prod.exchangelabs.com (2603:10a6:10:58d::18) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8880.15; Mon, 23 Jun
+ 2025 13:59:17 +0000
+Received: from DU2PEPF0001E9C5.eurprd03.prod.outlook.com
+ (2603:10a6:10:110:cafe::b3) by DB8PR04CA0008.outlook.office365.com
+ (2603:10a6:10:110::18) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8857.28 via Frontend Transport; Mon,
+ 23 Jun 2025 13:59:17 +0000
+Authentication-Results: spf=pass (sender IP is 2a00:1450:4864:20::532)
+ smtp.mailfrom=gmail.com; dkim=pass (signature was verified)
+ header.d=gmail.com;dmarc=pass action=none header.from=gmail.com;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of gmail.com designates
+ 2a00:1450:4864:20::532 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a00:1450:4864:20::532; helo=mail-ed1-x532.google.com; pr=C
+Received: from mail-ed1-x532.google.com (2a00:1450:4864:20::532) by
+ DU2PEPF0001E9C5.mail.protection.outlook.com (2603:10a6:18:3::10a) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.8857.21 via Frontend Transport; Mon, 23 Jun 2025 13:59:16 +0000
+Received: by mail-ed1-x532.google.com with SMTP id 4fb4d7f45d1cf-6077dea37easo8043033a12.3;
+        Mon, 23 Jun 2025 06:59:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1750687156; x=1751291956; darn=eislaw.co.il;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=jLKROuHVN99k8Y/BoTgbs6u8+w6moJqsHyUjd2t0Mpg=;
+        b=I81GtL/2qNddP8HDm//i7M663gjugpnu7GuExIai72y/xBZeYyg0untiIQEm1Bn5G4
+         yXQF7u4x4dm3UjfiX5wZdNPxgVNn+/PXjwRSWE5BBRu+KYsLmqFMnlEtY7VtjvgkOG3a
+         4iXu1jYFEAcOadbKyFzqzMO8sIyxuMQ1A+r8/VLkv18ZKoeOdN+EcItnXe7zr+C2gqnu
+         xMQaVPjK1qCt8ZlqWlBbofEfHhLqYlyzYAjZdSWb3Nx4l6CqCRrArfF47TX8UXJzon8r
+         gdBU0T5ek/MOvv6RnrBoyAnN9kr//l/FtE0F3trx6HizJHnZNZ3y5D4mwviPgB9TiSbo
+         mzGA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1750687156; x=1751291956;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=jLKROuHVN99k8Y/BoTgbs6u8+w6moJqsHyUjd2t0Mpg=;
+        b=XnCmgOj//LbK1Ya0DCcSGaGULephzo84dJjJcDTXjcT2MY6qNa1XWmS1g3QT432M1+
+         nIluouY6RZHWrPKhgSV9iiMgpTZes42O+EwD2M/ExPcHKuYwDWKwohU6sOx95CCubYvD
+         JJA97gVpFQgPstOGPdZZh+a+o7MV/rPNZxW8R4RZN6G9rezb5G00dqkz5MpPGfbuR5fR
+         hc2JA+YGY/gLWtqqg5oSYHilFrY/FNQnKPspwS5RteEpkhXa93Q/GjCgrPfZnW8yR9YF
+         /Iqr1yteT9Z9n91ObJtaPpvVcVKmLdUqXEV6B+XSKUQ5qXv2SHCK5KMtPo0NXBCDCM8D
+         7/Bw==
+X-Forwarded-Encrypted: i=1; AJvYcCU/USs29MBO98b8sNIl7MVSIaMOP4/00L0L5e/hld5QBWwwSAgQ6+oMOX/TjmLsbFOyK+C1Vg==@eislaw.co.il, AJvYcCWKmWDXIktJZSPq1hlYx9YiWkTQdKoaJ3epr0fmqD/k17wum1OgghxU+6QUGc7HtyMg1vGHiA==@eislaw.co.il
+X-Gm-Message-State: AOJu0YyXhWuiVUGaaQbU6jCynLCYCDVhwo6UjJSh5JeEL03eX5DmPHJz
+	9hh3GKWbLBc2xfCivi3bRdY10IgtkQE53TXXx7UxAg/J/Wd/cyUKAVa+U/TRFwn+WgRgi3gF6ue
+	PTA9whHA3NlvzcC4T7EZdBzcekZQn9Rs=
+X-Gm-Gg: ASbGnctXS7a/W2zQicZyU+4ktJS24XTbj1lLbEn3Egttg1ZQ+XNMRUcW+XkMxJHPaEh
+	AxDfBGf3oJFCatlP7MxjMr6l3Yt7ZKXZRsNAu/bRtAv7YJgn0jmvkeahiPhgsNnIWD9thufhiw9
+	d9P5CifljxvqtNTXBkbvsP/dydBW7iNepdOkRhUOgSQXx+uyFEoZKqpadqmaEpSACSliBoF9yOh
+	xgv8A==
+X-Google-Smtp-Source: AGHT+IHM/V+UOajX8IWlcTJw4gJrmPLNBuInskmkcHGEqR6/JWHX/vFPSgnmeGUUlKZmgnp/9YJO1AFc9mjpYjgye7o=
+X-Received: by 2002:a05:6402:1847:b0:609:9115:60f1 with SMTP id
+ 4fb4d7f45d1cf-60a1d167659mr9867661a12.16.1750687155572; Mon, 23 Jun 2025
+ 06:59:15 -0700 (PDT)
+References: <GV2PR03MB8828455F9DBB7838694EACF58D79A@GV2PR03MB8828.eurprd03.prod.outlook.com>
+In-Reply-To: <GV2PR03MB8828455F9DBB7838694EACF58D79A@GV2PR03MB8828.eurprd03.prod.outlook.com>
+From: Itzik Aharoni <itzikaha@gmail.com>
+Date: Mon, 23 Jun 2025 16:59:01 +0300
+X-Gm-Features: AX0GCFv7N-c0CYHi2uYQ7rlkuFnBOpKnMiQlIG2Ke0pJtOTezRYYF_ZIzufxcjw
+Message-ID: <CAPFEhD2SkytSvBMzt9FROCTzDAX4=7hhurgPeb3qBV=OA0Kz7A@mail.gmail.com>
+Subject: =?UTF-8?B?UmU6INeR15DXqCDXmdei16fXkSAtINee16rXl9edIDcuMg==?=
+To: Oshra Peleg <O.Peleg@shibolet.com>
+Cc: Dror Harpaz <D.Harpaz@shibolet.com>, Inbar Mackin <I.Mackin@shibolet.com>, 
+	Yossi Silam <yossi@scs-law.org>, Ran Wiernik <ran@rwiernik.com>, Eitan Shamir <eitan@eislaw.co.il>, 
+	noam zolberg <noam.zolberg@gmail.com>, Yael Shamir <yael@eislaw.co.il>
+Content-Type: multipart/alternative; boundary="0000000000000557ea06383d9e99"
+Return-Path: itzikaha@gmail.com
+X-MS-Exchange-Organization-ExpirationStartTime: 23 Jun 2025 13:59:16.9751
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: f9bc3971-b1b9-4608-9f34-08ddb25e24c0
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DU2PEPF0001E9C5:EE_|DU4PR01MB10978:EE_|AS8PR01MB10319:EE_
+X-MS-Exchange-Organization-AuthSource: DU2PEPF0001E9C5.eurprd03.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: f9bc3971-b1b9-4608-9f34-08ddb25e24c0
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|7093399015|1032899013|69100299015|13003099007|2066899003|4076899003|8096899003;
+X-Forefront-Antispam-Report: CIP:2a00:1450:4864:20::532;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-ed1-x532.google.com;PTR:mail-ed1-x532.google.com;CAT:NONE;SFS:(13230040)(7093399015)(1032899013)(69100299015)(13003099007)(2066899003)(4076899003)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 23 Jun 2025 13:59:16.5619
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: f9bc3971-b1b9-4608-9f34-08ddb25e24c0
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DU2PEPF0001E9C5.eurprd03.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DU4PR01MB10978
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:02.5237241
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8880.000
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?cVBYM3VwVHRlSTFmbi9saDBrUjdLNllGYnFiMFBadDh6RFlXQXRDdllUeHZw?=
+ =?utf-8?B?VjdBTzVsZFI2dVJucndiK0hVczV5UkM3ZUtJVUJhaEZ0eUlzTVh0R051VVdh?=
+ =?utf-8?B?eWQxcWxyM3pBWW0ycGRVTGJsZWtESDhFNURRM2RyeTlHZWtYOGpVREFNMUJI?=
+ =?utf-8?B?bVdPYkFzV25rbGd5TUlrSzlnZWZZdjNLcm1sZWtKanNuU2ZHM25BRUhPSkF0?=
+ =?utf-8?B?Z2VKR01GalR4OExrS0ZKMGVTY0FlVjNuTDJ4UEZiSmRRbXpHaW55QU1sVVg4?=
+ =?utf-8?B?ZmhCRmhneFFSdDNyRE54R1VvOG1BMTltLzJ1eGUyNzJkZ1Z2djBubThVQXVr?=
+ =?utf-8?B?RW02SHVDYTYrUDNSdEVIeHd3dUZhbkFreWU5U0tvNE42ZVYrd2hROFduT3dY?=
+ =?utf-8?B?aGxkVTdpenJBYWc3d3o3RUo1TDRLQlVxeXN5WElMK0w4Y09iYldWeXN3RjQ1?=
+ =?utf-8?B?OVZPbVdWSHVsTWhMVWxaTkdpRmM0TURNSlFSWmF3UU5jN3hSa2dBQ2d3c2xi?=
+ =?utf-8?B?UzZZVzU2VEZUZFVtNWE0TXpTL2hPUktoSWtTaExWMTlLYU1XeUxFQUEvdEFo?=
+ =?utf-8?B?dXdxZS8xdnAvenZhOFo4QUV6OUFFVmlLeGgzQjJOZE1JYjM4V3ZqS05LZExt?=
+ =?utf-8?B?U2J5aWU3Ynp1OVdtS0hNV3htLzJ2c25ZNENMejExTU5tTnV2RENHYTM0UWFI?=
+ =?utf-8?B?cTFQd3gycEpuMTBWL2F5aTVsWm9VUE0rMWxTaXYvREpvUUZ6RndOL1JvcmpM?=
+ =?utf-8?B?QzBqT1ZTa1YvN0huZHpTNXFRd3VjQ3J6cVBZNlZSbDc5SEZsWjBRRDV3bzZm?=
+ =?utf-8?B?bjVhRHZRb1E0cFdjMUhFdmtGdk9oZlQwUTFSaHh2cEJoN2NnaUZtT250dEhR?=
+ =?utf-8?B?RGpsZVFhdFB5eERMa2J2TjNidTRwMkFONlRnZEo5QVlQYkdLaXdRbzcyZExu?=
+ =?utf-8?B?Vnh5MnhOVDU1bFJoeWZmNVdaa2V3TkUwWlBPbktVaGNhY1FoSmNlM2hvYytz?=
+ =?utf-8?B?aEc4UW1zREliQlRWNXd1RVQ1bkFQaERqYXEycFA1aFMyd0hLbnFHZUNPZlFZ?=
+ =?utf-8?B?K2FRL0dMU0ZzSi82YzFpMnlaeW9jSlh2NnJGS1dHS0xHTVhtNDRSZk1MYlVD?=
+ =?utf-8?B?VnJWcXE4eWZVaHVjQnFuckIySDdOTDZMajUydWJmVE9NVGxzMXpuMHhVcGtl?=
+ =?utf-8?B?V0pUSWkvMWFaZmdxeTlSUnR2U3V6Y1p6NDVpWlc0blZyKzZFb2ZaM3h1Tm9M?=
+ =?utf-8?B?MXNaK1BOd2dsL0VseFFQblVXNDlCS2p3ay9BLzMzRTJUbFBTSEloTlJFZk5Y?=
+ =?utf-8?B?eUNqMitBaU1zMEtCckZjUjU0Nmh5aE5YbTh2a1puUkYrNHpsbnZCRDRLMUVV?=
+ =?utf-8?B?ZHJBaTRoMHNJdWx2SkFmbkFzSURxa1lwS3Q5Mmd4SXpzWEZsTDZrc05tQ1ZY?=
+ =?utf-8?B?Z05lRytibmZBMnFIZ01Za0VlcnY0TTdHTy8wbkJwdmUwRm9keEtEaTRrWFNL?=
+ =?utf-8?B?RWx0VU4vVEhNTFJSdmZhUXorc1k4amhHZ1QwMnJFbENleHJZRFBGakhLRGpK?=
+ =?utf-8?B?aGduc2MvRm1QbDFCK3FkMml6b1RoNjR1cTNtWmRwODhmYkJxZzgyVXhZeVN0?=
+ =?utf-8?B?blFOZlV2elRvaWwvUzNIZ0p0Zjd2ZWg3MGhwZGJnT2R1RHFBZ2VST251OUJ0?=
+ =?utf-8?B?QjhmM1kxeUFjbXdwSXJWK3dPcTdhMHQzSWdBYTQyQWV0TktMTGZ4UGhaWE1T?=
+ =?utf-8?B?NWpPSzFvaWhQTkIzT1FOaGttNmlveFN5NUVlWGdER0M0UysxbnFSSytLRGNX?=
+ =?utf-8?B?bkhIa1FURXhZdXkxR3BzZkdXb1Z1ajZtTDdob3M1T0xQNG11NERzaDduY29B?=
+ =?utf-8?B?NjdpaDB1dlJNK2U4VmcyOU5zV2ZsclpReFU5Vm5nRGJqemVUaEZJa0RSeEc5?=
+ =?utf-8?B?YXFzcFZTNWVvZVpqdnlIVlVPdXF4anV5SkpCWG9YYmp2ZEtBY0VFaFF0a211?=
+ =?utf-8?B?SHNJQ3Myd1QwN05pRU5vOFQ5L1FqUW1BRTZhUnpwYXg0YkZnOW1vWE5iUWJq?=
+ =?utf-8?B?RGtNSjNWTkprK0NKNDMxRHU4TDZkL3JrYWlzZk1ZQ2pweldmanE2bm1vUUNa?=
+ =?utf-8?B?YnR3aEtGbjlQMnJtbTlNZzRWb29nUERrQXY3MllZVGZDSC9MOVVYb1pqMCs5?=
+ =?utf-8?B?UGFQOEViNWpCdlpRc3c0YTNGcFFUcyszdlNzajRDM2doQ3d0OXBpRVdtQnQv?=
+ =?utf-8?B?MzZaMjlSeUpYNjQ1NWhsQnVKOGlDbWd5MktSZENCZDh2eHZqbUZxMjdZTDFt?=
+ =?utf-8?B?MUExbmxYc3luKzRUSTM3NnJxaU4zZ0R2VkZqaEtwNytvMFdRRTFvdnMxb3ZQ?=
+ =?utf-8?B?VC9XUVo1NFpVMzJ6RHo3ZWtaNmZINUZFU0xEZDRWRWxKeDRlR2kvK041VG5B?=
+ =?utf-8?B?NGxSeVpmNFk3bzk3c3J6ZmJPRmZBNWJWVEVjWFp0d0FmV1kvcUxTMVpsNzly?=
+ =?utf-8?B?ZFVjMU5zZWR1Qnp6ZUFqOHJkcng5SXV3bXdFM09pcEJCalQyNWpPbm5lWENw?=
+ =?utf-8?B?RkFNYTg3dmxka2lJSk1HT3grN2puYUtNOVRTTVJQYTBlbm55eVFMQzAvSEND?=
+ =?utf-8?B?MjVVekxvSEgwWVhzcTVJZzFneGx1UHR0R2cvbElXM1BvTDBzRzZ6WTZwdFFS?=
+ =?utf-8?Q?3i4d?=
+MIME-Version: 1.0
+
+--0000000000000557ea06383d9e99
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+=D7=9B=D7=9C =D7=94=D7=AA=D7=90=D7=A8=D7=99=D7=9B=D7=99=D7=9D =D7=9E=D7=AA=
+=D7=90=D7=99=D7=9E=D7=99=D7=9D =D7=9C=D7=99
+
+=D7=91=D7=AA=D7=90=D7=A8=D7=99=D7=9A =D7=99=D7=95=D7=9D =D7=91=D7=B3, 23 =
+=D7=91=D7=99=D7=95=D7=A0=D7=99 2025, 16:17, =D7=9E=D7=90=D7=AA Oshra Peleg =
+=E2=80=8F<O.Peleg@shibolet.com
+>:
+
+>
+>
+> <https://zoom.com/>
+>
+> Hi there,
+>
+> Oshra Peleg is inviting you to a scheduled Zoom meeting.
+>
+> Join Zoom Meeting
+> <https://shibolet.zoom.us/j/97731947349?pwd=3DLnDBt5A36OrIXZmphjfHv6I8UDP=
+7nU.1>
+>
+> One tap mobile:
+>
+> Israel: +97223764509,,97731947349# <+97223764509,,97731947349> or
+> +97223764510,,97731947349# <+97223764510,,97731947349>
+>
+> Meeting URL:
+>
+> https://shibolet.zoom.us/j/97731947349?pwd=3DLnDBt5A36OrIXZmphjfHv6I8UDP7=
+nU.1
+>
+> Meeting ID:
+>
+> 977 3194 7349
+>
+> Passcode:
+>
+> 023993
+>
+> *Join by Telephone *
+>
+> For higher quality, dial a number based on your current location.
+>
+> Dial:
+>
+> +972 2 376 4509 Israel
+> +972 2 376 4510 Israel
+> +972 3 978 6688 Israel
+> 1809 349 354 Israel Toll-free
+> 1801 227 228 Israel Toll-free
+>
+> Meeting ID:
+>
+> 977 3194 7349
+>
+> International numbers <https://shibolet.zoom.us/u/akTbr4378>
+>
+> *Join from an H.323/SIP room system *
+>
+> H.323:
+>
+> 144.195.19.161 (US West)
+> 206.247.11.121 (US East)
+> 221.122.88.195 (Mainland China)
+> 115.114.131.7 (India Mumbai)
+> 115.114.115.7 (India Hyderabad)
+> 159.124.15.191 (Amsterdam Netherlands)
+> 159.124.47.249 (Germany)
+> 159.124.104.213 (Australia Sydney)
+> 159.124.74.212 (Australia Melbourne)
+> 170.114.134.121 (Hong Kong SAR)
+> 170.114.180.219 (Singapore)
+> 64.211.144.160 (Brazil)
+> 159.124.132.243 (Mexico)
+> 159.124.168.213 (Canada Toronto)
+> 159.124.196.25 (Canada Vancouver)
+> 170.114.194.163 (Japan Tokyo)
+> 147.124.100.25 (Japan Osaka)
+>
+> Meeting ID:
+>
+> 977 3194 7349
+>
+> Passcode:
+>
+> 023993
+>
+> SIP:
+>
+> 97731947349@zoomcrc.com
+>
+> Passcode:
+>
+> 023993
+>
+>
+>
+>
+>
+>
+>
+
+--0000000000000557ea06383d9e99
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><p=
+ dir=3D"rtl">=D7=9B=D7=9C =D7=94=D7=AA=D7=90=D7=A8=D7=99=D7=9B=D7=99=D7=9D =
+=D7=9E=D7=AA=D7=90=D7=99=D7=9E=D7=99=D7=9D =D7=9C=D7=99</p>
+<br><div class=3D"gmail_quote gmail_quote_container"><div dir=3D"ltr" class=
+=3D"gmail_attr">=D7=91=D7=AA=D7=90=D7=A8=D7=99=D7=9A =D7=99=D7=95=D7=9D =D7=
+=91=D7=B3, 23 =D7=91=D7=99=D7=95=D7=A0=D7=99 2025, 16:17, =D7=9E=D7=90=D7=
+=AA Oshra Peleg =E2=80=8F&lt;<a href=3D"mailto:O.Peleg@shibolet.com">O.Pele=
+g@shibolet.com</a>&gt;:<br></div><blockquote class=3D"gmail_quote" style=3D=
+"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">
+
+
+
+
+
+<div lang=3D"EN-US" link=3D"#467886" vlink=3D"#96607D" style=3D"word-wrap:b=
+reak-word">
+<div class=3D"m_-1934509541377848846WordSection1">
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif"><u></u>&nbsp;<u></u></span></p>
+<div align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" width=3D"100%" styl=
+e=3D"width:100.0%;background:#f4f5f9">
+<tbody>
+<tr>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<div align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" width=3D"592" style=
+=3D"width:444.0pt">
+<tbody>
+<tr>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<div align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" width=3D"100%" styl=
+e=3D"width:100.0%;background:white">
+<tbody>
+<tr>
+<td style=3D"background:#f4f5f9;padding:22.5pt 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><a name=3D"m_-1934509541377848846_WinZmBookmark_z86325" rel=3D"noref=
+errer"></a><a href=3D"https://zoom.com/" target=3D"_blank" rel=3D"noreferre=
+r"><span><span style=3D"color:blue;text-decoration:none"><img border=3D"0" =
+width=3D"110" height=3D"25" style=3D"width:1.15in;height:.2583in" id=3D"m_-=
+1934509541377848846_x0000_i1025" src=3D"https://st2.zoom.us/static/6.3.3786=
+5/image/new/ZoomLogo_110_25.png"></span></span><span></span></a><span></spa=
+n><span><span style=3D"font-size:12.0pt;font-family:&quot;Times New Roman&q=
+uot;,serif"><u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td style=3D"padding:0in 21.0pt 27.75pt 21.0pt">
+<div align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" width=3D"100%" styl=
+e=3D"width:100.0%">
+<tbody>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:42.75pt 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,=
+sans-serif;color:#39394d">Hi there,<span lang=3D"HE" dir=3D"RTL"><u></u><u>=
+</u></span></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Oshra Peleg is inviting you to a scheduled Zoom meeting.
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td colspan=3D"2" style=3D"background:white;padding:15.0pt 0in 6.0pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:25.5pt;directio=
+n:ltr;unicode-bidi:embed">
+<span></span><a href=3D"https://shibolet.zoom.us/j/97731947349?pwd=3DLnDBt5=
+A36OrIXZmphjfHv6I8UDP7nU.1" target=3D"_blank" rel=3D"noreferrer"><span><spa=
+n style=3D"font-size:19.0pt;font-family:&quot;Arial&quot;,sans-serif;color:=
+#2d8cff">Join
+ Zoom Meeting</span></span><span></span></a><span><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394d">
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">One tap mobile:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Israel:
+</span></span><a href=3D"tel:+97223764509,,97731947349" target=3D"_blank" r=
+el=3D"noreferrer"><span><span style=3D"font-size:10.0pt;font-family:&quot;A=
+rial&quot;,sans-serif">+97223764509,,97731947349#</span></span><span></span=
+></a><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sa=
+ns-serif;color:#39394d">
+ or </span></span><a href=3D"tel:+97223764510,,97731947349" target=3D"_blan=
+k" rel=3D"noreferrer"><span><span style=3D"font-size:10.0pt;font-family:&qu=
+ot;Arial&quot;,sans-serif">+97223764510,,97731947349#</span></span><span></=
+span></a><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot=
+;,sans-serif;color:#39394d">
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Meeting URL:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span></span><a href=3D"https://shibolet.zoom.us/j/97731947349?pwd=3DLnDBt5=
+A36OrIXZmphjfHv6I8UDP7nU.1" target=3D"_blank" rel=3D"noreferrer"><span><spa=
+n style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:=
+#39394d">https://shibolet.zoom.us/j/97731947349?pwd=3DLnDBt5A36OrIXZmphjfHv=
+6I8UDP7nU.1</span></span><span></span></a><span><span style=3D"font-size:10=
+.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394d">
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,=
+sans-serif;color:#39394d">Meeting ID:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,=
+sans-serif;color:#39394d">977 3194 7349<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,=
+sans-serif;color:#39394d">Passcode:<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,=
+sans-serif;color:#39394d">023993<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td colspan=3D"2" style=3D"padding:15.0pt 0in 6.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span><b><span style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#393=
+94d">Join by Telephone
+</span></b></span><span><b><span style=3D"font-size:12.0pt;font-family:&quo=
+t;Arial&quot;,sans-serif;color:#39394d"><u></u><u></u></span></b></span></p=
+>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">For higher quality, dial a number based on your current =
+location.
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Dial:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">+972 2 376 4509 Israel<br>
++972 2 376 4510 Israel<br>
++972 3 978 6688 Israel<br>
+1809 349 354 Israel Toll-free<br>
+1801 227 228 Israel Toll-free<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Meeting ID:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">977 3194 7349<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span></span><a href=3D"https://shibolet.zoom.us/u/akTbr4378" target=3D"_bl=
+ank" rel=3D"noreferrer"><span><span style=3D"font-size:10.0pt;font-family:&=
+quot;Arial&quot;,sans-serif;color:#39394d">International numbers</span></sp=
+an><span></span></a><span><span style=3D"font-size:10.0pt;font-family:&quot=
+;Arial&quot;,sans-serif;color:#39394d"><u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td colspan=3D"2" style=3D"padding:15.0pt 0in 6.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span><b><span style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#393=
+94d">Join from an H.323/SIP room system
+</span></b></span><span><b><span style=3D"font-size:12.0pt;font-family:&quo=
+t;Arial&quot;,sans-serif;color:#39394d"><u></u><u></u></span></b></span></p=
+>
+</td>
+<td><span></span>
+</td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">H.323:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">144.195.19.161 (US West)<br>
+206.247.11.121 (US East)<br>
+221.122.88.195 (Mainland China)<br>
+115.114.131.7 (India Mumbai)<br>
+115.114.115.7 (India Hyderabad)<br>
+159.124.15.191 (Amsterdam Netherlands)<br>
+159.124.47.249 (Germany)<br>
+159.124.104.213 (Australia Sydney)<br>
+159.124.74.212 (Australia Melbourne)<br>
+170.114.134.121 (Hong Kong SAR)<br>
+170.114.180.219 (Singapore)<br>
+64.211.144.160 (Brazil)<br>
+159.124.132.243 (Mexico)<br>
+159.124.168.213 (Canada Toronto)<br>
+159.124.196.25 (Canada Vancouver)<br>
+170.114.194.163 (Japan Tokyo)<br>
+147.124.100.25 (Japan Osaka)<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Meeting ID:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">977 3194 7349<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Passcode:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">023993<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">SIP:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d"><a href=3D"mailto:97731947349@zoomcrc.com" target=3D"_bl=
+ank" rel=3D"noreferrer">97731947349@zoomcrc.com</a>
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">Passcode:
+<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span><span style=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#39394d">023993<u></u><u></u></span></span></p>
+</td>
+<td><span></span>
+</td></td></tr>
+</tbody>
+</table>
+</div>
+<span></span></td>
+<td><span></span>
+</td></tr>
+</tbody>
+</table>
+</div>
+<span></span></td>
+<td><span></span>
+</td></tr>
+</tbody>
+</table>
+</div>
+<span></span></td>
+<td><span></span>
+</td></tr>
+</tbody>
+</table>
+</div>
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span><u></u>&nbsp;<u></u></span></p>
+<span></span>
+<p class=3D"MsoNormal" dir=3D"RTL"><a name=3D"m_-1934509541377848846_WinZmB=
+ookmarkEnd" rel=3D"noreferrer"></a><span dir=3D"LTR" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif"><u></u>&nbsp;<u></u></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR" style=3D"font-family:&=
+quot;Times New Roman&quot;,serif"><u></u>&nbsp;<u></u></span></p>
+</div>
+</div>
+
+</blockquote></div>
+
+--0000000000000557ea06383d9e99--

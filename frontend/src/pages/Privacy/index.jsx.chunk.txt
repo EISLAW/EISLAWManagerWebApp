@@ -1,0 +1,80 @@
+        selected_level: levelSel || (detail.score?.level || ''),
+        report_url: (publishInfo && publishInfo.report_url) ? publishInfo.report_url : '',
+        status: 'approved',
+        override_reason: overrideReason,
+        per_change_notes: perChangeNotes,
+      }
+      const API = (APIBase || '')
+      await axios.post(`${API}/privacy/save_review`, payload)
+      showToast('Saved review', 'success')
+      const met = await axios.get(`${API}/privacy/metrics`, { params: { window: 10 } })
+      setMetrics(met.data)
+    } catch (e) { setError(e?.response?.data?.detail || e.message) }
+    finally { setBusySave(false) }
+  }
+
+  const approvePublish = async () => {
+    if (!detail) return
+    try {
+
+      setBusyPublish(true)
+      const API = (APIBase || '')
+      const payload = {
+        submission_id: detail.submission_id,
+        form_id: formId,
+        selected_modules: selectedList,
+        selected_level: levelSel || (detail.score?.level || ''),
+      }
+      const res = await axios.post(`${API}/privacy/approve_and_publish`, payload)
+      setPublishInfo(res.data)
+      showToast('Report published', 'success')
+      return res.data
+    } catch (e) { setError(e?.response?.data?.detail || e.message) }
+    finally { setBusyPublish(false) }
+  }
+
+  const copyText = async (t) => { try { await navigator.clipboard.writeText(t); showToast('Copied', 'success') } catch { showToast(t, 'info', 2000) } }
+  const copyWhatsAppLink = async () => {
+    if (!publishInfo?.share_url) return
+    const msg = `שלום ${detail?.answers?.contact_name||''}, הדו"ח מוכן עבור ${detail?.answers?.business_name||''} – קישור: ${publishInfo.share_url}`
+    const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`
+    await copyText(wa)
+  }
+
+  const sendEmail = async () => {
+    if (!detail) return
+    try {
+
+      if (!publishInfo || !publishInfo.report_url) {
+        if (!confirm('Publish the report before sending the email?')) {
+          showToast('Publish the report first', 'warn')
+          return
+        }
+        const pub = await approvePublish()
+        if (!pub || !pub.report_url) {
+          showToast('Publish failed', 'error')
+          return
+        }
+      }
+      setBusySend(true)
+      const payload = {
+        contact_name: detail.answers?.contact_name,
+        business_name: detail.answers?.business_name,
+        contact_email: detail.answers?.contact_email,
+        score: detail.score,
+        selected_modules: selectedList,
+        selected_level: levelSel || (detail.score?.level || ''),
+        report_url: (publishInfo && publishInfo.report_url) ? publishInfo.report_url : '',
+        to: detail.answers?.contact_email,
+      }
+      const API = (APIBase || '')
+      await axios.post(`${API}/privacy/send_email`, payload)
+      showToast('Email sent', 'success')
+      try {
+        const API = (APIBase || '')
+        const sentPayload = {
+          submission_id: detail.submission_id,
+          form_id: formId,
+          selected_modules: selectedList,
+          selected_level: levelSel || (detail.score?.level || ''),
+          status: 'sent',

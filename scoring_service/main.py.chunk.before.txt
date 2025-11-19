@@ -1,0 +1,40 @@
+        return None
+    return {
+        "name": pick(["שם", "Name"]),
+        "email": pick(["מייל", "Email", "דוא\"ל", "E-mail", "email", "EMAIL"]),
+        "phone": pick(["טלפון", "Phone", "טלפון נייד", "phone"]),
+        "role": pick(["תפקיד איש קשר", "Contact Role", "Role", "תפקיד"]),
+        "link": pick(["לקוח", "Client", "לקוח/ים", "Clients"]),
+    }
+
+
+def _airtable_build_contact_fields(fields_map: dict, name: str, email: str, phone: str, role: str, client_id: str) -> dict:
+    out = {}
+    if fields_map.get("name"):
+        out[fields_map["name"]] = name
+    if fields_map.get("email"):
+        out[fields_map["email"]] = email
+    if phone and fields_map.get("phone"):
+        out[fields_map["phone"]] = phone
+    if role and fields_map.get("role"):
+        out[fields_map["role"]] = role
+    if fields_map.get("link") and client_id:
+        out[fields_map["link"]] = [client_id]
+    return out
+
+
+@app.get("/api/client/summary_online")
+async def client_summary_online(name: Optional[str] = None, email: Optional[str] = None, limit: int = 25):
+    creds = _graph_app_creds()
+    if not creds:
+        raise HTTPException(status_code=500, detail="Graph credentials not configured")
+    # Prefer email; if only name is provided, try to resolve from registry
+    if not email and name:
+        reg = _load_clients_registry() or {}
+        for c in reg.get("clients", []):
+            nm = c.get("display_name") or c.get("name") or c.get("slug")
+            if nm == name:
+                em = c.get("email")
+                if isinstance(em, list) and em:
+                    email = em[0]
+                elif isinstance(em, str):

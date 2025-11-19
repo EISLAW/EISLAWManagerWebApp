@@ -1,0 +1,85 @@
+{
+  "version": "0.2",
+  "precedence": ["high", "mid", "basic", "lone"],
+  "thresholds": {
+    "ppl_mid": 10000,
+    "ppl_high": 100000,
+    "access_basic_max": 10,
+    "access_high_min": 101,
+    "biometric_high": 100000,
+    "sensitive_report": 100000,
+    "sensitive_dpo": 1000
+  },
+  "constraints": [
+    { "if": "reg == True", "enforce": { "level_min": "mid" } },
+    { "if": "report == True", "enforce": { "dpo": true } },
+    { "if": "reg == True", "enforce": { "dpo": true } }
+  ],
+  "rules": [
+    {
+      "name": "High by biometric count",
+      "when": "((biometric_people or 0) >= thresholds['biometric_high']) or (biometric_100k == True)",
+      "set": { "level": "high", "dpo": true }
+    },
+    {
+      "name": "High by sensitive count",
+      "when": "(sensitive_people or 0) >= thresholds['sensitive_report']",
+      "set": { "level": "high" }
+    },
+    {
+      "name": "High by total records",
+      "when": "(ppl or 0) >= thresholds['ppl_high']",
+      "set": { "level": "high" }
+    },
+    {
+      "name": "High by sensitive+access",
+      "when": "sensitive == True and (access or 0) >= thresholds['access_high_min']",
+      "set": { "level": "high" }
+    },
+    {
+      "name": "Lone (strict AND bundle)",
+      "when": "ethics == False and (owners or 0) <= 2 and (access or 0) <= 2 and directmail_biz == False and transfer == False and ((ppl or 0) < thresholds['ppl_mid'])",
+      "set": { "level": "lone" }
+    },
+    {
+      "name": "Basic (not lone; no transfer/directmail_biz; low-sensitive or low-access)",
+      "when": "directmail_biz == False and transfer == False and not (ethics == False and (owners or 0) <= 2 and (access or 0) <= 2 and directmail_biz == False and transfer == False and ((ppl or 0) < thresholds['ppl_mid'])) and (sensitive == False or (sensitive == True and (access or 0) <= thresholds['access_basic_max']))",
+      "set": { "level": "basic" }
+    },
+    {
+      "name": "Report trigger (only when not registered)",
+      "when": "(reg == False or reg is None) and ((((sensitive_people or 0) >= thresholds['sensitive_report'])) or (((biometric_people or 0) >= thresholds['biometric_high']) or (biometric_100k == True)))",
+      "set": { "report": true }
+    },
+    {
+      "name": "Registration trigger",
+      "when": "(transfer == True or directmail_biz == True) and (ppl or 0) >= thresholds['ppl_mid']",
+      "set": { "reg": true }
+    },
+    {
+      "name": "Processor mid floor",
+      "when": "processor == True",
+      "set": { "level_min": "mid" }
+    },
+    {
+      "name": "Processor for sensitive/public org",
+      "when": "processor_sensitive_org == True",
+      "set": { "level": "high", "dpo": true }
+    },
+    {
+      "name": "Processor for large org (DPO)",
+      "when": "processor_large_org == True",
+      "set": { "level": "high", "dpo": true }
+    },
+    {
+      "name": "DPO via monitoring",
+      "when": "monitor_1000 == True",
+      "set": { "dpo": true }
+    },
+    {
+      "name": "DPO composite (non-level)",
+      "when": "(reg == True) or (report == True) or (monitor_1000 == True) or ((sensitive_people or 0) >= thresholds['sensitive_dpo'])",
+      "set": { "dpo": true }
+    }
+  ]
+}

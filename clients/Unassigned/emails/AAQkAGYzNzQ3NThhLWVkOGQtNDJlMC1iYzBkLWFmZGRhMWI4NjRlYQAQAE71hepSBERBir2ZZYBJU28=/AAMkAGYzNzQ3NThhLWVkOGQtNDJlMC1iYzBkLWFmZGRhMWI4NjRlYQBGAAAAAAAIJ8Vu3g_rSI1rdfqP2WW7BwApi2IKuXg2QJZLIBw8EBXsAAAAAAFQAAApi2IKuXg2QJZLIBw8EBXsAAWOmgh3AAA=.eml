@@ -1,0 +1,605 @@
+Received: from DB9PR01MB8912.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:370::21) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Wed, 3 Sep 2025 08:21:16 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=nX8LXFvaKl4vtRlhjssfKUloF7g2am9z5Te0aNdSi/fsSyV260rRev7XDODyMfs6vE/64n2ucG38R7Hmz8xnuePhE4j6sJ5WuLN9+jCLbJSJ1kUCc2yw3b4HSPf2KnM/F1rdjnOHUfb/80yQ4xLUXCW6Tx5uraGq7D4ONvb7vOzewTAESRAnZ+RbbCkIpbc9U8GIdtPCGAArKZE3JEVgVigjA4BfmGWv4Wrdue1uUW50ybkjkFdXfgJRAUkyia2ZqNh1Y5tup0WS5ECnYQkq5ZUnQyXWNLGR2m/R0VdXYg91kGftH9KTaJOY/El2nmLPxJnWtNm3ywAGEw0Bxz2n2Q==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=9xIPCy8m3qsoEOOQpO1R8WJj4ehK9dwKRwNCKKGiNTc=;
+ b=JxaoPo6KEJL6g1fgrq/W1+IzcQMSCOO/DfhSwsF34B3l4+0WhwJlRRfKo3V62ianxLBvk9k+qlLc55QU8qtQkuyplNIYmyWkaOYsKG1p5H8EnhmMceOWaRoClFqUPxe2V5SBqtsKbtQRqVxg40ZCk5HBiBfyuD4PcOhE8szNl0oymqAgs6FSRxPPMLv9+1otxirpJRmgh/sbfVMxcUQ42rkOhqPoWFAuK8nDe/qonbRmve/rVFAxUStQomdVDbpG66fP0qcojQ3/7lHwrIHHhU8JTSR4ub9iI6bVjQUo4ODjxRGVdDdMPTRvOHSjNU8WHIUoke3ZOgTIHR4978Lylg==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:2614::729) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=hrrotem.co.il; dmarc=pass (p=none sp=none pct=100) action=none
+ header.from=hrrotem.co.il; dkim=none (message not signed); arc=pass (0 oda=1
+ ltdi=1 spf=[1,1,smtp.mailfrom=hrrotem.co.il]
+ dkim=[1,1,header.d=hrrotem.co.il] dmarc=[1,1,header.from=hrrotem.co.il])
+Received: from DUZPR01CA0016.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:46b::9) by DB9PR01MB8912.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:370::21) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9073.27; Wed, 3 Sep
+ 2025 08:21:13 +0000
+Received: from DU6PEPF0000B620.eurprd02.prod.outlook.com
+ (2603:10a6:10:46b:cafe::34) by DUZPR01CA0016.outlook.office365.com
+ (2603:10a6:10:46b::9) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9094.17 via Frontend Transport; Wed,
+ 3 Sep 2025 08:21:14 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:2614::729)
+ smtp.mailfrom=hrrotem.co.il; dkim=none (message not signed)
+ header.d=none;dmarc=pass action=none header.from=hrrotem.co.il;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of hrrotem.co.il designates
+ 2a01:111:f403:2614::729 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a01:111:f403:2614::729;
+ helo=EUR05-DB8-obe.outbound.protection.outlook.com; pr=C
+Received: from EUR05-DB8-obe.outbound.protection.outlook.com
+ (2a01:111:f403:2614::729) by DU6PEPF0000B620.mail.protection.outlook.com
+ (2603:10a6:18:3::208) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9094.14 via Frontend Transport; Wed,
+ 3 Sep 2025 08:21:11 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=kxjrM7PbwySGHeOsvQewmmHHNkHrSUdtiaHr4b7JKCHy0ADQYnTuSxSB+qpdq9JNkOLkPrLHHIRUWKZ5PlHKCqg7Q9MIGLLD19CuapMGj6mFr8YlMCg0Z9JehyLhFY+gDEFhIaTemKbHnaPwz8JP7e9orDJ915Ce55vj3es35rdY+l7nPqG239L6BJo2KM7ETa0yi5bKxynAEtV0RjZfG4p5uQsLR5qirz/pCqDTU71F2JQtU2ZjkBeAbYJ8hjxxSa8wN2g+7ey9QGiGCaOAVH2D9NrdEuVyMp6O/4GTvuFPpuqEVYK/+ui1gFU3xKVtp3dvObjqz+S/Y2Ha7qOCHQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=9xIPCy8m3qsoEOOQpO1R8WJj4ehK9dwKRwNCKKGiNTc=;
+ b=aNbvPDVpC3TZbV8G7IBbgBSxaItjPlBAEzS4zg0ctmUiDMTg0l+Ol3ONYxeLTo0XXyoJkhRe+N5szGxG5IwBqmcFpvaDfr489+9hW/aXcVRZZkjV7aHry/MnA2+cHl09abuU7/U7CBLYGpb8E7NosGR/59S+tKW2/uC07wK3wnO8nX0n5D8zvWEHGXDChMG6juPqmMWUmKqos1kGTSYvAu378AMITIS1M/Uu+h4713RmHjL/LIDdvHkiKAmc4C91fYePYlEW1CySuPfF2lIXsF9d1cTv1XJJi6eXNFgJNcJ912KGWAD5rXzMM2Jr8DRRTKfNveTP6dLCgTx0Qyhnjg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hrrotem.co.il; dmarc=pass action=none
+ header.from=hrrotem.co.il; dkim=pass header.d=hrrotem.co.il; arc=none
+Received: from AM9P192MB1252.EURP192.PROD.OUTLOOK.COM (2603:10a6:20b:3ab::16)
+ by PA3P192MB2948.EURP192.PROD.OUTLOOK.COM (2603:10a6:102:4d5::22) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9073.27; Wed, 3 Sep
+ 2025 08:21:10 +0000
+Received: from AM9P192MB1252.EURP192.PROD.OUTLOOK.COM
+ ([fe80::a35b:ed35:c5db:cdcd]) by AM9P192MB1252.EURP192.PROD.OUTLOOK.COM
+ ([fe80::a35b:ed35:c5db:cdcd%3]) with mapi id 15.20.9094.016; Wed, 3 Sep 2025
+ 08:21:10 +0000
+From: =?windows-1255?B?+OX67SDr5O8=?= <rotem@hrrotem.co.il>
+To: "eitan@eislaw.co.il" <eitan@eislaw.co.il>
+Subject: =?windows-1255?B?UmU6IFJlbWluZGVyOiD04un5+iDp6fLl9SDg6fnp+iDh5uXtIC0g8uUi?=
+ =?windows-1255?Q?=E3_=F9=EE=E9=F8_with_Eitan_Shamir_at_11:00_(Israel_Time?=
+ =?windows-1255?Q?)_on_Thursday,_September_4,_2025?=
+Thread-Topic: =?windows-1255?B?UmVtaW5kZXI6IPTi6fn6IOnp8uX1IODp+en6IOHm5e0gLSDy5SLjIPnu?=
+ =?windows-1255?Q?=E9=F8_with_Eitan_Shamir_at_11:00_(Israel_Time)_on_Thurs?=
+ =?windows-1255?Q?day,_September_4,_2025?=
+Thread-Index: AQHcHKmJTvWF6lIEREGKvZllgElTb7SBHfiJ
+Date: Wed, 3 Sep 2025 08:21:10 +0000
+Message-ID: <AM9P192MB125253520C6E0C55035FEEABE901A@AM9P192MB1252.EURP192.PROD.OUTLOOK.COM>
+References: <oxVVEh_qTyG47rdKPMslOw@geopod-ismtpd-37>
+In-Reply-To: <oxVVEh_qTyG47rdKPMslOw@geopod-ismtpd-37>
+Accept-Language: en-US, he-IL
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+x-ms-reactions: allow
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=hrrotem.co.il;
+x-ms-traffictypediagnostic: AM9P192MB1252:EE_|PA3P192MB2948:EE_|DU6PEPF0000B620:EE_|DB9PR01MB8912:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: cb968d53-ac28-4c0a-bf53-08ddeac2d7b2
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|376014|1800799024|366016|4022899009|42112799006|69100299015|13003099007|8096899003|38070700018;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?i+aBW88NuTbnPwb8fg7UZQ3oTiYtnLMuug5xw63IE+lgEblMIKJX88LLpJ3h?=
+ =?us-ascii?Q?uSVFkLgETR4R6pGxWpZRAhEwxch8KtpsMPbCiVthUEw+zITTptxMpABGUbkN?=
+ =?us-ascii?Q?yMaCpjq8HQbGZdrEnWRFJdQYUv7ZVnAfp3/ycwn5xUbpsMPIc1L7BMkS6Vrp?=
+ =?us-ascii?Q?J5Lz1Wp17bwPnmd3xHK8U9pe6FK1uDqNd9MDColuiI4T+uxCraZq2ZViW6A6?=
+ =?us-ascii?Q?l7KSCYAJQpr5YOqOhg7/zEdm8GpmYe/gIek+/l8L1PRsNsBfzsCg6nZxytHZ?=
+ =?us-ascii?Q?2/geJMhexl/WhTqJQbtay0PVPj3FawAtKJM+2+U4x7xKKEAmc6O/UaEHmEAR?=
+ =?us-ascii?Q?wYQ3aN3owpvyQNsYHn0hB0ThElyMQHAJzPQCBL1wHkndkVARslM4l++hkunA?=
+ =?us-ascii?Q?PyqpriK9WMlBTmpQYpfTrijCf/MaXpRTnM0R/VFZapZah8/lIdXrcGD2E42L?=
+ =?us-ascii?Q?JNmFjUBab3Q4k8r/W1pIbo+LPm/HYLRrRaS37r1r7DTk05MiWlBEOhpvA8TM?=
+ =?us-ascii?Q?TxuDSIyhOWtBF4LngTu+HbBjjT8JFxVEFb+fe44U8DyMM038bfICkkXIop8k?=
+ =?us-ascii?Q?YC3AdBDXbiD562rMM2o+8uo14MCyBONjDfoFFjwDl7LkFaAymexua0dHMnFE?=
+ =?us-ascii?Q?nqayvvIi/3rZ6X32pIGJeI5+FlYQXwdlqeLy49z6EubHpDcuCgzuF1jjiVul?=
+ =?us-ascii?Q?F1cqs//YJRYlqf5qah55qGens5LjVwQxND9e+ztiX3xZ8hZ2MK4/iZl8mNBa?=
+ =?us-ascii?Q?OTBmxPDLzpF2jIqRWnphnG1g5Wvw7f+Pk9ACKal//7qqumqwd09N68Q4DTlm?=
+ =?us-ascii?Q?jtyj1yLXRSNDCNBRVeu+ZLy4DosQFKoZGL3gDC0wgccqk1REZJBSg/s9XWvK?=
+ =?us-ascii?Q?ympa2kk3ib60kXdPvAIiACd6MGpUQ1YJOqwMFCUhV/B7BRZj3q/e7C/8vu9p?=
+ =?us-ascii?Q?JX1Vf90biKk/ClEfzG3ET6P6xexqMsnbLTSwd4cTD/3xPeCSCtDCYmiAJK6u?=
+ =?us-ascii?Q?Q4SO9M2eLJpxBC+Efvdz0Ep08shLSaVFgPNLXcxCZ54WSEUp5QK0qvR3Ib74?=
+ =?us-ascii?Q?wouYunTHaXJnhv7B8lFxZTRIXIjcLi20bwvE/BXLxTvfST4rKbDP0n61isGs?=
+ =?us-ascii?Q?qnkohjptLDVbVee7Ps2LJWs6IHm2ygTm5hm3WPy9NGaxMIre0PfQOSXgggIm?=
+ =?us-ascii?Q?oNan+XkKh+QAWiahg2TR0yHdIiNIbM92ISj4q+MY6+6O1K45VnBvAGC8UngM?=
+ =?us-ascii?Q?nBqq6LcP0LiD8VOCpVp+o6cSiPVlewX+e+TNRQ80ftR/epun0bnUnGt8QRuu?=
+ =?us-ascii?Q?2Qj2h0y+TXQaG+d5kZK2LU39bVtfiuIRl3S0F+A9zRbEkEHb80oAAmnr8DA+?=
+ =?us-ascii?Q?jGJ0B+lt4Sgoqh+Vq/3vlPO1BQInYx//uoQgPz0LmdDondo6yA=3D=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM9P192MB1252.EURP192.PROD.OUTLOOK.COM;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(366016)(4022899009)(42112799006)(69100299015)(13003099007)(8096899003)(38070700018);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?windows-1255?Q?yD+vXrulenMKzd48Bj46Bz+2xnfhn9hY42leuA0tqY5h2WiPOs6HeQV8?=
+ =?windows-1255?Q?t6DZ9Ko/UPqcT6ZaM/w7dMZRUbPzuQLphyohmXv7+cZi0j+O7V78I+wb?=
+ =?windows-1255?Q?PHVA+TICZHmKthynEs1G1+G4HVcLgZ7TRoFJItNnPaVPemfOf1nM00Jf?=
+ =?windows-1255?Q?pxgxx2Hmop3FgnAcH0dRaMTT+Nb6FYT6pJUPcASY1gPkmH13Wx8GUl/4?=
+ =?windows-1255?Q?Z5uzPdkggtHndcRnJapnlCjL6B/+xlefSoxqevSbZloOnuWXiMHVlVKD?=
+ =?windows-1255?Q?LYWN5D5lrXBEMQ1cRVBvlKUC8u946s4Kr6ruOTa6w737z8lghH0TP3Vl?=
+ =?windows-1255?Q?cdBRkMl/3Ouz5H9+jkB6qx1KaRkUvF/3dpo2JNeVY3/lVX3506IlH3nk?=
+ =?windows-1255?Q?97vFDKwEH7Yp7qMcCKPosO/AOC3Da0DqbPRE/MZ6NeFIdMbUDkQ7OsY1?=
+ =?windows-1255?Q?/lroZhWRzYHQr+PRAnwPl0PS9hTZ7Vyqa4Os7jptNCnQj7fdLEus+ltW?=
+ =?windows-1255?Q?9lrdZxmAhF3fRDd3hBFyiXGamdig+aHa1QP/tM98edvBwWcJHZnXemSJ?=
+ =?windows-1255?Q?njRATL5SRrGJSBep/DnNrb5QHeDw5hkoajLKOLP3T9WjWrK0xBluWbk7?=
+ =?windows-1255?Q?nm0ZQmvmEFCnSkwCE5fXLj5Oa3mvnmQGCCXRzEcBKPZk1vh90qPkvWJC?=
+ =?windows-1255?Q?2qj4aYUUCLMyz3FleYZRJLaylotMho4l5PqTgvlWF3fEKnpe17MRuasr?=
+ =?windows-1255?Q?AYiGPcyKmEJRT0JuIHtAdZilIoi9PJJZhJ29fSgbMtWPcjo0GYAm2Mkt?=
+ =?windows-1255?Q?rmDxXaz6KFhWXfNFrPg9tM2ulx7CwWxZ3QMGhNyqLOEabamTmVIMIM1S?=
+ =?windows-1255?Q?C2lL+vLFgwuDh+kWM3S8B74PzJDvxEoLl6M4PfpfohXom3dMPGxLaWE2?=
+ =?windows-1255?Q?E6rALc1I22tXHv+UpgUt6xXk9DO3wqA8U0hVQPusDRGFCUXndMOALh+u?=
+ =?windows-1255?Q?lZ5px8D2rIglQB1QSVX0dJZyrxKBgSlX1THX1zwCsSqsS71j58RuJn/3?=
+ =?windows-1255?Q?yM2GVfjC0zHV91FigDJF0NpcbsV69Quq9HKvwSxbTr08Aqt735hyUooR?=
+ =?windows-1255?Q?rZiUmte33Sq+MdJIrjAOqQczQZhpqkGsXxxUjbtxzNgqMC+Y/LnctIAt?=
+ =?windows-1255?Q?RPsOxNhp+ULkSjnyXLz4ve8RtoSW8tSz1BvakjxEiFsrtRBi7ukHNG3e?=
+ =?windows-1255?Q?zo4Rn+wGO8ldHzGD/85pIrjMO4p8Eql/bX0V7YOwJJNLV15L0iuTLktM?=
+ =?windows-1255?Q?ssUf7+7581P3RgDBzFgQksrNasB701CtLTRi+fTnCzGzPW4JtFJO5sNh?=
+ =?windows-1255?Q?btm557s3pkjIPr3BK7LGzexaI6ob7h4zDHzs80p9tBE4ewulGpNIv9G4?=
+ =?windows-1255?Q?lfckPlueQ/D7qR6885f7a29Z4uKYOqLzd+2eLZpvvK3cjYT1OMuuJqbY?=
+ =?windows-1255?Q?jwNTzafGLezgjznDXCBqwuwo+5BodFbL6OcHZ1Yr6M4FSwiskr7L5Lxn?=
+ =?windows-1255?Q?k4ZxGUdNjeaxHgNqqEb2UjL9xcM2G7X11uJYAOROKTgnNbCuxtyMHchS?=
+ =?windows-1255?Q?xg15k0Vyvv2ITGhZ8N+jPoxB5pX6Iz7SVa9yzB7bcASCLKWgZU4Y/4cd?=
+ =?windows-1255?Q?ulbGFAVBolbeWb3RB+JxFmaD38oM9wGHSgj7kuT9vojw0WK0Qxj0zQ?=
+ =?windows-1255?Q?=3D=3D?=
+Content-Type: multipart/alternative;
+	boundary="_000_AM9P192MB125253520C6E0C55035FEEABE901AAM9P192MB1252EURP_"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PA3P192MB2948
+Return-Path: rotem@hrrotem.co.il
+X-MS-Exchange-Organization-ExpirationStartTime: 03 Sep 2025 08:21:11.9849
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: cb968d53-ac28-4c0a-bf53-08ddeac2d7b2
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: DU6PEPF0000B620.eurprd02.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: DU6PEPF0000B620.eurprd02.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: DU6PEPF0000B620.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: 0d33fc81-317d-44c7-8f76-08ddeac2d6a5
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|42112799006|35042699022|69100299015|4022899009|13003099007|8096899003|4076899003;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:2614::729;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:EUR05-DB8-obe.outbound.protection.outlook.com;PTR:mail-db8eur05on20729.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(42112799006)(35042699022)(69100299015)(4022899009)(13003099007)(8096899003)(4076899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 03 Sep 2025 08:21:11.8662
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: cb968d53-ac28-4c0a-bf53-08ddeac2d7b2
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DU6PEPF0000B620.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB9PR01MB8912
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:04.4037413
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9073.026
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?vR32Wigd51UdO8XD4+u17RudiSQ2YhpSonncx4Y/KXzUGwjj06ER4RZY?=
+ =?windows-1255?Q?Q0ywI6EHElCCRIU6VEWJxnXBkeQvX6naQxHHEVAOq/vSlfA3COOuFL0E?=
+ =?windows-1255?Q?zcASgUbgwRx/IW+ET3m5Z7Nst+Le1zfBa2oaXetAHcHtu6kujaIFjBBb?=
+ =?windows-1255?Q?VnpwllilxUymWhDubuDPke6ovBeQExQJxKcaqeyNukZn7ZM0K/A8OCTK?=
+ =?windows-1255?Q?h7NowP2YaqZFSCP2DCKyz0nbMlHK1S60af9rAW+rjyLerhaEw08W1V99?=
+ =?windows-1255?Q?0cF6wjQGTTOZwWN0o/GyZQzaCVlQQP/3MMPgUg09JdPhJo9ouOaKv3kR?=
+ =?windows-1255?Q?3rhq9ehmeF5oKxyVsyP8c9ROK7iixDL9Rsq2xu74GyLVG6Nay8qu7PkE?=
+ =?windows-1255?Q?8wPn3H9JIBuQz1iGoRI6Kb7JNMQ1QlfIcHAUyWeNozSIJOg9rS5hEqmd?=
+ =?windows-1255?Q?w+kGTCzbKpA/1XuCPhRQxfU+Mi8wOLbcV1WPVuKHflHnXRxIAx+fAtu1?=
+ =?windows-1255?Q?niiHlL1UjFRiSWGortMAUhlFeH53iNfD+rxojclYFq/G3deXiZHxANYs?=
+ =?windows-1255?Q?eZX62cDY6mDFOTtBF8WS6maCnF7Mzfb19VxIqcgy/W1bu+Rk97Jo5ysQ?=
+ =?windows-1255?Q?4QA6Z6WjThCI4ct3p150AB0LBUBjn/HLiVJRojJCVLGvHLvCkgrrZ+NO?=
+ =?windows-1255?Q?NEB4s8BjIzbpPn8B5gjS1f+ONFOMKFO2C/fem50iDNVEgxOkrMJRyOXZ?=
+ =?windows-1255?Q?6BrGsuQCkFFSbk0C3kgcHfsv3swegia+exYtAO+3e23K05HGogF4DluZ?=
+ =?windows-1255?Q?mwJrtXIIPlYl5+HxXbj52wsSMr+KSUR5+sDjfQLwdv+5gGvGloXhSPzs?=
+ =?windows-1255?Q?Vnz1+m3FHDVQL7JyddnfZCLNVEWioBKkm/L3zJUtApIOd05sESlL5mYO?=
+ =?windows-1255?Q?6M27F8biAD6/DKE/Qj3PziRDTzDM9Kvs+C4yzTfh52roeS+cBb2IH7+h?=
+ =?windows-1255?Q?Uc9UL64n9WF0hY01ZPd6EUXTKZmpI25x0qPcs6QV81/jruj3GZTeRAZt?=
+ =?windows-1255?Q?mU+2EGPCg/yNr7qbblnMnqE2M35ZdgLRYR4l/C5l5h/i8rvYV3YufgZg?=
+ =?windows-1255?Q?wx2kKBw80eOE+p1P076MF7cxBE7RRqgqUpvFbXaq+tHXTOPPjxC2KEcO?=
+ =?windows-1255?Q?SIfrRVciQ6JbmEEW2FT2rFOpTinLiSfHtbx52Y5SwXQ9Vzfto8Y6E+lx?=
+ =?windows-1255?Q?vf2SIaOeYSGn5x+7ladiHrVTR0E3jdBy5YnsRHvcQ/HYzIOLAOVVgOcP?=
+ =?windows-1255?Q?XKY4ko8+G0rc4Zu4ARHYhPlIrHo34IzV2aDtrduSvTRgqQF54QboB3Ym?=
+ =?windows-1255?Q?im5lRRzP1gxm/lNgGWwdkSVpOLSsl2ucbsUdT98jGK2BQfK3XPYi9D5G?=
+ =?windows-1255?Q?OKmG/yT3FupieuH+dUtRsTbJsW5MQfpBpFDpgkpMPcZBhgd3S1AhWfaf?=
+ =?windows-1255?Q?ZHBU3eA6Uhs5kCGyusPQrb9+WhOW2PypmA+pjB7uVIePoy7Zc4GrCzvD?=
+ =?windows-1255?Q?8MkJbbDXJrqExbNfxbm6E8hOlKFhQxRaqpHnHHgkJ5SPeBxfVRvtc9Wf?=
+ =?windows-1255?Q?jktSRyhxz4GS4L2AMlqRM2WUxLCZ1JRxV+uCvetbhjm0D1SBwLS/KgLk?=
+ =?windows-1255?Q?+wDTmUOmArM6Q+JQ8KLLKsACcV8Lzq4KvXbB9ANS1cxR8rS067iGGGoj?=
+ =?windows-1255?Q?PnFzx/ooOKVky1qOZS72IX28CAKaKQTKLv6A+i8AesDsob1ebxg5aZmw?=
+ =?windows-1255?Q?NEH6XzLpMvz25LdLglQXpqY8YFE8QQMoRjAQspgOqAa+D0Xq08W883V2?=
+ =?windows-1255?Q?HUbe83xYA6dgFb3JeGMgImMdsac65qNaIO3Ozoaq2gp1zDmHOMRSexgY?=
+ =?windows-1255?Q?Ok43iuLJ/INlgu4SCxFPxmU7tIHdg26ZhMzhWs/8L2sHXYRIYPJ9t/aX?=
+ =?windows-1255?Q?HivRovcmymRjExapfXDA9RyEyHcM1TpGEaBA57aGsbcrh70oz7okFlgX?=
+ =?windows-1255?Q?AX95jKFOBhwGv7+0IHUPsq+kFnG939M4JXOjs9uVbeg3u8stt5MkM3yc?=
+ =?windows-1255?Q?sweyrc5YGRklr1AvyEVI6echyCxMUr6wHkkhIueiB6UWS5wB3OIT681A?=
+ =?windows-1255?Q?OXvj9K51mwo=3D?=
+MIME-Version: 1.0
+
+--_000_AM9P192MB125253520C6E0C55035FEEABE901AAM9P192MB1252EURP_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+=E4=E9 =E3=E7=E9=FA=ED =E0=FA =E4=E6=E5=ED =E0=F0=E0 =F9=EC=E7=E5 =EC=E9 =
+=EC=E9=F0=F7 =EC=FA=E0=F8=E9=EA =E0=E7=F8
+
+=F7=E1=EC =FEOutlook =F2=E1=E5=F8 Android=FE<https://aka.ms/AAb9ysg>
+________________________________
+From: Eitan Shamir (via Calendly) <notifications@calendly.com>
+Sent: Wednesday, September 3, 2025 11:00:20 AM
+To: =F8=E5=FA=ED =EB=E4=EF <rotem@hrrotem.co.il>
+Subject: Reminder: =F4=E2=E9=F9=FA =E9=E9=F2=E5=F5 =E0=E9=F9=E9=FA =E1=E6=
+=E5=ED - =F2=E5"=E3 =F9=EE=E9=F8 with Eitan Shamir at 11:00 (Israel Time) o=
+n Thursday, September 4, 2025
+
+
+[Eitan Shamir]
+
+Hi =F8=E5=FA=ED =E7=E9=E9=EE=E5=E1=E9=F5 =EB=E4=EF,
+
+This is a friendly reminder that your =F4=E2=E9=F9=FA =E9=E9=F2=E5=F5 =E0=
+=E9=F9=E9=FA =E1=E6=E5=ED - =F2=E5"=E3 =F9=EE=E9=F8 with Eitan Shamir is at=
+ 11:00 (Israel Time) on Thursday, September 4, 2025.
+
+Location:
+
+This is a Zoom web conference.
+
+You can join this meeting from your computer, tablet, or smartphone.
+https://us06web.zoom.us/j/84321967238
+
+One tap mobile:
++1 646 558 8656,,84321967238#<tel:+1%20646%20558%208656,,84321967238#>
++1 646 931 3860,,84321967238#<tel:+1%20646%20931%203860,,84321967238#>
+
+You can also dial in using your phone.
+US: +1 646 558 8656, +1 646 931 3860, +1 301 715 8592, +1 305 224 1968, +1 =
+309 205 3325, +1 312 626 6799, +16892781000, +1 719 359 4580, +1 720 707 26=
+99, +1 253 205 0468, +1 253 215 8782, +1 346 248 7799, +1 360 209 5623, +1 =
+386 347 5053, +1 507 473 4847, +1 564 217 2000, +1 669 444 9171
+Meeting ID: 843-219-67238
+
+=E1=F4=E2=E9=F9=E4 =F0=F9=E0=EC =F9=E0=EC=E5=FA =E5=F0=E0=F4=E9=E9=EF =E0=
+=FA =E4=F6=F8=EB=E9=ED =F9=EC =E4=F2=F1=F7 =F9=EC=EB=ED, =F0=EE=EC=E9=F5 =
+=F2=EC =E4=E3=F8=EA =EC=E4=FA=F7=E3=EE=E5=FA =E5=F0=F4=F8=E8 =E0=FA =E4=F2=
+=EC=E5=E9=E5=FA.
+
+
+=E4=F6=F2=FA =EE=E7=E9=F8 =EE=F1=E5=E3=F8=FA =F0=F9=EC=E7=FA =E1=E3"=EB =FA=
+=E5=EA 24 =F9=F2=E5=FA =EE=EE=E5=F2=E3 =E4=F4=E2=E9=F9=E4.
+
+
+=E0=F0=E5 =EE=F9=FA=E3=EC=E9=ED =EC=E4=FA=E7=E9=EC =E1=E6=EE=EF, =E0=EA =E9=
+=E9=FA=EB=F0=E5 =F2=E9=EB=E5=E1=E9=ED =F9=EC =EE=F1' =E3=F7=E5=FA - =E0=F0=
+=E0 =E2=EC=E5 =F1=E1=EC=F0=E5=FA :)
+
+Your Answers:
+
+=E4=F6=E9=E2=E5 =E1=EB=EE=E4 =EE=E9=EC=E9=ED =E0=FA =E4=F2=F1=F7 =F9=EC=EB=
+=ED.
+
+=E0=F0=E9 =F2=E5=F8=EB=FA =E3=E9=EF =EC=F9=F2=E1=F8 =E5=EC=EE=F2=EC=E4 =EE=
+=F2=F9=E5=F8 =E4=E3 =E4=E0=F0=E8=F8=E9=FA =E1=F2=E5=EC=ED =E4=EE=F9=F4=E8 =
+=EB=EC=E5=EE=F8 =EE=E2=E9=E9=F1=FA =F2=E5=F8=EB=E9 =E3=E9=EF =EC=EE=F9=F8=
+=E3=E9 =F2=E5=F8=EB=E9 =E3=E9=EF =E5=E7=E1=F8=E5=FA. =E1=F9=EC=E5=F9 =F9=F0=
+=E9=ED =E4=E0=E7=F8=E5=F0=E5=FA =E0=F0=E9 =F2=F6=EE=E0=E9=FA =E5=EC=F4=F0=
+=E9 =EB=EF =E4=E9=E9=FA=E9 =E1=F2=EC=E9=ED =E1=EE=F9=E5=FA=F3 =F9=EC =E7=E1=
+=F8=FA =E4=F9=EE=E4.
+
+=E9=F9 =EE=F9=E4=E5 =F9=E7=F9=E5=E1 =EC=EB=ED =F9=F0=E3=F2 =EE=F8=E0=F9?
+
+=E0=FA=F8 =E0=E9=F0=E8=F0=F8=E8 =E7=E3=F9 =F9=EE=EE=F9 =F2=EC=E4 =EC=F4=F0=
+=E9 =EB=F9=E1=E5=F2=E9=E9=ED -=F8=E5=FA=ED =E7=E9=E9=EE=E5=E1=E9=F5 =EB=E4=
+=EF
+=E0=F0=E9 =EC=EC=E0 =F2=E5=E1=E3=E9=ED =E5=EC=EC=E0 =F4=F8=E9=EC=F0=F1=E9=
+=ED
+=E0=F0=E9 =E4=E9=E7=E9=E3=E4 =F9=EE=FA=E7=E1=F8=FA =EC=EE=E7=F9=E1
+=F2=E5=E1=E3=FA =EC=E1=E3
+
+Make changes to this event:
+Reschedule <https://calendly.com/reschedulings/76cd20e4-f6db-4a09-b40d-c2de=
+1a9d5a8b> Cancel <https://calendly.com/cancellations/76cd20e4-f6db-4a09-b40=
+d-c2de1a9d5a8b>
+
+[Calendly]
+Sign up for your own Calendly page<https://calendly.com/?utm_source=3Dinvit=
+ee&utm_medium=3Demail&utm_campaign=3Dsign_up>
+
+Unsubscribe from notifications about this event<https://calendly.com/notifi=
+cation_subscriptions/76cd20e4-f6db-4a09-b40d-c2de1a9d5a8b/opt_out?owner_uui=
+d=3D7bf780e7-6af6-45eb-9c64-ef433547bd2c&recipient_id=3D1381423810&recipien=
+t_email=3Drotem%40hrrotem.co.il&opt_out_method=3Dbutton&event_uuid=3D9bf910=
+0d-134c-4eaf-92f7-c38894bf825f&event_type_uuid=3D29f45ba6-ad29-411c-a929-b8=
+922491d53a>
+
+
+
+--_000_AM9P192MB125253520C6E0C55035FEEABE901AAM9P192MB1252EURP_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+</head>
+<body>
+<div dir=3D"rtl" style=3D"font-family: Aptos, Aptos_MSFontService, -apple-s=
+ystem, Roboto, Arial, Helvetica, sans-serif; font-size: 12pt;">
+=E4=E9 =E3=E7=E9=FA=ED =E0=FA =E4=E6=E5=ED =E0=F0=E0 =F9=EC=E7=E5 =EC=E9 =
+=EC=E9=F0=F7 =EC=FA=E0=F8=E9=EA =E0=E7=F8</div>
+<div id=3D"ms-outlook-mobile-body-separator-line" dir=3D"auto"><br>
+</div>
+<div id=3D"ms-outlook-mobile-signature" dir=3D"auto" style=3D"font-family: =
+Aptos, Aptos_MSFontService, -apple-system, Roboto, Arial, Helvetica, sans-s=
+erif; font-size: 12pt;">
+=F7=E1=EC <a href=3D"https://aka.ms/AAb9ysg">=FEOutlook =F2=E1=E5=F8 Androi=
+d=FE</a></div>
+<hr style=3D"display:inline-block;width:98%" tabindex=3D"-1">
+<div id=3D"divRplyFwdMsg" dir=3D"ltr"><font face=3D"Calibri, sans-serif" st=
+yle=3D"font-size:11pt" color=3D"#000000"><b>From:</b> Eitan Shamir (via Cal=
+endly) &lt;notifications@calendly.com&gt;<br>
+<b>Sent:</b> Wednesday, September 3, 2025 11:00:20 AM<br>
+<b>To:</b> =F8=E5=FA=ED =EB=E4=EF &lt;rotem@hrrotem.co.il&gt;<br>
+<b>Subject:</b> Reminder: =F4=E2=E9=F9=FA =E9=E9=F2=E5=F5 =E0=E9=F9=E9=FA =
+=E1=E6=E5=ED - =F2=E5&quot;=E3 =F9=EE=E9=F8 with Eitan Shamir at 11:00 (Isr=
+ael Time) on Thursday, September 4, 2025</font>
+<div>&nbsp;</div>
+</div>
+<style>
+<!--
+a:visited
+	{color:rgb(0,105,255)}
+a:link
+	{color:rgb(0,105,255)}
+-->
+</style>
+<div style=3D"background-color:#ffffff; font-family:&quot;Proxima Nova&quot=
+;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; height:100%; width:1=
+00%!important; background-color:#ffffff">
+<div class=3D"x_main-wrapper" style=3D"font-family:&quot;Proxima Nova&quot;=
+,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; padding:20px 0; margi=
+n:0 auto; max-width:600px">
+<table class=3D"x_body-wrap" style=3D"font-family:&quot;Proxima Nova&quot;,=
+&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; width:80%; margin:20px=
+ auto 0; margin:0 auto; border-bottom:1px dashed #dadada">
+<tbody>
+<tr style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+<td style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif; text-align:center; padding-bottom:20px">
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif"><img src=3D"https://d3v0px0pttie1i.cloudfront.ne=
+t/uploads/user/avatar/34023115/a170db8c.png" width=3D"45" height=3D"45" alt=
+=3D"Eitan Shamir" style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxi=
+ma-nova&quot;,Helvetica,Arial sans-serif; max-width:100%; -webkit-border-ra=
+dius:40px; -moz-border-radius:40px; border-radius:40px">
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<table class=3D"x_body-wrap" style=3D"font-family:&quot;Proxima Nova&quot;,=
+&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; width:80%; margin:20px=
+ auto 0; margin:0 auto 0; font-size:16px">
+<tbody>
+<tr style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+<td style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif; color:rgb(26,26,26); line-height:22px; padding-=
+top:30px">
+<div class=3D"x_user-customizable-area" style=3D"font-family:&quot;Proxima =
+Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; margin-bott=
+om:40px">
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+Hi =F8=E5=FA=ED =E7=E9=E9=EE=E5=E1=E9=F5 =EB=E4=EF,</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+This is a friendly reminder that your =F4=E2=E9=F9=FA =E9=E9=F2=E5=F5 =E0=
+=E9=F9=E9=FA =E1=E6=E5=ED - =F2=E5&quot;=E3 =F9=EE=E9=F8 with Eitan Shamir =
+is at 11:00 (Israel Time) on Thursday, September 4, 2025.</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+<strong style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">Location:</strong>
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px; margin-bottom:1=
+0px">
+This is a Zoom web conference.</p>
+<div style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;=
+,Helvetica,Arial sans-serif; border-left:4px solid #dadada; padding-left:20=
+px; padding-top:5px; padding-bottom:18px">
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px; font-size:86%">
+<strong style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">You can join this meeting from your compute=
+r, tablet, or smartphone.</strong><br style=3D"font-family:&quot;Proxima No=
+va&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif">
+<a href=3D"https://us06web.zoom.us/j/84321967238" style=3D"font-family:&quo=
+t;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; c=
+olor:rgb(0,105,255)">https://us06web.zoom.us/j/84321967238</a><br style=3D"=
+font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Ari=
+al sans-serif">
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+One tap mobile:<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;prox=
+ima-nova&quot;,Helvetica,Arial sans-serif">
+<a href=3D"tel:+1%20646%20558%208656,,84321967238#" style=3D"font-family:&q=
+uot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif;=
+ color:rgb(0,105,255)">+1 646 558 8656,,84321967238#</a><br style=3D"font-f=
+amily:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial san=
+s-serif">
+<a href=3D"tel:+1%20646%20931%203860,,84321967238#" style=3D"font-family:&q=
+uot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif;=
+ color:rgb(0,105,255)">+1 646 931 3860,,84321967238#</a><br style=3D"font-f=
+amily:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial san=
+s-serif">
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+You can also dial in using your phone.<br style=3D"font-family:&quot;Proxim=
+a Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif">
+US: +1 646 558 8656, +1 646 931 3860, +1 301 715 8592, +1 305 224 1968, +1 =
+309 205 3325, +1 312 626 6799, +16892781000, +1 719 359 4580, +1 720 707 26=
+99, +1 253 205 0468, +1 253 215 8782, +1 346 248 7799, +1 360 209 5623, +1 =
+386 347 5053, +1 507 473 4847, +1
+ 564 217 2000, +1 669 444 9171<br style=3D"font-family:&quot;Proxima Nova&q=
+uot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif">
+Meeting ID: 843-219-67238 <br style=3D"font-family:&quot;Proxima Nova&quot;=
+,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif">
+</p>
+</div>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+=E1=F4=E2=E9=F9=E4 =F0=F9=E0=EC =F9=E0=EC=E5=FA =E5=F0=E0=F4=E9=E9=EF =E0=
+=FA =E4=F6=F8=EB=E9=ED =F9=EC =E4=F2=F1=F7 =F9=EC=EB=ED, =F0=EE=EC=E9=F5 =
+=F2=EC =E4=E3=F8=EA =EC=E4=FA=F7=E3=EE=E5=FA =E5=F0=F4=F8=E8 =E0=FA =E4=F2=
+=EC=E5=E9=E5=FA.</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+=E4=F6=F2=FA =EE=E7=E9=F8 =EE=F1=E5=E3=F8=FA =F0=F9=EC=E7=FA =E1=E3&quot;=
+=EB =FA=E5=EA 24 =F9=F2=E5=FA =EE=EE=E5=F2=E3 =E4=F4=E2=E9=F9=E4.</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+=E0=F0=E5 =EE=F9=FA=E3=EC=E9=ED =EC=E4=FA=E7=E9=EC =E1=E6=EE=EF, =E0=EA =E9=
+=E9=FA=EB=F0=E5 =F2=E9=EB=E5=E1=E9=ED =F9=EC =EE=F1' =E3=F7=E5=FA - =E0=F0=
+=E0 =E2=EC=E5 =F1=E1=EC=F0=E5=FA :) </p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px">
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:16px; margin-top:12px; margin:30px 0 1=
+2px">
+Your Answers: </p>
+<p class=3D"x_event-field" style=3D"font-family:&quot;Proxima Nova&quot;,&q=
+uot;proxima-nova&quot;,Helvetica,Arial sans-serif; font-size:16px; margin-t=
+op:12px; margin-top:0px; margin-bottom:0px; line-height:22px; font-size:14p=
+x; margin-top:12px">
+<strong style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">=E4=F6=E9=E2=E5 =E1=EB=EE=E4 =EE=E9=EC=E9=
+=ED =E0=FA =E4=F2=F1=F7 =F9=EC=EB=ED.
+</strong></p>
+<p class=3D"x_event-field" style=3D"font-family:&quot;Proxima Nova&quot;,&q=
+uot;proxima-nova&quot;,Helvetica,Arial sans-serif; font-size:16px; margin-t=
+op:12px; margin-top:0px; margin-bottom:0px; line-height:22px; font-size:14p=
+x; color:#666A73">
+=E0=F0=E9 =F2=E5=F8=EB=FA =E3=E9=EF =EC=F9=F2=E1=F8 =E5=EC=EE=F2=EC=E4 =EE=
+=F2=F9=E5=F8 =E4=E3 =E4=E0=F0=E8=F8=E9=FA =E1=F2=E5=EC=ED =E4=EE=F9=F4=E8 =
+=EB=EC=E5=EE=F8 =EE=E2=E9=E9=F1=FA =F2=E5=F8=EB=E9 =E3=E9=EF =EC=EE=F9=F8=
+=E3=E9 =F2=E5=F8=EB=E9 =E3=E9=EF =E5=E7=E1=F8=E5=FA. =E1=F9=EC=E5=F9 =F9=F0=
+=E9=ED =E4=E0=E7=F8=E5=F0=E5=FA =E0=F0=E9 =F2=F6=EE=E0=E9=FA =E5=EC=F4=F0=
+=E9 =EB=EF =E4=E9=E9=FA=E9 =E1=F2=EC=E9=ED =E1=EE=F9=E5=FA=F3 =F9=EC =E7=E1=
+=F8=FA =E4=F9=EE=E4.
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+</p>
+<p class=3D"x_event-field" style=3D"font-family:&quot;Proxima Nova&quot;,&q=
+uot;proxima-nova&quot;,Helvetica,Arial sans-serif; font-size:16px; margin-t=
+op:12px; margin-top:0px; margin-bottom:0px; line-height:22px; font-size:14p=
+x; margin-top:12px">
+<strong style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">=E9=F9 =EE=F9=E4=E5 =F9=E7=F9=E5=E1 =EC=EB=
+=ED =F9=F0=E3=F2 =EE=F8=E0=F9?
+</strong></p>
+<p class=3D"x_event-field" style=3D"font-family:&quot;Proxima Nova&quot;,&q=
+uot;proxima-nova&quot;,Helvetica,Arial sans-serif; font-size:16px; margin-t=
+op:12px; margin-top:0px; margin-bottom:0px; line-height:22px; font-size:14p=
+x; color:#666A73">
+=E0=FA=F8 =E0=E9=F0=E8=F0=F8=E8 =E7=E3=F9 =F9=EE=EE=F9 =F2=EC=E4 =EC=F4=F0=
+=E9 =EB=F9=E1=E5=F2=E9=E9=ED -=F8=E5=FA=ED =E7=E9=E9=EE=E5=E1=E9=F5 =EB=E4=
+=EF <br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">
+=E0=F0=E9 =EC=EC=E0 =F2=E5=E1=E3=E9=ED =E5=EC=EC=E0 =F4=F8=E9=EC=F0=F1=E9=
+=ED <br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&qu=
+ot;,Helvetica,Arial sans-serif">
+=E0=F0=E9 =E4=E9=E7=E9=E3=E4 =F9=EE=FA=E7=E1=F8=FA =EC=EE=E7=F9=E1 <br styl=
+e=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetic=
+a,Arial sans-serif">
+=F2=E5=E1=E3=FA =EC=E1=E3 <br style=3D"font-family:&quot;Proxima Nova&quot;=
+,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif">
+</p>
+</div>
+<div class=3D"x_actions-block" style=3D"font-family:&quot;Proxima Nova&quot=
+;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; font-size:12px; line=
+-height:14px; text-align:center">
+<div class=3D"x_title" style=3D"font-family:&quot;Proxima Nova&quot;,&quot;=
+proxima-nova&quot;,Helvetica,Arial sans-serif; font-weight:bold">
+Make changes to this event: </div>
+<a class=3D"x_action" href=3D"https://calendly.com/reschedulings/76cd20e4-f=
+6db-4a09-b40d-c2de1a9d5a8b" target=3D"_blank" style=3D"font-family:&quot;Pr=
+oxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; color=
+:rgb(0,105,255); display:inline-block; min-width:140px; margin:10px 5px 0 5=
+px; padding:8px; text-align:center; text-decoration:none; background-color:=
+transparent; border:1px solid #d0d0d0; color:rgba(26,26,26,0.6)">Reschedule
+</a><a class=3D"x_action" href=3D"https://calendly.com/cancellations/76cd20=
+e4-f6db-4a09-b40d-c2de1a9d5a8b" target=3D"_blank" style=3D"font-family:&quo=
+t;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; c=
+olor:rgb(0,105,255); display:inline-block; min-width:140px; margin:10px 5px=
+ 0 5px; padding:8px; text-align:center; text-decoration:none; background-co=
+lor:transparent; border:1px solid #d0d0d0; color:rgba(26,26,26,0.6)">Cancel
+</a></div>
+</td>
+</tr>
+</tbody>
+</table>
+<table class=3D"x_footer-wrap" style=3D"font-family:&quot;Proxima Nova&quot=
+;,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; width:80%; margin:0 =
+auto; clear:both!important; margin:30px auto 0; border-top:1px dashed #dada=
+da">
+<tbody>
+<tr style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+<td style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif; color:rgba(26,26,26,0.6); padding-top:15px">
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:12px; text-align:center">
+<img alt=3D"Calendly" src=3D"http://assets.calendly.com/assets/emails/logo-=
+email-3322ed484eb79b41f3d51a68172b8437ea542daace4e1211373108c52cc6abf7.png"=
+ width=3D"60" height=3D"60" style=3D"font-family:&quot;Proxima Nova&quot;,&=
+quot;proxima-nova&quot;,Helvetica,Arial sans-serif; max-width:100%">
+<br style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,=
+Helvetica,Arial sans-serif">
+<a href=3D"https://calendly.com/?utm_source=3Dinvitee&amp;utm_medium=3Demai=
+l&amp;utm_campaign=3Dsign_up" style=3D"font-family:&quot;Proxima Nova&quot;=
+,&quot;proxima-nova&quot;,Helvetica,Arial sans-serif; color:rgb(0,105,255)"=
+>Sign up for your own Calendly page</a>
+</p>
+<p style=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,H=
+elvetica,Arial sans-serif; font-size:12px; text-align:center; line-height:2=
+2px">
+<a href=3D"https://calendly.com/notification_subscriptions/76cd20e4-f6db-4a=
+09-b40d-c2de1a9d5a8b/opt_out?owner_uuid=3D7bf780e7-6af6-45eb-9c64-ef433547b=
+d2c&amp;recipient_id=3D1381423810&amp;recipient_email=3Drotem%40hrrotem.co.=
+il&amp;opt_out_method=3Dbutton&amp;event_uuid=3D9bf9100d-134c-4eaf-92f7-c38=
+894bf825f&amp;event_type_uuid=3D29f45ba6-ad29-411c-a929-b8922491d53a" style=
+=3D"font-family:&quot;Proxima Nova&quot;,&quot;proxima-nova&quot;,Helvetica=
+,Arial sans-serif; color:rgb(0,105,255); color:rgba(26,26,26,0.61)">Unsubsc=
+ribe
+ from notifications about this event</a> </p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<img src=3D"https://click.calendly.com/wf/open?upn=3Du001.ABWukQbGFF2QM-2Fg=
+obfIF-2BHKSCQRtx9OxHCBttztXLjvBu7V8qw8ctct5TfeVOXjRuUEVBdGLzJ9nEt2CwDIPnqBA=
+JoohTUd4-2FuHa1sy6qq6DmBpvXa-2B-2BkdMAAbwoMIkqd5E5-2BmfMa4nhCIyP7XMySXVALBm=
+RS0UbwHngh1-2FvIlLrIIccd4pRFST0QqvjJDWRSZrRjO2XZToJQuZQSE2Spg-3D-3D" alt=3D=
+"" width=3D"1" height=3D"1" border=3D"0" style=3D"height:1px!important; wid=
+th:1px!important; border-width:0!important; margin-top:0!important; margin-=
+bottom:0!important; margin-right:0!important; margin-left:0!important; padd=
+ing-top:0!important; padding-bottom:0!important; padding-right:0!important;=
+ padding-left:0!important">
+</div>
+</body>
+</html>
+
+--_000_AM9P192MB125253520C6E0C55035FEEABE901AAM9P192MB1252EURP_--

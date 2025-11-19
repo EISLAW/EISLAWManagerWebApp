@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - .env.local
+    environment:
+      - PORT=${API_PORT:-8799}
+      - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://localhost:80,http://localhost:5173}
+      - MEILI_URL=${MEILI_URL:-http://meili:7700}
+    ports:
+      - "${API_PORT:-8799}:8799"
+    depends_on:
+      - meili
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:${API_PORT:-8799}}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  meili:
+    image: getmeili/meilisearch:latest
+    environment:
+      - MEILI_NO_ANALYTICS=true
+    command: ["/bin/meilisearch", "--env", "development", "--http-addr", "0.0.0.0:7700"]
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    volumes:
+      - meili_data:/meili_data
+    restart: unless-stopped
+
+volumes:
+  meili_data:

@@ -1,0 +1,632 @@
+Received: from GVXPR01MB11330.eurprd01.prod.exchangelabs.com
+ (2603:10a6:150:222::20) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Sun, 7 Sep 2025 00:32:11 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=ttnhdECuso0mcs6fKsFAbP3UtRqXOQ0McuzI7gGfdPd1lGa61S5XIhKGaeX4Z9BmeQlLyQZaDvKAz66yiMRbq0jJFVhUwxJAtyPUUFDZyfADADzQobJhHmz0WoRZdxoYVRIaE+L1+9eEcqAgTkC4GcbMMnj48SXeC5Z6DuA2JTHn766CoYbCkYDd47dAzl/ycb5P8jBFbgp+L+pw5eyJQPLdRKT+vvq39E/p3fOlzJdVy0IpZtYL4CFTo62CM0i1fRVo4zQ18fvRB5tlW0zTfEcUqQSMdT9aaPJ6X0ZCSJeEKWXdmNI74GUYf3lCDJa7rufVaMFRCrKZkCv+0wVpyw==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=yLgSnyOWkmNwwwfKtg7LPNBqjAaVjvOG1GS6f/gqCo0=;
+ b=Ax6hLs/l5RgcZed15GowRoC4XkXmrxz9jMnUIz6MoR8UQPiOX1GS1CMOtekU2+SFxA5eSPSeFPxfcW4ZIWW02W5/BpDXnc5RukbW8a50PCREI8aiYYv2N4YOh2fjkbdH3BU9KmetwoMwz4KX41MskejbHlLsmxDL+NMVSwMHx+Qbx18OyNMWaxTV9M64eoYDHUvfxrWdaQ15KbF8lLy7MnRv/CtZANsejXPjUib5oFKipUo1S6MpcnXzwSGf8xYj2Wa9dPjxchBmh6C6ndA2dfDn8zMDI7WAXPlUg4sJ6iJ6lP01eQYYUr00+YCLd/dJWdHvxr2s3Zk1SUCe3Aeuxg==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:c201::6) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=sharepointonline.com; dmarc=pass (p=reject sp=reject pct=100)
+ action=none header.from=sharepointonline.com; dkim=pass (signature was
+ verified) header.d=spoemeaeop.onmicrosoft.com; dkim=pass (signature was
+ verified) header.d=sharepointonline.com; arc=pass (0 oda=0 ltdi=1)
+Received: from DUZPR01CA0086.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:46a::13) by GVXPR01MB11330.eurprd01.prod.exchangelabs.com
+ (2603:10a6:150:222::20) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9073.27; Sun, 7 Sep
+ 2025 00:32:08 +0000
+Received: from DU6PEPF0000A7E4.eurprd02.prod.outlook.com
+ (2603:10a6:10:46a:cafe::4b) by DUZPR01CA0086.outlook.office365.com
+ (2603:10a6:10:46a::13) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9094.22 via Frontend Transport; Sun,
+ 7 Sep 2025 00:32:14 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:c201::6)
+ smtp.mailfrom=sharepointonline.com; dkim=pass (signature was verified)
+ header.d=spoemeaeop.onmicrosoft.com;dkim=pass (signature was verified)
+ header.d=sharepointonline.com;dmarc=pass action=none
+ header.from=sharepointonline.com;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of sharepointonline.com
+ designates 2a01:111:f403:c201::6 as permitted sender)
+ receiver=protection.outlook.com; client-ip=2a01:111:f403:c201::6;
+ helo=AM0PR02CU008.outbound.protection.outlook.com; pr=C
+Received: from AM0PR02CU008.outbound.protection.outlook.com
+ (2a01:111:f403:c201::6) by DU6PEPF0000A7E4.mail.protection.outlook.com
+ (2603:10a6:18:3::8b) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9115.13 via Frontend Transport; Sun,
+ 7 Sep 2025 00:32:07 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=TXTyE5hrGUPr3VUYWbP516uEFQOdHRLXX56zBS1dmqjNZcYWC+mXkFaP15sqtLWuiMj+Qa+foGS4L02AidXS5VHY5DJQBxN4QESkgeZZc94ZQFATNqJoC6sDsCbPFyT6u/nyzA8T8mYj9D32B8yp6nhktoAwPf95DGGDOa+xYhXkfql0SAWXNxne87mNz811axu+j9/BZIZbNYlant7che1jBvS7hpcW3am5wS9oyJtJT3cBkQ0rkPj/QhpSfsBhQZ4GSSXRodXzfvD8ymgku4Q0kJDIB1kEvllIxeydmgHtmCkxVbZrJLgmrm8dDZp+mo26uP1o0QzK4dUuIQbz+A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=yLgSnyOWkmNwwwfKtg7LPNBqjAaVjvOG1GS6f/gqCo0=;
+ b=nrS5fNNWyPlEBjzKYW/XFTt9CvUnM6NOYB8RyB5IxN+kgQ/Jl1i/dR+q6+hrxmOPk6QYUdP9+dNwnhHnr1lMoksEQxT0J4P0nvVRnTb7nCFxAFjF9ffYkmjWBQgmlSujBd4VSEzqa0X6LskDEPkPrQpqvHFGdJsG3FbCNYlWG3tUqUZrTsU4B57NjoQPBcr788z5hq9qk2cnvpz4J9KKwIk85bCoi9vbmLUBYGTwUb6brUJZdArFJSPNGyQYeZaQxBGoqgyHvm3Kif4Ar0YKV8WI80DF6TJY4oMF3yMXQglMfxPKSA+IQnYuP1bGVWhxVLEINTg811wCaOmDHQ23HQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none
+ action=none header.from=sharepointonline.com; dkim=none (message not signed);
+ arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=spoemeaeop.onmicrosoft.com; s=selector1-spoemeaeop-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=yLgSnyOWkmNwwwfKtg7LPNBqjAaVjvOG1GS6f/gqCo0=;
+ b=fj4UajOMWIH7/cNKtz9h5TwSMsV9UDLvtG+x4ngX86DUCNyRRrpycsEOPSGdbvqy8ViVhHvNs6DE9j9ykD5AVyoTIIw02+qU+pAYAAk/hTdEgHEy1BX8lkiu+nrDRogMPgZZkX1EVjYilJYT0trzskgZVnYOKT6BwzRnj4nr7Y4=
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sharepointonline.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=yLgSnyOWkmNwwwfKtg7LPNBqjAaVjvOG1GS6f/gqCo0=;
+ b=NzlFIJnQVO/7drw506UPEJOlN6hyhe0UTJhkvfsyrPXM+2e5guwzXYj6qSMkUCFXLUuC6btGhF/eoKejANbadweHdGv09+m32Ny1SpFWfJqfJMsILVcEAx3cpUqEppEPm6zU6HCSxlUduadg4s6NsuIP8kJrzlOD/C8ntmiufvXIm7Knb6XlnSNH89UMueJhqRWtZqe+ctwL2ToVjG9mn+NnCh2b81Xqp8NyeGVb2AT9tweUjnfJdt0CEZ3VCELFvYzOAKfBAcSoBSENAIqQOH7gnG6M+9XUjBZueC7S+AMoZHvbrIs3Xc1cI7lOkz2bPeclTKIu9N/EmmUR054glQ==
+Received: from DU6P191CA0017.EURP191.PROD.OUTLOOK.COM (2603:10a6:10:540::28)
+ by VI2PR09MB7519.eurprd09.prod.outlook.com (2603:10a6:800:22a::19) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9052.29; Sun, 7 Sep
+ 2025 00:32:06 +0000
+Received: from DU2PEPF00028D12.eurprd03.prod.outlook.com
+ (2603:10a6:10:540:cafe::6e) by DU6P191CA0017.outlook.office365.com
+ (2603:10a6:10:540::28) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9094.22 via Frontend Transport; Sun,
+ 7 Sep 2025 00:32:04 +0000
+X-MS-Exchange-Authentication-Results: spf=none (sender IP is 4.207.164.210)
+ smtp.mailfrom=sharepointonline.com; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=sharepointonline.com;
+Received: from northeurope0.notifyp.svc.ms (4.207.164.210) by
+ DU2PEPF00028D12.mail.protection.outlook.com (10.167.242.26) with Microsoft
+ SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.9073.11
+ via Frontend Transport; Sun, 7 Sep 2025 00:32:05 +0000
+Date: Sun, 07 Sep 2025 00:32:05 +0000
+Subject: =?utf-8?b?4oCP15HXp9eo15XXkSDXnteZ16nXlNeVINeZ15DXkdeTINeQ16o=?=
+ =?utf-8?b?INeU15LXmdep15Qg15zXkNeq16gg15DXkNeV15jXodeZ15nXk9eo15nXnQ==?=
+ =?utf-8?b?INei15PXmSwg15nXoNeZ15EsINeQ15nXqtefLg==?=
+Message-Id: <ExpiringAccess-6876f071-aaca-4d5d-a6b8-b39287d49606,6876f071-aaca-4d5d-a6b8-b39287d49606-bce09426-7b73-4691-bf61-7268e29d762e-r1-SendEmail-rh_neu-aid_9f04f8b0-7d8a-46cd-ae42-158b87ed5aa7@odspnotify>
+To: <eitan@eislaw.co.il>
+Sender: SharePoint Online <no-reply@sharepointonline.com>
+X-Crid: =?utf-8?q?6876f071-aaca-4d5d-a6b8-b39287d49606=2C6876f071-aaca-4d5d-a6b8-?=
+ =?utf-8?q?b39287d49606-bce09426-7b73-4691-bf61-7268e29d762e-r1-SendEmai?=
+ =?utf-8?q?l?=
+X-Tnid: 384c4129-e818-4ea7-8f8b-189d997170d1
+Return-Path: no-reply@sharepointonline.com
+From: SharePoint Online <no-reply@sharepointonline.com>
+Content-Type: multipart/related; boundary="=-zZ2whBkCCKZWMHVu4+4WkA==";
+	type="text/html"
+X-MS-TrafficTypeDiagnostic: DU2PEPF00028D12:EE_FirstParty-SPO-V3|VI2PR09MB7519:EE_FirstParty-SPO-V3|DU6PEPF0000A7E4:EE_|GVXPR01MB11330:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 547b4fde-5794-4094-e814-08ddeda5fa3f
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|69100299015|376014|61400799027|13003099007|4053099003|20206132999004|8096899003|4076899003;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?cFHKUMZSsZEmlseoENdwlymhAz9Fe/d5sOR25nmaUZVND/uFC/KRnetJ60YZ?=
+ =?us-ascii?Q?AaNLWsq1xG8l4RGdqemAv13Gqadecpu2AM2gnqxr6cdREe9q/LPlGzXrBNg6?=
+ =?us-ascii?Q?3yZlamxCm5+td/xHAUkQSLqIBlZNB6GZYSs2PPCdfGZTLWQ1WD6hTq5UdBDm?=
+ =?us-ascii?Q?1sU1w1oJRrSq42B9YsJQ7FJIJOoou/hO2M1BUKWnz7eJJmz1HnWEh1Qo6cp1?=
+ =?us-ascii?Q?jZ2OLKLwGM/mdZMRGFYkjqLXiUBJ8pG4lCQEtoxynyBF33D1a9USr6jsXgI0?=
+ =?us-ascii?Q?MEhpqCixMwnpeOs6Z0GrHx/SMNGa6SVNWfCGtFEf9rMyp5nA0ld1+CgwV+C3?=
+ =?us-ascii?Q?jyk5Hbr3ScHcqtZCzfk5R1EwnNV5hKMSN9WJaLXUSeuYTsffpWcnrF/Np0MJ?=
+ =?us-ascii?Q?GD4yaSIVh999c2kwhhv6upnF09Vr3AS6iuvOULUl1HBU1OesQGCYOWEr+MUT?=
+ =?us-ascii?Q?leot1E5WA6xaWGsI9DT8xpm0fywKLcSUax5C4M0ICqudkECrBJgtyQpDIC9W?=
+ =?us-ascii?Q?2ZXhk118XfVIGAuRUcscCSQTTZsSyo4Yh/doteAwg/RN95TtOJcAKg2IXhaO?=
+ =?us-ascii?Q?Ojswjva3Mpb2k4UtGcGNaeuYoY+++bi2QDiBCWDNW66lXEP6hzAQKlXiXBhC?=
+ =?us-ascii?Q?dJM7aruHwx9TLFtcBsE8ualwxG2VYTKEdXx1Juu5N+bCkwrVyx1phj7ai7zt?=
+ =?us-ascii?Q?ZVV0BmMc6JiWn+UGqa0aUY6iT4bdYC+cEUuDf+bm4AsGmlFg+askvGqluUh0?=
+ =?us-ascii?Q?mSkqTWre10djw+xzjCtpkh3or19nL6UXrVaQfHq+mHHOrEFuXBNvAgR8uXsh?=
+ =?us-ascii?Q?Znx/LYIQb70yopQUSGY+I7PoF8rM5RxPqZsXpNn+Tgc1AzhAA1IF4hU47l3w?=
+ =?us-ascii?Q?vh9g7ZtNd0F2nEg2pzXIyv2RCsSAHumLB/fLDeTjlgt4AjEw/8K9F/aCI4Vu?=
+ =?us-ascii?Q?/iDnTwZjCwGl7mNxOQP+4EqzINR0CVpdcUg5V7ixp4kZV8Kn1JOlEbOzIvmN?=
+ =?us-ascii?Q?72aZDf5YOCmwHSlK54Kgw+u4lg1Pe2cvWIeiytLTaf6Og920dkMmiygEe+Qh?=
+ =?us-ascii?Q?fqU7EMALQP28qpY9d55UWZA1+3eq3sl/qadLqMK7Z8vl9f6VDlqxKKShC7Hi?=
+ =?us-ascii?Q?/phvgkceBr5iRn28lvCPwGswmnxHmHtbuuRzF0g8+H0eCFcq90XWB9XJcG9+?=
+ =?us-ascii?Q?/soDKh1nfqQDlzMBY0Ziu77nNzkuMOproC3WdC/GsFHaJGf8wgCCkG5j5JO7?=
+ =?us-ascii?Q?sW7EWfrNKVuiHwoGwx3gMlTI5d1I1ZeAuAt2eQhtp0Wzc5eRK2czU5eXSirj?=
+ =?us-ascii?Q?WMA8P35rhIt3bESeWn+kPjr4dnba88HX9dypIFS10wcHKaWA8He9RyYQ4xsi?=
+ =?us-ascii?Q?2lutU8KwnZ96gMY/yd4YJ0IOts5gIIL5tkFilQiRrBeJ0fyDsQ=3D=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:4.207.164.210;CTRY:IE;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:northeurope0.notifyp.svc.ms;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230040)(69100299015)(376014)(61400799027)(13003099007)(4053099003)(20206132999004)(8096899003)(4076899003);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: z/I+Qe4zCuA1w6aOIiUAi+7+iEaFBGP2dNoNu80jUNNoF5jtL2XTImt7HIe2XhqyfjkfpiNf3uGlKSG+VAxTONu5PcLi9z9LXyM9Rt3yVs4+WXpZWTUIIhWuMCwO/4cXtNiZQABNPndLYj2hJ5ZHTcWqOBVZXHCy/VxwU+Kzf+VSdnLBfofiVhFRZAvWKxmpfUdD8WIfFIkbD3X0U1VQPog/iD8giOBzZ0EusfmNctTAXYvWS53h5dTPsx2ypVPkQk0g6oKHvXpVW6kSsSUwFKUS2se1ZnhhD6CHlMLDBR5wzOW3sKRi1CQjtLuC7WLIGrm5UOOR8+z8Mav4iFNuqeZpe8mdKB//ezrKmWYSDVEh2fL/wlUnaYXT3eoii9da9+aE2xhtg5hiS2yP0nTcsw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI2PR09MB7519
+X-MS-Exchange-Organization-ExpirationStartTime: 07 Sep 2025 00:32:08.0357
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 547b4fde-5794-4094-e814-08ddeda5fa3f
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: DU6PEPF0000A7E4.eurprd02.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: DU6PEPF0000A7E4.eurprd02.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: DU6PEPF0000A7E4.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: 6840b90f-2572-4257-e389-08ddeda5f8f3
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:1;ARA:13230040|2092899012|4092899012|3092899012|3072899012|14143499003|35042699022|69100299015|5082899009|6062899009|5062899012|13012899012|13102899012|12012899012|8096899003|4076899003|13003099007|20206132999004|4053099003;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:c201::6;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM0PR02CU008.outbound.protection.outlook.com;PTR:mail-westeuropeazlp170130006.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(2092899012)(4092899012)(3092899012)(3072899012)(14143499003)(35042699022)(69100299015)(5082899009)(6062899009)(5062899012)(13012899012)(13102899012)(12012899012)(8096899003)(4076899003)(13003099007)(20206132999004)(4053099003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Sep 2025 00:32:07.8986
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 547b4fde-5794-4094-e814-08ddeda5fa3f
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=4d93e101-5f88-4b2c-b255-9a7bb7b1b764;Ip=[4.207.164.210];Helo=[northeurope0.notifyp.svc.ms]
+X-MS-Exchange-CrossTenant-AuthSource: DU6PEPF0000A7E4.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: GVXPR01MB11330
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.6303592
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9094.017
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?azBmNnJhUFBYVTZrVTBocDYrNU0rUGVQWmtZNDJQNmFpM0R5ek9rSDFhbkRZ?=
+ =?utf-8?B?VklXSVRiUFdSdVFxaDBwdVZ6MXBUdGlQcnljTS9Telp2STIvOUhCcDV3b2Nt?=
+ =?utf-8?B?d0xHTE85Sm5JekFYL3dMRHRLaHFMTlQvL3JMYjRLbDh3OVlHQUE1RDZlVmMv?=
+ =?utf-8?B?NnBNdW03T0IyZDRpeTZuaWYzRjFZRnRQcmxxNld2N0xhSkF1TmpCalQ3L1h2?=
+ =?utf-8?B?a1Rpc282K1h3aFhvOXU0bkRIQVIrNlI0SCsrYXMyWXEva3hMS0Z1OWpsb25u?=
+ =?utf-8?B?ZUxZWVZpdk1iK2dIdDIreWRzckF1eTJGUG9EZUx5aFlIR0xzQlVnSzZHWUFQ?=
+ =?utf-8?B?WENXWjhyNjhEWmNqeDlFZTc4cVA1MEg1UlJRd3hOdWRUcmxoSUtHYktMUldt?=
+ =?utf-8?B?TFBIelA3RHY5bUJlRG1GVS9OYWtzRzJ0NDJOc1F4SldpdHp3bFBucHh2QUpp?=
+ =?utf-8?B?MU5kZTh6Q2hDMm9CenlZb24waXhwbC82Z3J0R1B0b3dmdXM2TVlTWDFnOVUy?=
+ =?utf-8?B?RlBXUlAyR0I1cTZkQzFkOTFBUk44Z0cvbjhMbHZFRDVOMkcyTWxxRlF4eXYr?=
+ =?utf-8?B?b2FVMFdXaXpKV0t6ODdMTW1EL3NMWE9KUEZNS3NFMXB0d1I4d0lOS29ZempH?=
+ =?utf-8?B?aTVFWGlZYkhEeEZVZk1FNTlNaldmalVIS2kwUVZZVGRLVmZWQlBJY3RhTWdF?=
+ =?utf-8?B?Z3RwN1pxWkJBejVub2c2SjdVZHpsWEdFVUNXL2JJQWFicTZtN3Btb0lWekZS?=
+ =?utf-8?B?QUExeFZtWkNDbDF0bjYxSzU3RVEyRWxhK1VhdmJtSU5QQjViRFVtU1UvTDlV?=
+ =?utf-8?B?SWpYZDFTWEtiUHhiNXJ2Z1UzMzdSaXkxaEJiZEs1VFVObVhhVmo3OThjZlA5?=
+ =?utf-8?B?RzlhTStadnV4Y3JHNVdJTnJwNGY5TjlaRFUzZi8wZWJIZTRtRGhlSnpmU1VX?=
+ =?utf-8?B?TUs4OEF1UG43aWkra3RuSkMwZEczdkpkUU9MRVdPcDVrbUZDdmRvOTN1cVUz?=
+ =?utf-8?B?UzVsQjU3TlZsN3g4Y1JqaEQ0bmp5Z2xoSmswb1g2Wkw5a2JNeUhvZHQ5OXZs?=
+ =?utf-8?B?ZWFQU0Q4UkV5Nk5IcTFrTHFlcjREYXZNWThpN25BR210YzgreHQ5V0YwaDZP?=
+ =?utf-8?B?azBOVzM4RUN1OEZQZXhTLzJKTVlTajhIdzRNcjhCRXlHa21KYVFtV0VoVnhs?=
+ =?utf-8?B?SjU2WnViZnJPRFFMTmpZR1NmYThoM09majBIZzNlcllhT3dDOVZVNU44aUtZ?=
+ =?utf-8?B?UFhpeHlOd1JsUlB6bXJaV2FHY0Q1VFpnQk5Ha1RGV3pWNzNOdnNuWGJFMC85?=
+ =?utf-8?B?d0toSkMvV3lCOWl3MlExQlZmOTBweVVxd3hVbnNiRjUrRGdsTkt4c3ozUHpv?=
+ =?utf-8?B?RzVsYW84N3czbmxDYnQvTHZUNzNOTXE3SitLMTRSSWJHK0JyQ0dKWC9XaE8z?=
+ =?utf-8?B?NDFNNGcxQUNjSzg4KzVqek5taE5LK0MvUkVYZXd1SlVLaDJLSW5HSFdnd3RV?=
+ =?utf-8?B?cUdzaWp3M2VWVlpZeW5EVHA1WDFOYWJWYllvMGtPUWNXdytHM2Y4Nkl3YlRj?=
+ =?utf-8?B?RThwb1hYWEdGTmVlb3F0R1hFMUVnNzBodm1pMGpqQmx5WVBJOFpJQXRtQURY?=
+ =?utf-8?B?eFNvOURhT3E4Nkk4TVFnaEVHM1ZML1ljcHdTdkUyUzdYeFgvdDhqZmg1ZlBs?=
+ =?utf-8?B?RDNuRHZOVXJQLys4cmhpVXlJZVJtRW5CdEpqTTljVHlRTWhNRXl6RjZabWpG?=
+ =?utf-8?B?TUFmQ3lXbTRzL3RWa1A4N3lGMENoOGs4bE1scURHclhGdWVLN3NGaEQrMElK?=
+ =?utf-8?B?VWZrVm84U1JOVEs0RGp5bXpuelZNWFhYVXlCUm5yMlpIcnJkdGV6KzZDMmtN?=
+ =?utf-8?B?ejZYRHpJK2lWSmNYdVloU29NZ2t5NDBiTjdGWS9ZdHl3RExzSjRYL2dWOEVH?=
+ =?utf-8?B?MXhGKzI5aTRmS3NFei9zbUh2TGI0WDJja0wwRVMvVDhOYkdnaXdmYkZ6V21Y?=
+ =?utf-8?B?MVRtVGUranBIeXFWRm42UkdSRFNscklUSDFQZ0dOLzhKYk80OXliR21OQ2ZC?=
+ =?utf-8?B?V3VlM2RnYmQ5SWtnT3pxQW5VTmFFK2VITjduZHVPWFJ5K0M5cFZqZUg1aGxZ?=
+ =?utf-8?B?bmJTdUQ1eDlVQ3ZhTnVlcXF5ZlF4aFZ4MkNHbVZrM2tWWmNyRmxYY1V5Rnpi?=
+ =?utf-8?B?VW5UdVd5VnRWdVZoVFhabytHT25teDhvazhUdGxFby9TWDh0NlFvTXNEaGNH?=
+ =?utf-8?B?Sml5TEVZTFVJL2Iray9GM0lFWWJSRk9sdDZFTlNRaXdyVlZvci9FZjl0UjRD?=
+ =?utf-8?B?RE1LY0JGUmV1QkRtVDliU1g2Wmg4b3ZYUXplbHFzM2RaOFY0VTM1Si9aR1hr?=
+ =?utf-8?B?UVJzUlVVQ2tUWXd2UE5DY3VSTUJZRjdkZHRMaCthcWlZbkZCSkJTZUJ2Unda?=
+ =?utf-8?B?eHQvL3doUGhjd3R3b1paRkpHUUJESWpGbGhsbk1Dd0xVdU80SlhMQmh2ZGls?=
+ =?utf-8?B?TXZlbjJMTHMxTkZTUnBZaTJkdzhqNXpKeWpIYklSNDlEVHJOTE1MMGFSTEt6?=
+ =?utf-8?B?eUxkTGtDMzQ2a1k4WkVld3VqNFRNNGdUZGd0SmdGaDB4R0lzMTRuTGhteklk?=
+ =?utf-8?B?RngrWEd5dlhEbmE4UkxzM1gxaHNpakF1TVJuUGZsWG8zRFExRDg3bWZ1S3ZN?=
+ =?utf-8?B?SklYQTVIWElzNHJiTUthWlc2MWlPbnB5OXBYTXBQcitBQS9SeFh4ay9USS9t?=
+ =?utf-8?Q?dw=3D?=
+MIME-Version: 1.0
+
+--=-zZ2whBkCCKZWMHVu4+4WkA==
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html dir="rtl" xmlns="http://www.w3.org/1999/xhtml" lang="en-us" xmlns:o="urn:schemas-microsoft-com:office:office"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style type="text/css">
+    .headerBackgroundMsoTable {
+        border-spacing: 0px;
+        width: 100%;
+    }
+</style>    
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--[if mso]>
+<xml>
+    <o:OfficeDocumentSettings>
+    <o:AllowPNG/>
+    <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+</xml>
+<![endif]-->
+<style type="text/css">
+    @font-face {
+        font-family: "Segoe UI";
+        src: local("Segoe UI Light"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-light.woff2") format("woff2"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-light.woff") format("woff"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-light.ttf") format("truetype");
+        font-weight: 100;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Segoe UI";
+        src: local("Segoe UI Semilight"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semilight.woff2") format("woff2"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semilight.woff") format("woff"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semilight.ttf") format("truetype");
+        font-weight: 300;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Segoe UI";
+        src: local("Segoe UI"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-regular.woff2") format("woff2"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-regular.woff") format("woff"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-regular.ttf") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Segoe UI";
+        src: local("Segoe UI Semibold"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semibold.woff2") format("woff2"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semibold.woff") format("woff"), url("https://static2.sharepointonline.com/files/fabric/assets/fonts/segoeui-westeuropean/segoeui-semibold.ttf") format("truetype");
+        font-weight: 600;
+        font-style: normal;
+    }
+
+    @media only screen and (max-width: 640px) {
+        body {
+            background-color: #ffffff;
+        }
+
+        div.grey-bg-container {
+            background-color: #ffffff;
+        }
+    }
+
+    @media only screen and (min-width: 640px) {
+        .CommentMention-TextRow-rightColumn {
+            width: 52px !important;
+        }
+    }
+    /* Responsive visibility clases. */
+
+    .u-largeOnly {
+        display: none !important;
+    }
+
+    @media only screen and (min-width: 640px) {
+        .u-smallOnly {
+            display: none !important;
+        }
+
+        .u-largeOnly {
+            display: block !important;
+        }
+    }
+    /* Adjustments to the Sharing template. */
+
+    @media only screen and (min-width: 640px) {
+        .Sharing-main {
+            padding: 40px !important;
+        }
+    }
+
+    @media only screen and (max-width: 640px) {
+        .NotificationHeader-icon {
+            width: 36px !important;
+        }
+
+        .NotificationHeader-title {
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+        }
+
+        .NotificationHeader-title-text {
+            font-size: 20px !important;
+            line-height: 28px !important;
+        }
+    }
+
+    .word-button:hover {
+        background-color: #124078 !important;
+        border-color: #124078 !important;
+    }
+
+    .word-button:active {
+        background-color: #002050 !important;
+        border-color: #002050 !important;
+    }
+
+    .powerpoint-button:hover {
+        background-color: #a92b1a !important;
+        border-color: #a92b1a !important;
+    }
+
+    .powerpoint-button:active {
+        background-color: #740912 !important;
+        border-color: #740912 !important;
+    }
+
+    .excel-button:hover {
+        background-color: #217346 !important;
+        border-color: #217346 !important;
+    }
+
+    .excel-button:active {
+        background-color: #004b1c !important;
+        border-color: #004b1c !important;
+    }
+</style>
+
+<!--[if mso]>
+  <style type="text/css" id="ignore">
+    body, table, td { font-family: 'Segoe UI', sans-serif !important; }
+    a { color: #0000EE; }
+  </style>
+<![endif]-->
+
+</head>
+<body style="margin: 0px">
+    <div>
+          <table height="100%" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px">
+            <tbody><tr>
+              <td valign="top" align="center">
+                <table align="center" style="border-spacing: 0px;width: 100% !important;margin-right: auto;margin-left: auto;margin: 0 auto;max-width: 660px;overflow: hidden;background-color: #ffffff">
+                    <tbody><tr>
+                        <td align="right" style="padding: 0px;margin: 0px">
+
+    <!-- Start Standard Header -->
+    <table cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px;width: 100%">
+        <tbody><tr>
+            <td align="center" style="background-color: #f0f0f0">
+                <!--[if !mso]>-->
+                <div>
+                    <!--<![endif]-->
+                    <!--[if mso]>
+                    <table class="headerBackgroundMsoTable"  cellpadding="0" cellspacing="0" border="0">
+                        <tbody>
+                            <tr class="headerBackgroundMsoRow">
+                                <td class="headerBackgroundMsoContainer">
+                    <![endif]-->
+                    <table cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px;width: 100%">
+                                                    <tbody><tr>
+                                <td colspan="1">
+                                    <!--[if mso]><table width="640" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 auto;max-width:660px;overflow:hidden;"><![endif]-->
+<!--[if !mso]>
+<table role="presentation" border="0" cellPadding="0" cellSpacing="0" style="margin:0 auto;max-width:660px;overflow:hidden;width:100%;padding:20px;">
+<![endif]-->
+    </td></tr><tr>
+        <td colspan="2" align="center"><img alt="סמל אזהרה" height="auto" src="cid:8f15a2d8-9198-49d3-969c-5e5d523de331" style="display:block;width:48px" width="48"></td>
+    </tr>
+    <tr>
+        <td colspan="2">
+            <h1 style="font-size:28px;line-height:32px;color:#323130;font-weight:600;margin:0px;padding:0px;text-align:center">
+‏תוקף הגישה יפוג בעוד -107 ימים            </h1>
+        </td>
+    </tr>
+</tbody></table>
+
+                                </div></td>
+                            </tr>
+                    </tbody></table>
+                    <!--[if mso]>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <![endif]-->
+                    <!--[if !mso]>-->
+                
+                <!--<![endif]-->
+            </td>
+        </tr>
+    </tbody></table>
+    <!-- End Standard Header -->
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right" style="padding: 0px;margin: 0px">
+<table style="margin: 0 auto; width:100%;max-width: 660px;" align="center">
+    <tbody><tr>
+        <td colspan="2" style="padding:32px 36px 0px">
+            <p style="font-size:14px;line-height:20px;color:#323130;font-weight:400;margin:0px;padding:0px">
+‏אדם זה יאבד את הגישה לאתר אאוטסיידרים עדי, יניב, איתן.            </p>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="1" style="vertical-align:top;padding:16px 20px 0px 36px">
+            <p style="font-size:14px;line-height:20px;color:#323130;font-weight:600;margin:0px;padding:0px">שם</p>
+        </td>
+        <td colspan="1" style="vertical-align:top;padding:16px 36px 0px 0px">
+            <p style="font-size:14px;line-height:20px;color:#323130;font-weight:600;margin:0px;padding:0px">התוקף פג</p>
+        </td>
+    </tr>
+            <tr>
+                <td colspan="1" style="vertical-align:top;padding:16px 20px 0px 36px">
+                    <p style="font-size:14px;line-height:20px;color:#323130;font-weight:400;margin:0px;padding:0px">createyouto@gmail.com</p>
+                </td>
+                <td colspan="1" style="vertical-align:top;padding:16px 36px 0px 0px">
+                    <p style="font-size:14px;line-height:20px;color:#323130;font-weight:400;margin:0px;padding:0px">
+                        22/05/2025
+                            <span style="font-size:14px;line-height:20px;color:#605e5c;font-weight:400;margin:0px;padding:0px"> *</span>
+                    </p>
+                </td>
+            </tr>
+
+    <tr>
+        <td colspan="2" style="padding:32px 0px;height:40px;background-color:#ffffff;text-align:center;border-top:none;border-bottom:none">
+            <!--[if mso]><a href="https://eislaw.sharepoint.com/sites/outsiders/_layouts/15/UserExpiration.aspx?uee=1"><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://eislaw.sharepoint.com/sites/outsiders/_layouts/15/UserExpiration.aspx?uee=1" style="height:40px;v-text-anchor:middle;width:168px" arcsize="2%" strokecolor=#0078d4 fillcolor=#0078d4><w:anchorlock/><center style="color:#ffffff;font-family: 'Segoe UI', sans-serif;font-size:16px">נהל גישה</center></v:roundrect></a><![endif]-->
+            <!--[if !mso]> <!----><a href="https://eislaw.sharepoint.com/sites/outsiders/_layouts/15/UserExpiration.aspx?uee=1" style="background-color:#0078d4;border-color:#0078d4;border-radius:2px;border-style:solid;color:#ffffff;display:inline-block;font-size:16px;text-decoration:none;text-align:center;line-height:34px;width:168px">נהל גישה</a>
+            <!-- <![endif]-->
+        </td>
+    </tr>
+
+        <tr>
+            <td colspan="2" style="padding:16px 36px 32px">
+                <p style="font-size:12px;line-height:20px;color:#605E5c;font-weight:400;margin:0px;padding:0px">* משתמש זה הוא מנהל אתר ולא יוסר מהאתר באופן אוטומטי.</p>
+            </td>
+        </tr>
+</tbody></table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right" style="padding: 0px;margin: 0px">
+
+    <!-- Start Standard Footer -->
+    <table cellpadding="0" cellspacing="0" border="0" align="center" style="border-spacing: 0px;width: 100%;margin: 0 auto;max-width: 660px;background-color: #f0f0f0">
+        <tbody><tr>
+            <td align="right" style="font-size: 12px;line-height: 16px;padding: 16px 18px">
+                <div>
+                    <table cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px;width: 100%">
+                            <tbody><tr>
+                                <td>
+                                    
+<!--[if mso]><table width="640" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 auto;max-width:660px;overflow:hidden;"><![endif]-->
+<!--[if !mso]><!---->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 auto;max-width:660px;overflow:hidden;width:100%">
+    <!--<![endif]-->
+    <!--[if mso]><tr><td style="font-size: 1px; line-height: 1px; background: #f0f0f0" valign="top" width="640">&nbsp;</td></tr><![endif]-->
+    <colgroup>
+        <!--[if !mso]><!---->
+        <col width="640" style="width:100%">
+        <!--<![endif]-->
+    </colgroup>
+    <tbody>
+        <tr>
+            <td colspan="1">
+                <p style="font-size:10px;color:#505050;font-weight:400;margin:0px;padding:0px">הודעת דואר אלקטרוני זו נשלחה מתיבת דואר שאינה מנוטרת.</p>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="1" style="padding-top:5px;">
+                <p style="font-size:10px;color:#505050;font-weight:400;margin:0px;padding:0px">אתה מקבל הודעת דואר אלקטרוני זו מאחר שנרשמת כמנוי ל- Microsoft Office 365.</p>
+            </td>
+        </tr>
+
+    </tbody>
+</table>
+                                </td>
+                            </tr>
+                                <tr>
+                                    <td align="right" style="padding-top: 5px;text-align: right">
+                                        <hr>
+                                    </td>
+                                </tr>
+                        
+<tr>
+    <td align="right" style="padding-top: 5px;text-align: right">
+        <img src="cid:fc39f3c8-cbd7-4aeb-8c49-fcb6af097f42" alt="" title="" height="22" width="90" style="margin: 0px;height: 22px;width: 90px">
+
+    </td>
+</tr>
+
+    <tr>
+        <td align="right" style="padding-top: 5px;text-align: right">
+            <table cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px;width: 100%">
+                <tbody><tr>
+                    <td align="right" style="padding: 0 0 0 4px;white-space: nowrap"> <p style="padding: 0px;margin: 0px;font-size: 10px !important;color: #505050;font-weight: 400">
+
+<a href="https://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" title="" style="padding: 0px;margin: 0px;font-size: 10px !important;color: #505050;font-weight: 400">הצהרת&nbsp;פרטיות</a>
+
+</p>
+ </td>
+                </tr>
+            </tbody></table>
+        </td>
+    </tr>
+
+    <tr>
+        <td align="right" style="padding-top: 5px;text-align: right">
+            <table cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0px;width: 100%">
+                <tbody><tr>
+                    <td align="right">
+                        <p style="margin: 0px;font-size: 10px;color: #505050;font-weight: 400;padding: 0px">‏הודעת דואר אלקטרוני זו נוצרה באמצעות השימוש של Eitan Shamir &amp; Co. ב- Microsoft 365 והיא עשויה להכיל תוכן שנשלט על-ידי Eitan Shamir &amp; Co..</p>
+                    </td>
+                </tr>
+            </tbody></table>
+        </td>
+    </tr>
+                        </tbody></table>
+                </div>
+            </td>
+        </tr>
+    </tbody></table>
+    <!-- End Footer -->
+                        </td>
+                    </tr>
+                </tbody></table>
+              
+            
+        
+    </div>
+
+<img src="https://northeuroper-notifyp.svc.ms:443/api/v2/tracking/method/View?mi=j96RMAu4ckSPCmsARsQrqQ" aria-hidden="true" role="presentation" height="1" width="1" istrackingpixel="true"></body></html>
+--=-zZ2whBkCCKZWMHVu4+4WkA==
+Content-Type: image/png; name=8f15a2d8-9198-49d3-969c-5e5d523de331
+Content-Transfer-Encoding: base64
+Content-Disposition: inline; filename="8f15a2d8-9198-49d3-969c-5e5d523de331"
+Content-Location: 8f15a2d8-9198-49d3-969c-5e5d523de331
+Content-ID: <8f15a2d8-9198-49d3-969c-5e5d523de331>
+
+iVBORw0KGgoAAAANSUhEUgAAAGEAAABhCAMAAADx2D+RAAAAJ1BMVEVMaXH9pkD9pkD9pkD9pkD9
+pkD9pkD9pkD9pkD9pkD9pkD9pkD9pkDouDr/AAAADHRSTlMAQGDg8ICgIBAwwFC5S3A1AAAACXBI
+WXMAABYlAAAWJQFJUiTwAAAB3ElEQVRo3rXZ2XLCMAyFYYNoKW3e/3m7ENLYWm3p6I6rf75xvMzQ
+2uR8NvBctyu4QBuhCRsYQT8FQhOwCPorEJqARNBeIDQBh6CjQGgCCkGnAqEJGMROuMEQL8LjhkLs
+hPf2BkK8CPf2AUIchAZC/BMaCHEiYBBnAgbRERCInoBADIR6xEioRzBCNYITqhECoRYhEWoRIqES
+IRMqEQqhDqER6hAqoQqhE6oQBqEGwQjPn4UIRugKBQi+Cn0hj+Cr0BfSCOFDGgpZhPAhDYUkQtoL
+YyGHkPbCWEghxO3MChmEuJ1ZIYGQTyReWEfIJxIvLCOUQ1UorCKUQ1UoLCK0e0EqrCG0e0EqLCHU
+q00srCDUq00sLCD021kuzCP021kuTCOMB4ZSmEUYDwylMImw3khaYQ5hvZG0whTCIuiFGYT5zFML
+EwiTYBTiCJNgFMIIm2AVogibYBWCCIdgFmIIh2AWQgiPYE8E4RGc8RE5QgSRJPiILMFHpAkeIk/w
+EAUEGxEimDvOQ4QIbsFAxFbBL+iI2Cr4BRUR/JACBQ0R/JACBQVRsRdsRMlesBCVBBlRSpAQtQQJ
+UUzgiOOv80vVfA3/ntKGGuoJiLmCCTsCSXgiCFogNOEXcb9g5/ENCqdcHi7hYh0AAAAASUVORK5C
+YII=
+
+--=-zZ2whBkCCKZWMHVu4+4WkA==
+Content-Type: image/png; name=fc39f3c8-cbd7-4aeb-8c49-fcb6af097f42
+Content-Transfer-Encoding: base64
+Content-Disposition: inline; filename="fc39f3c8-cbd7-4aeb-8c49-fcb6af097f42"
+Content-Location: fc39f3c8-cbd7-4aeb-8c49-fcb6af097f42
+Content-ID: <fc39f3c8-cbd7-4aeb-8c49-fcb6af097f42>
+
+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
+HjwfHl6ingAAAABJRU5ErkJggg==
+
+--=-zZ2whBkCCKZWMHVu4+4WkA==--

@@ -1,0 +1,51 @@
+name: Airtable Snapshot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      tables:
+        description: "Comma-separated table names (optional override)"
+        required: false
+      base_id:
+        description: "Override Airtable base id (optional)"
+        required: false
+      retention_days:
+        description: "Retention in days (optional override)"
+        required: false
+      view:
+        description: "Optional Airtable view id/name"
+        required: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install azure-storage-blob requests
+
+      - name: Run snapshot
+        working-directory: "EISLAW System"
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY || secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ github.event.inputs.base_id || secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLES: ${{ github.event.inputs.tables || secrets.AIRTABLE_TABLES }}
+          AIRTABLE_VIEW: ${{ github.event.inputs.view }}
+          AZURE_BLOB_CONNECTION_STRING: ${{ secrets.AZURE_BLOB_CONNECTION_STRING }}
+          AZURE_BLOB_CONTAINER: ${{ secrets.AZURE_BLOB_CONTAINER }}
+          AZURE_BLOB_CONTAINER_SAS: ${{ secrets.AZURE_BLOB_CONTAINER_SAS }}
+          SNAPSHOT_RETENTION_DAYS: ${{ github.event.inputs.retention_days || vars.SNAPSHOT_RETENTION_DAYS || '14' }}
+          SNAPSHOT_PREFIX: ${{ vars.SNAPSHOT_PREFIX || 'backup_' }}
+        run: |
+          python tools/airtable_snapshot.py --tables "${AIRTABLE_TABLES}"

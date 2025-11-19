@@ -1,0 +1,755 @@
+Received: from VI0PR01MB10778.eurprd01.prod.exchangelabs.com
+ (2603:10a6:800:25d::7) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Sun, 8 Jun 2025 15:37:38 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=QuVGSObX3aAPGZvSkjw99I65WqL8PrZthaDJ4Irhb0F4ibbUV0pogUfG6IN4gR51Z6EVvYd82WFnYw5l5AhkKC0lHBjQvpgptWqzYcVICuqCsX+G4lHRmS2eiV2Y482aY6fLL2tUJ2CTMe5xfY4ZFD8DBufkRcumnga7O4eB/kX5QIrAnBtWND5gCntqoo0UrdANs5SztwzunvdHR9mP/onjyTdW3HHOL4c1SZstqNCE8AALxQflCWJ6TVgkEbzrId8LMoDRzQsdKEX9aJitD1dVb1jUyxWz915GyD7XzGS8lSoQbGHXZn77r+CI0SqJ0+pTxZ9CpxNX1llcVCDXXQ==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=/bwuTUc8rcSnSpyxl107GqxB7skcOHAnnkFL53uDLb0=;
+ b=Gtpe3YpKfhQZwbPiOtcjfb1eMp4Cmitbu7gBj/yxERcypCEb247jAyfxhrtdaVJnTLc8mXOqXr12YrpeAAOT+n6G/hfgDzLbHGuKEbpDROFOjL+GMIxxCT6MVkxsSBnDenJ84yheU2pKyKaNgyf5WLuR7dp+zfAv4whH6FiXVoUX+9rh/8Ybe6Ba64eaq1iOvViGoEZviMbW5ZAvhnYi2MOGcKu3afqomehFP3HMkPFQz0t7TwU4d7serQdA45Jv7dkMU2CXwdvVYOmQ10YDCsM4wcrpODI5fJpa+nhR6Jg2oJBkrPiSmRqU/kQtb3qXY1Es1eAGJxPQ/hO47bvuiw==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:c200::5) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=smoove.io; dmarc=pass (p=quarantine sp=quarantine pct=100)
+ action=none header.from=smoove.io; dkim=pass (signature was verified)
+ header.d=joeatpco.onmicrosoft.com; arc=pass (0 oda=1 ltdi=1
+ spf=[1,1,smtp.mailfrom=smoove.io] dkim=[1,1,header.d=smoove.io]
+ dmarc=[1,1,header.from=smoove.io])
+Received: from DU7P195CA0006.EURP195.PROD.OUTLOOK.COM (2603:10a6:10:54d::29)
+ by VI0PR01MB10778.eurprd01.prod.exchangelabs.com (2603:10a6:800:25d::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8835.15; Sun, 8 Jun
+ 2025 15:37:16 +0000
+Received: from DB1PEPF000509FC.eurprd03.prod.outlook.com
+ (2603:10a6:10:54d:cafe::bd) by DU7P195CA0006.outlook.office365.com
+ (2603:10a6:10:54d::29) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8792.35 via Frontend Transport; Sun,
+ 8 Jun 2025 15:37:15 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:c200::5)
+ smtp.mailfrom=smoove.io; dkim=pass (signature was verified)
+ header.d=joeatpco.onmicrosoft.com;dmarc=pass action=none
+ header.from=smoove.io;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of smoove.io designates
+ 2a01:111:f403:c200::5 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a01:111:f403:c200::5;
+ helo=DUZPR83CU001.outbound.protection.outlook.com; pr=C
+Received: from DUZPR83CU001.outbound.protection.outlook.com
+ (2a01:111:f403:c200::5) by DB1PEPF000509FC.mail.protection.outlook.com
+ (2603:10a6:18:3::6d6) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8835.15 via Frontend Transport; Sun,
+ 8 Jun 2025 15:37:14 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=CTKsJD7xLdbpTsOlzpmtmJcjphfFO5PDMMNDMP2hxoW0fofonG/YasO6Tb4SgHPAFY6fTPGdro9ltBOproFnfyc5dlENI/4egz9siCACxbDQk+2G0ZutIwea4EjEXijNawMff9cQdDcxOLwxUEO/3YvNgPnikgAqIwb3jLWCAi6my20dksNQ9RvAP37MjVRqLq4NPt9INQtvMh9afHLPJd7o8nWE3ZI1AXO3/J/MbFqF59Gp06Y4EX8yEns505XUUCxxCKtD9JN15QSD0SvVRMKpaDuM0LdITh1261y3+cdSt5wmAmaiU46V5zn1+EWb3VhhWzB0f7Xkz+HpZqUmQg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=/bwuTUc8rcSnSpyxl107GqxB7skcOHAnnkFL53uDLb0=;
+ b=vlmNTJuGqP4K4Q7kLTnQcJCik80KWQsKxUP3vndEzSOhFOUL8IuYvkKX95zLx1aaYkLk7M2dJ57JQRDLYTZXCP+6XJ+Bv7EjOCDMHG3HtvLXyojAxhpPiI41uQP8yauySlXv1fx4o0N+q18aazgA5y0eDy/M75tRO5lcPpjD0Yse1omkg7ly5yEedbI42GQ38QcRFI7STOSHlrK1U6MJN50BP5WmTesX5MHcX+0Wio5JQ/w7BisRlfIlt7t7FS+E+R90dEu/QAeoOVbDH6xPthxU6Z5uHhOpRIWzagAvW2NoSM27pFAhuuAZShCi4C7Oeq+Oyj1nRsJnFUTelhRNTg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=smoove.io; dmarc=pass action=none header.from=smoove.io;
+ dkim=pass header.d=smoove.io; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=joeatpco.onmicrosoft.com; s=selector2-joeatpco-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=/bwuTUc8rcSnSpyxl107GqxB7skcOHAnnkFL53uDLb0=;
+ b=mIBQEjvl+GKuqoW8FwDf9LrjFPfHxqaw6K01eiUNpyMP31dJY6H+3wwSrJITIbKvhILO9v717g07YN9qvAvizTbWMad6I9d1XnwyXFCPFSkq5fH/N/bIr6sqiccdxDODpUJn5p1F2c5K3ACXA7qdQk19piy262cDxPjzUX+xrxI=
+Received: from GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ (2603:10a6:150:15e::15) by DU0PR01MB9993.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:322::6) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8835.13; Sun, 8 Jun
+ 2025 15:37:11 +0000
+Received: from GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ ([fe80::2896:33e8:e9:fe50]) by GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ ([fe80::2896:33e8:e9:fe50%5]) with mapi id 15.20.8835.013; Sun, 8 Jun 2025
+ 15:37:10 +0000
+From: Assaf Lessner <assaf@smoove.io>
+To: Eitan Shamir <eitan@eislaw.co.il>
+CC: Niv Teper <niv.t@smoove.io>, Pini Sankash <pini@smoove.io>, Ohad Afgin
+	<ohad@unicell.co.il>
+Subject: =?windows-1255?B?UmU6IOT66fL25fog4fDl+eAg+vfw5CAxNSDs+vfw+iDk4vD6IOT0+Ojp?=
+ =?windows-1255?Q?=E5=FA?=
+Thread-Topic: =?windows-1255?B?5Prp8vbl+iDh8OX54CD69/DkIDE1IOz69/D6IOTi8Pog5PT46Onl+g==?=
+Thread-Index: AQHbyzVb2HK5lCJFfEWY3+pAW0WP37Pe1Zj9gBK0ohc=
+Date: Sun, 8 Jun 2025 15:37:09 +0000
+Message-ID: <GV1PR01MB1064077C117CED59D2536D2ACB96DA@GV1PR01MB10640.eurprd01.prod.exchangelabs.com>
+References: <GV1PR01MB1064021182A73F607720C4B0CB999A@GV1PR01MB10640.eurprd01.prod.exchangelabs.com>
+ <AS8PR01MB1031959E0F8F6FBDE479632CE8199A@AS8PR01MB10319.eurprd01.prod.exchangelabs.com>
+In-Reply-To: <AS8PR01MB1031959E0F8F6FBDE479632CE8199A@AS8PR01MB10319.eurprd01.prod.exchangelabs.com>
+Accept-Language: en-IL, he-IL, en-US
+Content-Language: aa
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+msip_labels:
+x-ms-reactions: allow
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=smoove.io;
+x-ms-traffictypediagnostic: GV1PR01MB10640:EE_|DU0PR01MB9993:EE_|DB1PEPF000509FC:EE_|VI0PR01MB10778:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 87c8a605-7252-4f02-c600-08dda6a257c4
+x-ld-processed: 85c63daf-f9d8-44c4-95cd-5c3b23593322,ExtAddr
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|1800799024|366016|376014|13003099007|8096899003|38070700018|7053199007;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?XC7bY6EzGh1YbpZsr+Nd+179V+dvez9cKgHgxwlfDicHi6W5A/1Xx3+5JLbh?=
+ =?us-ascii?Q?LU5rER1T7CbU5B/J31w8WNYhFmMQOLV3j+coUCF6j5pqxzHG2/Esmtloso2T?=
+ =?us-ascii?Q?wf3Ufsv6jpUISgY8lea4G7Dw2ar4b8pmSaF/5OUzAXGqrLQHLBme2rucYTTJ?=
+ =?us-ascii?Q?sa7F9N24i62+KoDw6K0p44/eVcp5uvYiILy38w7Od9rLU0XpSn2n4R+zEmGX?=
+ =?us-ascii?Q?5FjBOBA0Q3gvMf1XguftFmhS8ZbplsiIjP7nmoDD2HDQ8uugGphFgF0d9hl8?=
+ =?us-ascii?Q?ZpRDcR5141acMe/DLdRj1XLv78v2g1to1SLAZscK/aXonXueOL/wAfWVP8Er?=
+ =?us-ascii?Q?PMeZLI+aqrbvc+901JYuhR60NiIso1KXC0MdxMKYCKtCm6AnRhsvaqZPSCse?=
+ =?us-ascii?Q?+360iyraJmP92XNv1MmRRX60g9FvoATB9lDyfpMpo9Vx6sRsSBvQQa9XfXZ8?=
+ =?us-ascii?Q?/2cXgpcSBA8uAxbie5cF7tVg1zkD3qWG7nfQp4NXibqxCadgvfi4xhQoErI0?=
+ =?us-ascii?Q?7VGHrLuMMx69hpEXwX1UYZ5EjPHYqz3gY3LCbcuCrIy2DgixVw49JpNn9moo?=
+ =?us-ascii?Q?v6OW24uorHQJG/X3t2Jz61B+22VnZ10OEjFC9RtPdQItI3hB3zol3nFJr6aB?=
+ =?us-ascii?Q?LGqZbLPkn4rV382B+fvxZO2F2USQP17caNgB0ELppxN3hcI4DNoURGPYyZP/?=
+ =?us-ascii?Q?1XW97DDsTZdbDT+zoV/gDrlUitQeR5PBpOhqiy/5Ie2hyV3+1Ck4JmhX60jY?=
+ =?us-ascii?Q?EapFpJa15vX6UmECaFo/qbZv+giwZex/RxFn0dGTta5ch0Jl8HxTAbxD0lUE?=
+ =?us-ascii?Q?3IWzyyOkZQO8aKVTSX3bsZxn+YC+VEwkkIQBuXyy5N29ku0Lw4t42019WK/I?=
+ =?us-ascii?Q?DvviDaeucZ8Cz17xxSDlvndOkfcPvSpGRV6miI7OGvc6SDzpB7ZfoCnwwu0F?=
+ =?us-ascii?Q?VndXlQ06vlnjp90qFiYyobuORJpugLulp3zadsd5AKgbj8I0mbOGBgurJ6i3?=
+ =?us-ascii?Q?XTu9vcOQW+o7Cenliy8zCGTrh4lOYBF463vL1RqZ2eOMobcLhXIMp9mI1bKQ?=
+ =?us-ascii?Q?7hVQ9Pq3s+JPhA1HVNk1Tdt5WOnlOMY0SiyeRPZkKrMnZlH4aV+xp+wosXA/?=
+ =?us-ascii?Q?6HkYhS92QJP7CqZpzkyeveEQ44zTmfaSCYsIPhrr3oP2wNlbk+7EB8Fz3lzv?=
+ =?us-ascii?Q?Ab6/1E6aD/zeiCiAU7YiiHReZ355yBYWguxS/XrqjJ625DYaTuYX6Yg6MTOe?=
+ =?us-ascii?Q?LMHdvITcGTL3dCf9aNg1U0rzotOZSUi8+vc+wVix15Uq6gr1xh54olJ5ibSv?=
+ =?us-ascii?Q?XLMEvQFsayg6UD712P1hAWeSBKZQlnXfClHMBooGUW5KqhZ9eUFzqRACIB5j?=
+ =?us-ascii?Q?zeA/QFZ7ayoYfk49vsrI6mQa1Cyjc4bP8yxgjiBSyNTNQAQzUDrDLXnR1Fz8?=
+ =?us-ascii?Q?ZbQOYuJuv+Y=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:GV1PR01MB10640.eurprd01.prod.exchangelabs.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(366016)(376014)(13003099007)(8096899003)(38070700018)(7053199007);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?windows-1255?Q?MbSOZYORvzo1auhAHT7ZeLCrNTepU1MI91OzPfSru+Xk1q/IU9knqYUY?=
+ =?windows-1255?Q?PtCaTj0a9I6fsW8LwO+N3959/kPieKePcdWClccA9mPvEIUv4rUh4M4S?=
+ =?windows-1255?Q?0AFDntIRVjAnFExz8pkcgwrSP1rvVdSZQeJ3R+udpMh6xEuImkNZFziQ?=
+ =?windows-1255?Q?N8weIkzJ53YHRIWfhCa/dViNH7RXEFgbfn/rIsFLJfICvMpA+1gTtUO8?=
+ =?windows-1255?Q?hj3LMK7Z1jAhUktixPK8dvZIA/my3XEwovPr5/YCpmw1Ve4aL8DDFOyz?=
+ =?windows-1255?Q?AL6rgJleP2IUdfNX8+hp8mHW+94cmsNVcNqrXg3YQkwXAhKO07RFK9I5?=
+ =?windows-1255?Q?CFvtZ6bjCO5dmd7zfdYV9bLcnfVTFJv3r0ygcdSeZSZmNbhgG6vWCeUf?=
+ =?windows-1255?Q?oTHP8kVVe8AWzz56QM1JsCSzi6Fx1/kTKXigDLT7VJ/xFYH3ImOOUZVB?=
+ =?windows-1255?Q?uYsjJNqCBfX7J8KvxWIVEkKjH4163Y63KddpMqLaBDRWU7QNQnyJJEKa?=
+ =?windows-1255?Q?Y56m3zz9//KS5GlgMDgsAJEKFBmPvgonEFepurjjt70uyLf6+Azs+M6i?=
+ =?windows-1255?Q?5YlxtQqmjluhXLYD6X2I/O78i+8DzbdzL5/QJXSiUtpm5k/EhZHUn2tj?=
+ =?windows-1255?Q?lGkAAEQUlt9Fpv8U/vq/E5xzONZ2zJKaeYranPioE2Uk+jFoI8Vx9Uly?=
+ =?windows-1255?Q?Vd2/Y18mG3t8L0FdIU9A9PP+lB17HA7joCojB4aSofYXzs6y0FWeSK8A?=
+ =?windows-1255?Q?JcgEgij6rJXz2EFCiDHnv1CR/k4BrmNZ4ow8PBmF6sZpIZAL8DWPFGqs?=
+ =?windows-1255?Q?yi7ecjZqzgCVbefxdietdcTuyvNdZaDehQGHa22Pf4A6bcB1FDxYHl6z?=
+ =?windows-1255?Q?YMEbhpu0UuUyZI62kqFKZIHhUSak9Pi/LRfhFIT5ZeNSX4lXekVnFsk/?=
+ =?windows-1255?Q?XA3p03t3e/Xm5M+/GM/DjLT4siWWcbiYox4zor7Z/yy+ed1Ya/601od2?=
+ =?windows-1255?Q?OLVGTBLkTJjDggUrSE4d/nYuTlVQBaNAbKiDfFgajhJWC9XcpTuyAyTd?=
+ =?windows-1255?Q?aGPqeHt8Jymr46JZIshqTQmYYSFsjFlyWcesS1g+2HTNyiKtORaauo7X?=
+ =?windows-1255?Q?Awt0b7cv08WlQ9AksymGeB0l1dypyr8Rg0/WWKL+RprxMmSedCvgAsN0?=
+ =?windows-1255?Q?8KpNudMeEGBLaHt/MmmD3uGeZQL3wkqBNIhHm//DuCpz9mpBABvgEY8Q?=
+ =?windows-1255?Q?Rxqe9PC75nomfITCJ6GEhzvfD04Od9y88xGLBBIzXRwrsIxEewL5mFw3?=
+ =?windows-1255?Q?eBP4gNRs/WYyDvZbIGnIMkIs0uJku/VAga6nnCqMctrvglr+h1UArhH3?=
+ =?windows-1255?Q?hG1xJMeQUVzjnpiQHCCSRMDaoZC8pYizY4433Gq9LVyvJPwsBffK8Jng?=
+ =?windows-1255?Q?xpnxZPbBqvFXg77b4KX0mwzgIL8evQJmw4BH8e419kFPcz1L1lHvYtos?=
+ =?windows-1255?Q?whlaY57mdA14YQniuZfzX4tTcy3PZlRnyQao+DwsrITTqdN/adbWW1Ce?=
+ =?windows-1255?Q?7PKww5C6SaMn0zDRgwy48VCNuRY9vEjgc7IGZCVsL7cLBWOmGQTvSypo?=
+ =?windows-1255?Q?sqluo4u4c3FlkkT6+eAgtqSsYMT1fBxTaOQDYuHjmGQD+kPKpsTAi/lI?=
+ =?windows-1255?Q?x30+yxBVAelv7DUacMUXc+2HXzXxdnlj?=
+Content-Type: multipart/alternative;
+	boundary="_000_GV1PR01MB1064077C117CED59D2536D2ACB96DAGV1PR01MB10640eu_"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DU0PR01MB9993
+Return-Path: assaf@smoove.io
+X-MS-Exchange-Organization-ExpirationStartTime: 08 Jun 2025 15:37:14.3904
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 87c8a605-7252-4f02-c600-08dda6a257c4
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: DB1PEPF000509FC.eurprd03.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: DB1PEPF000509FC.eurprd03.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: DB1PEPF000509FC.eurprd03.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: 7fce8331-7898-4d9e-1b79-08dda6a2551e
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|35042699022|8096899003|13003099007|7053199007;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:c200::5;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DUZPR83CU001.outbound.protection.outlook.com;PTR:mail-northeuropeazlp170120005.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(35042699022)(8096899003)(13003099007)(7053199007);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 08 Jun 2025 15:37:14.2973
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 87c8a605-7252-4f02-c600-08dda6a257c4
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DB1PEPF000509FC.eurprd03.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI0PR01MB10778
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:23.7983394
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8835.006
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?AQorzp9huLic9FM1nfno/V8q69VSb1qdieMxXWuQr+yKNRHk0KbB8vf+?=
+ =?windows-1255?Q?Kcywwe2VjgKvH63tz5upyoDyimOq3FknXT5cA6dGOOm46Pg551Nsodi0?=
+ =?windows-1255?Q?pBiw7sHZL35P6k/4E8u7t6uuZ4tgk9wV5h6Srscmng8eZQ4UBXN9jRhg?=
+ =?windows-1255?Q?20rTx51OFa8LiUFR6mXyt6j0i82UsJQ32dffs3Vwtfgoxr51QRFlfytD?=
+ =?windows-1255?Q?jrhmngzSv6ob2/q3QNCk2xDElrXJjsApDk8HJO6ITGwZ1T6NPDaM0QjD?=
+ =?windows-1255?Q?GTquPYw4jCbQ1GQDjoq2FOToaH+vg8nXPYZpHg+DQHsBNJ7EaszhxyV/?=
+ =?windows-1255?Q?nlvewTJ9Lj68OD135r3UNyquHeQVeb6XbcksoCxI+3TSS0rEC6tu1aVW?=
+ =?windows-1255?Q?QdxM1bxotfP0yooV6Cy6ab3uYZIrmg2kNLIWEBDn2SCcxYdKzS9r0Rn2?=
+ =?windows-1255?Q?lcDui60ZiyCNbwVf59uH8vcLneLtAIKPsSXxcxv0noVfPO7lFR9Md796?=
+ =?windows-1255?Q?XQYQVfPMTr5v5TU6eEEc7pELrcaMlYIvHXYIdEsxmcUnZ2XNGIy4m/UV?=
+ =?windows-1255?Q?SJq84nlHmTDrtGF56FxZsKxz+YaYkyWs3Tfz92Kf3xSI+eputXdd05UC?=
+ =?windows-1255?Q?VMP/iZ0PAON5Qfr1OG9EFbKPN+4ziSRIjyk1x2PFp3v0gi5z76BlZjr4?=
+ =?windows-1255?Q?dgUsc5gxViawErUEp4O1fpHq8zp/Zjfn9CMVm2NhA+e7JFWdf6bWR5gT?=
+ =?windows-1255?Q?H6mZBQsE3D3PZ+uhbeCDBGFunbjjCCS1qp/EJ6XpkNT5uFAGU85RpdTD?=
+ =?windows-1255?Q?kGSbabNdCxwHdxeH1bPLh8RYet5EyyQmKGoJvZ8rCNVviZcTkE42zxEo?=
+ =?windows-1255?Q?TvMuzqZxrExdKNqngDS//fJ4GbWNixjobZPKcx5Add77FKvwS99MKPau?=
+ =?windows-1255?Q?WlyhaZixXRRPexcRG1E5HTbyro9dIB3C+FXADNfXkfAeJ14WkiJ6wJ7b?=
+ =?windows-1255?Q?9VKJTV+e+av+OEUDf+ayCiv9UZBZEP7qnApbXv7aLyEjv3hoEzPj5+4b?=
+ =?windows-1255?Q?8ijeDW5J9rtzYFWtLYhB5xhQcacuN7Xm4MF/n2qTpprhNjoXKisY7pLb?=
+ =?windows-1255?Q?p5moi1bPvusDYkl/qpUoa/f/+fE6Jff4IRjNVf+XtNjN3BIZv5IZN1rz?=
+ =?windows-1255?Q?MkV95WQig8nGy3kQGXrMq7JdFhmXYWdUoaEdc/iVfAUR3UHOdlRqfioV?=
+ =?windows-1255?Q?c+B0BzPyRT3AGVDfhk7d5ryyoIKMoC1nkzkotnVqz7hZsYeGDMz9fsTH?=
+ =?windows-1255?Q?s4jO0AAUt86+cvsOEd4PJg1Y7ImhNlMKwGVg0NM6/wqA9Dka/hPv6maW?=
+ =?windows-1255?Q?rhfiRx2BA+EP7/eUKO0Rn5Bx91hrf/Yxa4fb5weBH610D/uAr1qAzRTF?=
+ =?windows-1255?Q?ku5SZXh+bn4jWVOXNhKsg1r7slxKHklvXgOfFAvL+QxeLUv1GCz7pgo7?=
+ =?windows-1255?Q?1Qbtr+9Ct+3w9RbFEddBLbQdItMwElLfnlTuQyf5lXbg6snSVk0METvi?=
+ =?windows-1255?Q?KJWih2agaOClAsZncMw6QU2xVqTvMBSCiaCBThae60YHjkGtvB8lBYZ6?=
+ =?windows-1255?Q?MYZFp8MvJDJsOUs8USOXKWZTedfYZ9hrPOPsXLohF+0qiY7EPoTA6OiE?=
+ =?windows-1255?Q?3eF7lC2M9VZeWNvvzd2zxxaiWwCQ0TAWlWcRQLtxlYyAicJQZ/V4fYCk?=
+ =?windows-1255?Q?JDwcgQL8/d6dn415SqZTLpQurrvpziYHAX5HrSk67iRQMzC4pznWyR/N?=
+ =?windows-1255?Q?1do73tsD0MEgbpK/V0dgKM/0aow4x7ANcEruf8udDcIAePEWB04c0zKJ?=
+ =?windows-1255?Q?fwoyip68mEEBswsajucqpBYkvFQGjQkbVLsLRJFoxVn+X0+mnWYLlzkD?=
+ =?windows-1255?Q?w12ER0lLdhSB9vGN0znTj0JP5JXAmazUlgtrMdbpZtaPvgUniPaAoBiX?=
+ =?windows-1255?Q?knSmXBUwEHGaiC3a48yT8Wmp7v2Y3rU/nz5Yi8VzLz/AAMwSaGw=3D?=
+MIME-Version: 1.0
+
+--_000_GV1PR01MB1064077C117CED59D2536D2ACB96DAGV1PR01MB10640eu_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+=E4=E9=E9 =E0=E9=FA=EF,
+=E0=F9=EE=E7 =EC=EE=F2=F0=E4 =E1=F0=E5=F9=E0.
+=E0=F0=E7=F0=E5 =EE=F7=E1=EC=E9=ED =F4=F0=E9=E5=FA =EE=EC=F7=E5=E7=E5=FA =
+=E5=E0=F0=E9 =F8=E5=F6=E4 =EC=E3=F2=FA =EE=E4 =EC=F2=F0=E5=FA =EC=E4=ED.
+=FA=E5=E3=E4.
+
+
+[X]
+
+
+
+[X]<https://api.whatsapp.com/send?phone=3D972525735487>  [X] <https://www.f=
+acebook.com/assaf.lessner>   [X] <https://www.linkedin.com/in/assaf-lessner=
+-858b44165/>
+
+=E0=F1=F3 =EC=F1=F0=F8
+=F1=EE=F0=EB"=EC =F9=E9=E5=E5=F7 =E5=FA=F4=F2=E5=EC
+
+=F0=E9=E9=E3: 052-5735487
+
+=EE=F9=F8=E3: 08-9318357
+www.smoove.io<http://www.smoove.io>
+
+
+
+[X]
+
+[X]
+
+
+
+
+
+________________________________
+From: Eitan Shamir <eitan@eislaw.co.il>
+Sent: Thursday, 22 May 2025 19:25
+To: Assaf Lessner <assaf@smoove.io>
+Cc: Niv Teper <niv.t@smoove.io>; Itsik Nitzan <itsik.n@smoove.io>
+Subject: Re: =E4=FA=E9=F2=F6=E5=FA =E1=F0=E5=F9=E0 =FA=F7=F0=E4 15 =EC=FA=
+=F7=F0=FA =E4=E2=F0=FA =E4=F4=F8=E8=E9=E5=FA
+
+Caution: This is an external email. Please take care when clicking links or=
+ opening attachments. When in doubt, contact your IT Department
+
+=E0=F0=E9 =E9=E5=E3=F2 =F9=F6=F4=E5=E9 =F9=E9=F0=E5=E9 =E4=E7=E5=F7, =E0=E1=
+=E3=E5=F7 =E4=F8=EC=E5=E5=F0=E8=E9=E5=FA =E0=EC=E9=F0=E5 =E5=E0=F2=F0=E4
+
+Get Outlook for iOS<https://aka.ms/o0ukef>
+________________________________
+From: Assaf Lessner <assaf@smoove.io>
+Sent: Thursday, May 22, 2025 7:23:37 PM
+To: Eitan Shamir <eitan@eislaw.co.il>
+Cc: Niv Teper <niv.t@smoove.io>; Itsik Nitzan <itsik.n@smoove.io>
+Subject: =E4=FA=E9=F2=F6=E5=FA =E1=F0=E5=F9=E0 =FA=F7=F0=E4 15 =EC=FA=F7=F0=
+=FA =E4=E2=F0=FA =E4=F4=F8=E8=E9=E5=FA
+
+=E4=E9=E9 =E0=E9=FA=EF,
+=F7=E9=E1=EC=FA=E9 =F4=F0=E9=E4 =EE=E4=F6=E5=E5=FA.
+=F7=F8=E0=FA=E9 =F7=F6=FA =E1=F0=E5=F9=E0 =E5=E0=F0=E9 =EC=E0 =E1=E8=E5=E7 =
+=E4=E0=ED =F8=EC=E5=E5=F0=E8=E9 =E0=EC=E9=F0=E5 =EB=EE=F2=F8=EB=FA SAAS =E0=
+=E5 =EC=E0 =E5=E4=E0=ED =E0=F0=E7=F0=E5 =EB=E1=F8 =EE=EB=E5=F1=E9=ED =E1=E3=
+=F8=EA =EB=EC=F9=E4=E9 =F2"=E9 =FA=F7=F0=E5=EF, =FA=F0=E0=E9 =E4=F9=E9=EE=
+=E5=F9 =E0=E5 =E4=F6=E4=F8=FA =E4=F4=F8=E8=E9=E5=FA =E1=E0=FA=F8.
+
+=E0=E5=E3=E4 =EC=E4=FA=E9=E7=F1=E5=FA=EA:
+
+=E4=E9=E9 =E0=F1=F3 =E1=E5=F7=F8 =E8=E5=E1, =F4=F0=E4 =EC=F7=E5=E7 =E128/04=
+ =E1=F0=E5=F9=E0 =E4=F1=EB=ED =EC=F2=E9=E1=E5=E3 =EE=E9=E3=F2 =E0=E9=F9=E9 =
+=E1=E4=FA=E0=ED =EC=FA=F7=F0=E4 15 =EC=FA=F7=F0=E5=FA =E4=E2=F0=FA =E4=F4=
+=F8=E8=E9=E5=FA  =96Smoove
+=E4=E5=E0 =E8=E5=F2=EF =F9=EB=EC =E4=EC=F7=E5=E7=E5=FA =F9=EC=F0=E5 =E9=F4=
+=F0=E5 =E0=EC=E9=F0=E5 =E1=F0=E5=F9=E0 =E1=F7=F8=E5=E1 =E5=E9=F9 =EC=E7=FA=
+=E5=ED =E0=E9=FA=ED =F2=EC =E4=E4=F1=EB=ED =E4=E6=E4 =EC=F4=E9 =FA=F7=F0=E4=
+ =F9=E1=E7=E5=F7
+=E4=E5=E0 =E7=E9=EB=E4 =EC=FA=F9=E5=E1=E4 =EE=E0=E9=FA=F0=E5 =E5=EC=E0 =F7=
+=E9=E1=EC =E0=E5=FA=E4 =EE=E0=E6 =E0=F4=F8=E9=EC.
+=E0=EE=F8=FA=E9 =EC=E5 =F9=E0=F0=E9 =EC=E0 =EE=E7=EC=F7=E4 =EE=F9=F4=E8=E9=
+=FA =E5=E0=F0=E9 =E0=F0=F1=E4 =EC=E1=F8=F8 =E5=EC=E4=F2=E1=E9=F8 =E0=FA =E4=
+=E1=F7=F9=E4 =F9=EC=E5 =EC=E2=E5=F8=ED =E4=EE=E5=F1=EE=EA
+=E4=E5=E0 =E0=EE=F8 =F9=EC=EC=E0 =E7=FA=E9=EE=E4 =F2=EC =E4=E4=F1=EB=ED =EC=
+=E0 =E9=E5=EB=EC=E5 =EC=E4=EE=F9=E9=EA =EC=F2=E1=E5=E3 =E0=E9=FA=F0=E5. =E0=
+=F9=EE=E7 =EC=F2=E6=F8=FA=EA.
+
+
+
+[X]
+
+
+
+[X]<https://api.whatsapp.com/send?phone=3D972525735487>  [X] <https://www.f=
+acebook.com/assaf.lessner>   [X] <https://www.linkedin.com/in/assaf-lessner=
+-858b44165/>
+
+=E0=F1=F3 =EC=F1=F0=F8
+=F1=EE=F0=EB"=EC =F9=E9=E5=E5=F7 =E5=FA=F4=F2=E5=EC
+
+=F0=E9=E9=E3: 052-5735487
+
+=EE=F9=F8=E3: 08-9318357
+www.smoove.io<http://www.smoove.io>
+
+
+
+[X]
+
+[X]
+
+
+
+
+
+--_000_GV1PR01MB1064077C117CED59D2536D2ACB96DAGV1PR01MB10640eu_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+</head>
+<body>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; c=
+olor: rgb(0, 0, 0);" dir=3D"rtl">
+=E4=E9=E9 =E0=E9=FA=EF,</div>
+<div dir=3D"rtl" class=3D"elementToProof" style=3D"font-family: Aptos, Apto=
+s_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-s=
+ize: 12pt; color: rgb(0, 0, 0);">
+=E0=F9=EE=E7 =EC=EE=F2=F0=E4 =E1=F0=E5=F9=E0.&nbsp;</div>
+<div dir=3D"rtl" class=3D"elementToProof" style=3D"font-family: Aptos, Apto=
+s_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-s=
+ize: 12pt; color: rgb(0, 0, 0);">
+=E0=F0=E7=F0=E5 =EE=F7=E1=EC=E9=ED =F4=F0=E9=E5=FA =EE=EC=F7=E5=E7=E5=FA =
+=E5=E0=F0=E9 =F8=E5=F6=E4 =EC=E3=F2=FA =EE=E4 =EC=F2=F0=E5=FA =EC=E4=ED.&nb=
+sp;</div>
+<div dir=3D"rtl" class=3D"elementToProof" style=3D"font-family: Aptos, Apto=
+s_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-s=
+ize: 12pt; color: rgb(0, 0, 0);">
+=FA=E5=E3=E4.&nbsp;</div>
+<div id=3D"Signature" class=3D"elementToProof" dir=3D"rtl">
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; c=
+olor: rgb(0, 0, 0);" dir=3D"rtl">
+<br>
+</div>
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" class=3D"elementToProof" cellspacing=3D"0" cellpadding=
+=3D"0" style=3D"box-sizing: border-box; border-collapse: collapse; border-s=
+pacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"border-left: 1pt dashed r=
+gb(165, 165, 165); padding: 0cm 5.4pt; vertical-align: top; width: 77.25pt;=
+">
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" class=3D"elementToProof" cellspacing=3D"0" cellpadding=
+=3D"0" style=3D"box-sizing: border-box; border-collapse: collapse; border-s=
+pacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm 2.85pt; vert=
+ical-align: top; width: 56.25pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; margin-=
+top: 0px; margin-bottom: 0px;">
+<img src=3D"" width=3D"73" height=3D"73" style=3D"width: 0.77in; height: 0.=
+77in; margin-top: 0px; margin-bottom: 0px;"></p>
+</td>
+</tr>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm; vertical-al=
+ign: top; width: 56.25pt; height: 4pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: center; margin=
+-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-size: 5pt;">&nbsp;</span></p>
+</td>
+</tr>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm; vertical-al=
+ign: top; width: 56.25pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: center; margin=
+-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-family: Calibri, sans-serif; color: rgb(0, 0, 0);"><a h=
+ref=3D"https://api.whatsapp.com/send?phone=3D972525735487" id=3D"OWA1f56870=
+3-f2e0-f354-acfe-599411917575" class=3D"OWAAutoLink" style=3D"color: rgb(0,=
+ 0, 0); margin-top: 0px; margin-bottom: 0px;"><img src=3D"" width=3D"15" he=
+ight=3D"15" style=3D"width: 0.166in; height: 0.166in; margin-top: 0px; marg=
+in-bottom: 0px;"></a></span>&nbsp;
+<span style=3D"color: rgb(0, 0, 0);"><a href=3D"https://www.facebook.com/as=
+saf.lessner" id=3D"OWAa5c89ed3-1a5b-26b7-244e-13992bc17d2a" class=3D"OWAAut=
+oLink" style=3D"color: rgb(0, 0, 0); margin-top: 0px; margin-bottom: 0px;">=
+<img src=3D"" width=3D"14" height=3D"15" style=3D"width: 0.156in; height: 0=
+.166in; margin-top: 0px; margin-bottom: 0px;"></a></span>&nbsp;
+<span style=3D"color: rgb(0, 0, 0);"><a href=3D"https://www.linkedin.com/in=
+/assaf-lessner-858b44165/" id=3D"OWA2fba108d-cce6-cb7e-df88-73252e648578" c=
+lass=3D"OWAAutoLink" style=3D"color: rgb(0, 0, 0); margin-top: 0px; margin-=
+bottom: 0px;"><img src=3D"" width=3D"15" height=3D"15" style=3D"width: 0.16=
+6in; height: 0.166in; margin-top: 0px; margin-bottom: 0px;"></a></span>&nbs=
+p;</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm 5.4pt; verti=
+cal-align: top; width: 337.55pt;">
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" class=3D"elementToProof" cellspacing=3D"0" cellpadding=
+=3D"0" style=3D"margin-left: 3.75pt; box-sizing: border-box; border-collaps=
+e: collapse; border-spacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm 5.4pt; verti=
+cal-align: top; width: 323pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 12pt; color: rgb(=
+74, 38, 123); line-height: 130%;"><b>=E0=F1=F3 =EC=F1=F0=F8</b></span><span=
+ style=3D"font-family: Arial, sans-serif; color: rgb(74, 38, 123);"><br>
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 10pt; colo=
+r: rgb(74, 38, 123); line-height: 130%;">=F1=EE=F0=EB&quot;=EC =F9=E9=E5=E5=
+=F7 =E5=FA=F4=F2=E5=EC</span></p>
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 10pt; line-height=
+: 130%;">=F0=E9=E9=E3:
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 8pt; line-=
+height: 130%;">052-5735487</span></p>
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 10pt; line-height=
+: 130%;">=EE=F9=F8=E3:
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 8pt; line-=
+height: 130%;">08-9318357<br>
+</span><span style=3D"letter-spacing: 0.1pt; font-family: Arial, sans-serif=
+; font-size: 10pt; line-height: 130%;"><a href=3D"http://www.smoove.io" id=
+=3D"OWA77e767c1-38d4-ed70-cd2c-abd315456056" class=3D"OWAAutoLink" style=3D=
+"margin-top: 0px; margin-bottom: 0px;">www.smoove.io</a></span></p>
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"letter-spacing: 0.1pt; font-family: Arial, sans-serif; font-=
+size: 3pt; color: rgb(5, 99, 193); line-height: 130%;"><u>&nbsp;</u></span>=
+</p>
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" class=3D"elementToProof" cellspacing=3D"0" cellpadding=
+=3D"0" style=3D"box-sizing: border-box; border-collapse: collapse; border-s=
+pacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm; width: 39.4=
+pt; height: 28.8pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-size: 12pt; color: rgb(74, 38, 123); line-height: 130%;=
+"><b><img src=3D"" width=3D"39" height=3D"32" style=3D"width: 0.416in; heig=
+ht: 0.343in; margin-top: 0px; margin-bottom: 0px;"></b></span></p>
+</td>
+<td dir=3D"rtl" class=3D"elementToProof" style=3D"padding: 0cm; width: 272.=
+3pt; height: 28.8pt;">
+<p dir=3D"rtl" class=3D"elementToProof" style=3D"text-align: right; line-he=
+ight: 130%; margin-top: 0px; margin-bottom: 0px;">
+<span style=3D"font-size: 12pt; color: rgb(74, 38, 123); line-height: 130%;=
+"><b><img src=3D"" width=3D"100" height=3D"13" style=3D"width: 1.052in; hei=
+ght: 0.145in; margin-top: 0px; margin-bottom: 0px;"></b></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class=3D"elementToProof" style=3D"margin-top: 0px; margin-bottom: 0px;">=
+<span style=3D"font-family: Arial, sans-serif;">&nbsp;</span></p>
+<p class=3D"elementToProof" style=3D"margin-top: 0px; margin-bottom: 0px;">=
+<span style=3D"font-family: Arial, sans-serif;">&nbsp;</span></p>
+</div>
+<div id=3D"appendonsend"></div>
+<hr style=3D"display: inline-block; width: 98%;">
+<div id=3D"divRplyFwdMsg" dir=3D"auto"><span style=3D"font-family: Calibri,=
+ sans-serif; font-size: 11pt; color: rgb(0, 0, 0);"><b>From:</b>&nbsp;Eitan=
+ Shamir &lt;eitan@eislaw.co.il&gt;<br>
+<b>Sent:</b>&nbsp;Thursday, 22 May 2025 19:25<br>
+<b>To:</b>&nbsp;Assaf Lessner &lt;assaf@smoove.io&gt;<br>
+<b>Cc:</b>&nbsp;Niv Teper &lt;niv.t@smoove.io&gt;; Itsik Nitzan &lt;itsik.n=
+@smoove.io&gt;<br>
+<b>Subject:</b>&nbsp;Re: =E4=FA=E9=F2=F6=E5=FA =E1=F0=E5=F9=E0 =FA=F7=F0=E4=
+ 15 =EC=FA=F7=F0=FA =E4=E2=F0=FA =E4=F4=F8=E8=E9=E5=FA</span>
+<div dir=3D"auto">&nbsp;</div>
+</div>
+<table align=3D"left" cellspacing=3D"0" cellpadding=3D"0" style=3D"width: 1=
+00%; border-collapse: collapse; border-spacing: 0px; box-sizing: border-box=
+;">
+<tbody>
+<tr>
+<td style=3D"background-color: rgb(0, 160, 210); padding: 5pt 2pt;"></td>
+<td style=3D"background-color: rgb(229, 245, 250); padding: 5pt 4pt 5pt 12p=
+t; width: 100%;">
+<div style=3D"color: rgb(34, 34, 34);" dir=3D"auto"><b>Caution:</b>&nbsp;Th=
+is is an external email. Please take care when clicking links or opening at=
+tachments. When in doubt, contact your IT Department</div>
+</td>
+</tr>
+</tbody>
+</table>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=E0=F0=E9 =E9=E5=E3=F2 =F9=F6=F4=E5=E9 =F9=E9=F0=E5=E9 =E4=
+=E7=E5=F7, =E0=E1=E3=E5=F7 =E4=F8=EC=E5=E5=F0=E8=E9=E5=FA =E0=EC=E9=F0=E5 =
+=E5=E0=F2=F0=E4&nbsp;</div>
+<div id=3D"x_ms-outlook-mobile-body-separator-line" dir=3D"rtl"><br>
+</div>
+<div id=3D"x_ms-outlook-mobile-signature" dir=3D"auto">Get <a href=3D"https=
+://aka.ms/o0ukef">
+Outlook for iOS</a></div>
+<hr style=3D"display: inline-block; width: 98%;">
+<div id=3D"x_divRplyFwdMsg" dir=3D"auto"><span style=3D"font-family: Calibr=
+i, sans-serif; font-size: 11pt; color: rgb(0, 0, 0);"><b>From:</b>&nbsp;Ass=
+af Lessner &lt;assaf@smoove.io&gt;<br>
+<b>Sent:</b>&nbsp;Thursday, May 22, 2025 7:23:37 PM<br>
+<b>To:</b>&nbsp;Eitan Shamir &lt;eitan@eislaw.co.il&gt;<br>
+<b>Cc:</b>&nbsp;Niv Teper &lt;niv.t@smoove.io&gt;; Itsik Nitzan &lt;itsik.n=
+@smoove.io&gt;<br>
+<b>Subject:</b>&nbsp;=E4=FA=E9=F2=F6=E5=FA =E1=F0=E5=F9=E0 =FA=F7=F0=E4 15 =
+=EC=FA=F7=F0=FA =E4=E2=F0=FA =E4=F4=F8=E8=E9=E5=FA</span>
+<div dir=3D"auto">&nbsp;</div>
+</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"font-family: Aptos, =
+Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; fo=
+nt-size: 12pt; color: rgb(0, 0, 0);">
+=E4=E9=E9 =E0=E9=FA=EF,<br>
+=F7=E9=E1=EC=FA=E9 =F4=F0=E9=E4 =EE=E4=F6=E5=E5=FA.&nbsp;<br>
+=F7=F8=E0=FA=E9 =F7=F6=FA =E1=F0=E5=F9=E0 =E5=E0=F0=E9 =EC=E0 =E1=E8=E5=E7 =
+=E4=E0=ED =F8=EC=E5=E5=F0=E8=E9 =E0=EC=E9=F0=E5 =EB=EE=F2=F8=EB=FA SAAS =E0=
+=E5 =EC=E0 =E5=E4=E0=ED =E0=F0=E7=F0=E5 =EB=E1=F8 =EE=EB=E5=F1=E9=ED =E1=E3=
+=F8=EA =EB=EC=F9=E4=E9 =F2&quot;=E9 =FA=F7=F0=E5=EF, =FA=F0=E0=E9 =E4=F9=E9=
+=EE=E5=F9 =E0=E5 =E4=F6=E4=F8=FA =E4=F4=F8=E8=E9=E5=FA =E1=E0=FA=F8.&nbsp;<=
+br>
+<br>
+</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"font-family: Aptos, =
+Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; fo=
+nt-size: 12pt; color: rgb(0, 0, 0);">
+=E0=E5=E3=E4 =EC=E4=FA=E9=E7=F1=E5=FA=EA:</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"font-family: Aptos, =
+Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; fo=
+nt-size: 12pt; color: rgb(0, 0, 0);">
+<br>
+</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"margin-top: 1em; mar=
+gin-bottom: 1em; font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontServic=
+e, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);">
+=E4=E9=E9 =E0=F1=F3 =E1=E5=F7=F8 =E8=E5=E1, =F4=F0=E4 =EC=F7=E5=E7 =E128/04=
+ =E1=F0=E5=F9=E0 <b><u>=E4=F1=EB=ED =EC=F2=E9=E1=E5=E3 =EE=E9=E3=F2 =E0=E9=
+=F9=E9 =E1=E4=FA=E0=ED =EC=FA=F7=F0=E4 15 =EC=FA=F7=F0=E5=FA =E4=E2=F0=FA =
+=E4=F4=F8=E8=E9=E5=FA &nbsp;=96Smoove&nbsp;&nbsp;&nbsp;</u></b></div>
+<div dir=3D"rtl" style=3D"margin-top: 1em; margin-bottom: 1em; font-family:=
+ Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-s=
+erif; font-size: 12pt; color: rgb(0, 0, 0);">
+=E4=E5=E0 =E8=E5=F2=EF =F9=EB=EC =E4=EC=F7=E5=E7=E5=FA =F9=EC=F0=E5 =E9=F4=
+=F0=E5 =E0=EC=E9=F0=E5 =E1=F0=E5=F9=E0 =E1=F7=F8=E5=E1 =E5=E9=F9 =EC=E7=FA=
+=E5=ED =E0=E9=FA=ED =F2=EC =E4=E4=F1=EB=ED =E4=E6=E4 =EC=F4=E9 =FA=F7=F0=E4=
+ =F9=E1=E7=E5=F7&nbsp;</div>
+<div dir=3D"rtl" style=3D"margin-top: 1em; margin-bottom: 1em; font-family:=
+ Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-s=
+erif; font-size: 12pt; color: rgb(0, 0, 0);">
+=E4=E5=E0 =E7=E9=EB=E4 =EC=FA=F9=E5=E1=E4 =EE=E0=E9=FA=F0=E5 =E5=EC=E0 =F7=
+=E9=E1=EC =E0=E5=FA=E4 =EE=E0=E6 =E0=F4=F8=E9=EC.&nbsp;</div>
+<div dir=3D"rtl" style=3D"margin-top: 1em; margin-bottom: 1em; font-family:=
+ Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-s=
+erif; font-size: 12pt; color: rgb(0, 0, 0);">
+=E0=EE=F8=FA=E9 =EC=E5 =F9=E0=F0=E9 =EC=E0 =EE=E7=EC=F7=E4 =EE=F9=F4=E8=E9=
+=FA =E5=E0=F0=E9 =E0=F0=F1=E4 =EC=E1=F8=F8 =E5=EC=E4=F2=E1=E9=F8 =E0=FA =E4=
+=E1=F7=F9=E4 =F9=EC=E5 =EC=E2=E5=F8=ED =E4=EE=E5=F1=EE=EA</div>
+<div dir=3D"rtl" style=3D"margin-top: 1em; margin-bottom: 1em; font-family:=
+ Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-s=
+erif; font-size: 12pt; color: rgb(0, 0, 0);">
+=E4=E5=E0 =E0=EE=F8 =F9=EC=EC=E0 =E7=FA=E9=EE=E4 =F2=EC =E4=E4=F1=EB=ED =EC=
+=E0 =E9=E5=EB=EC=E5 =EC=E4=EE=F9=E9=EA =EC=F2=E1=E5=E3 =E0=E9=FA=F0=E5. =E0=
+=F9=EE=E7 =EC=F2=E6=F8=FA=EA.</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"font-family: Aptos, =
+Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; fo=
+nt-size: 12pt; color: rgb(0, 0, 0);">
+<br>
+</div>
+<div dir=3D"rtl" class=3D"x_x_elementToProof" style=3D"font-family: Aptos, =
+Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; fo=
+nt-size: 12pt; color: rgb(0, 0, 0);">
+<br>
+</div>
+<div id=3D"x_x_Signature" class=3D"x_x_elementToProof" dir=3D"rtl">
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" cellspacing=3D"0" cellpadding=3D"0" style=3D"box-sizing:=
+ border-box; border-collapse: collapse; border-spacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" style=3D"border-left: 1pt dashed rgb(165, 165, 165); paddin=
+g: 0cm 5.4pt; vertical-align: top; width: 77.25pt; height: 164.172px;">
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" cellspacing=3D"0" cellpadding=3D"0" style=3D"box-sizing:=
+ border-box; border-collapse: collapse; border-spacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" style=3D"padding: 0cm 2.85pt; vertical-align: top; width: 5=
+6.25pt; height: 77.9062px;">
+<p dir=3D"rtl" style=3D"text-align: right; margin-top: 0px; margin-bottom: =
+0px;"><img src=3D"=E0=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.io)_files/image=
+001.png" width=3D"73" height=3D"73" style=3D"width: 0.77in; height: 0.77in;=
+ margin-top: 0px; margin-bottom: 0px;"></p>
+</td>
+</tr>
+<tr>
+<td dir=3D"rtl" style=3D"padding: 0cm; vertical-align: top; width: 56.25pt;=
+ height: 4pt;">
+<p dir=3D"rtl" style=3D"text-align: center; margin-top: 0px; margin-bottom:=
+ 0px;"><span style=3D"font-size: 5pt;">&nbsp;</span></p>
+</td>
+</tr>
+<tr>
+<td dir=3D"rtl" style=3D"padding: 0cm; vertical-align: top; width: 56.25pt;=
+ height: 21px;">
+<p dir=3D"rtl" style=3D"text-align: center; margin-top: 0px; margin-bottom:=
+ 0px;"><span style=3D"font-family: Calibri, sans-serif; color: rgb(0, 0, 0)=
+;"><a href=3D"https://api.whatsapp.com/send?phone=3D972525735487" style=3D"=
+color: rgb(0, 0, 0); margin-top: 0px; margin-bottom: 0px;"><img src=3D"=E0=
+=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.io)_files/image002.png" width=3D"15"=
+ height=3D"15" style=3D"width: 0.166in; height: 0.166in; margin-top: 0px; m=
+argin-bottom: 0px;"></a></span>&nbsp;
+<span style=3D"color: rgb(0, 0, 0);"><a href=3D"https://www.facebook.com/as=
+saf.lessner" style=3D"color: rgb(0, 0, 0); margin-top: 0px; margin-bottom: =
+0px;"><img src=3D"=E0=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.io)_files/image=
+003.png" width=3D"14" height=3D"15" style=3D"width: 0.156in; height: 0.166i=
+n; margin-top: 0px; margin-bottom: 0px;"></a></span>&nbsp;
+<span style=3D"color: rgb(0, 0, 0);"><a href=3D"https://www.linkedin.com/in=
+/assaf-lessner-858b44165/" style=3D"color: rgb(0, 0, 0); margin-top: 0px; m=
+argin-bottom: 0px;"><img src=3D"=E0=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.i=
+o)_files/image004.png" width=3D"15" height=3D"15" style=3D"width: 0.166in; =
+height: 0.166in; margin-top: 0px; margin-bottom: 0px;"></a></span>&nbsp;</p=
+>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+<td dir=3D"rtl" style=3D"padding: 0cm 5.4pt; vertical-align: top; width: 33=
+7.55pt; height: 164.172px;">
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" cellspacing=3D"0" cellpadding=3D"0" style=3D"margin-left=
+: 3.75pt; box-sizing: border-box; border-collapse: collapse; border-spacing=
+: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" style=3D"padding: 0cm 5.4pt; vertical-align: top; width: 32=
+3pt; height: 164.172px;">
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 12pt; color: rgb(=
+74, 38, 123); line-height: 130%;"><b>=E0=F1=F3 =EC=F1=F0=F8</b></span><span=
+ style=3D"font-family: Arial, sans-serif; color: rgb(74, 38, 123);"><br>
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 10pt; colo=
+r: rgb(74, 38, 123); line-height: 130%;">=F1=EE=F0=EB&quot;=EC =F9=E9=E5=E5=
+=F7 =E5=FA=F4=F2=E5=EC</span></p>
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 10pt; line-height=
+: 130%;">=F0=E9=E9=E3:
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 8pt; line-=
+height: 130%;">052-5735487</span></p>
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"font-family: Arial, sans-serif; font-size: 10pt; line-height=
+: 130%;">=EE=F9=F8=E3:
+</span><span style=3D"font-family: Arial, sans-serif; font-size: 8pt; line-=
+height: 130%;">08-9318357<br>
+</span><span style=3D"letter-spacing: 0.1pt; font-family: Arial, sans-serif=
+; font-size: 10pt; line-height: 130%;"><a href=3D"http://www.smoove.io" sty=
+le=3D"margin-top: 0px; margin-bottom: 0px;">www.smoove.io</a></span></p>
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"letter-spacing: 0.1pt; font-family: Arial, sans-serif; font-=
+size: 3pt; color: rgb(5, 99, 193); line-height: 130%;"><u>&nbsp;</u></span>=
+</p>
+<div align=3D"right" dir=3D"rtl">
+<table dir=3D"rtl" cellspacing=3D"0" cellpadding=3D"0" style=3D"box-sizing:=
+ border-box; border-collapse: collapse; border-spacing: 0px;">
+<tbody>
+<tr>
+<td dir=3D"rtl" style=3D"padding: 0cm; width: 39.4pt; height: 28.8pt;">
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"font-size: 12pt; color: rgb(74, 38, 123); line-height: 130%;=
+"><b><img src=3D"=E0=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.io)_files/image0=
+05.png" width=3D"39" height=3D"32" style=3D"width: 0.416in; height: 0.343in=
+; margin-top: 0px; margin-bottom: 0px;"></b></span></p>
+</td>
+<td dir=3D"rtl" style=3D"padding: 0cm; width: 272.3pt; height: 28.8pt;">
+<p dir=3D"rtl" style=3D"text-align: right; line-height: 130%; margin-top: 0=
+px; margin-bottom: 0px;">
+<span style=3D"font-size: 12pt; color: rgb(74, 38, 123); line-height: 130%;=
+"><b><img src=3D"=E0=F1=F3%20-%20=E7=E3=F9%20(assaf@smoove.io)_files/image0=
+06.png" width=3D"100" height=3D"13" style=3D"width: 1.052in; height: 0.145i=
+n; margin-top: 0px; margin-bottom: 0px;"></b></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p style=3D"margin-top: 0px; margin-bottom: 0px;"><span style=3D"font-famil=
+y: Arial, sans-serif;">&nbsp;</span></p>
+<p style=3D"margin-top: 0px; margin-bottom: 0px;"><span style=3D"font-famil=
+y: Arial, sans-serif;">&nbsp;</span></p>
+</div>
+</body>
+</html>
+
+--_000_GV1PR01MB1064077C117CED59D2536D2ACB96DAGV1PR01MB10640eu_--

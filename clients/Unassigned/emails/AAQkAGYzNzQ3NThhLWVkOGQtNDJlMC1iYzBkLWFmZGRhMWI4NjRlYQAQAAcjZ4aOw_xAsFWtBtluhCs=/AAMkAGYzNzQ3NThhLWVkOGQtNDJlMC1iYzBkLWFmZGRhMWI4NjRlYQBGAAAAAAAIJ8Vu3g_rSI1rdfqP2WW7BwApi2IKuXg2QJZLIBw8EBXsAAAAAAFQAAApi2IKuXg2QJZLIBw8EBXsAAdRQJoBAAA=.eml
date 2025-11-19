@@ -1,0 +1,432 @@
+Received: from AM7PPF7892A141F.eurprd01.prod.exchangelabs.com
+ (2603:10a6:20f:fff1::798) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com
+ with HTTPS; Wed, 2 Jul 2025 11:59:02 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=WUEZhddviBTUGYD8dFY26IFba4/g7WeHeJGjUgi12dlpvd0mQq4uDOWU/7S6UDsOeUXuqJlGDq7pxpIQK/Hmx89ekcTX2ARh40DKCkf48qAXcxMWbXyviIXO3QglqGizN2aGEG6JxR7D3nTGUkKZOXqIbHMQe8/n8aoJIrp5wjgs6JfAXSGjPphePauaTDnWWrT0l9hcaw8YLluR0MC1RGX2B34zp5B0RqmrAOKN9lVxRLdEg5v5DbLyT+vfPOdJ/8gHgcoOmifFB+wHm2L3Y/T93NDnoMa1fRlP7pBtNu1oBResVFxp7ZS6/3XEwK5kepZkg70GTSwqtLSmBQhxmg==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=j7/Xxd0U9yf3bIwOmSPs5VNWQYYXhBpgQq5+HmWkdW0=;
+ b=dBzaIo9ogZXWKvKDJAFGOPxY/oSH3KZYesThJ3XgiVJAWpZzPOY2Ssdbb53t5x12Kn3RiFRTrvQ2t18fP49C9nJL7O0JCmp1iB8PEgnvw+wXxi2YCG/9gqe+UyxM4TG3oul2OtM3CqzG5PH1PENqv9VKyU8GOgj1SLV8CYZ+XLY1GAp2DkgUkhv7t/Lz+mHOzwGt5L6Ql+knaryhcBkKi3pbvZ/M5XIEf5xzzBp+4AMbFhggmsVg20k8OQZFU0G7UmJP65SzwgBpdg8YGVgH+rF4kibJMdepGxhN0eTSBpyZAqW2MjTKUwJ8sI5juvLIqLV5pxZN06DQhVLCp116KQ==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:c20f::7) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=ycina.com; dmarc=bestguesspass action=none
+ header.from=ycina.com; dkim=pass (signature was verified)
+ header.d=scotzy.onmicrosoft.com; arc=pass (0 oda=1 ltdi=1
+ spf=[1,1,smtp.mailfrom=ycina.com] dkim=[1,1,header.d=ycina.com]
+ dmarc=[1,1,header.from=ycina.com])
+Received: from DU7P250CA0004.EURP250.PROD.OUTLOOK.COM (2603:10a6:10:54f::19)
+ by AM7PPF7892A141F.eurprd01.prod.exchangelabs.com (2603:10a6:20f:fff1::798)
+ with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8880.16; Wed, 2 Jul
+ 2025 11:58:59 +0000
+Received: from DU6PEPF0000B622.eurprd02.prod.outlook.com
+ (2603:10a6:10:54f:cafe::12) by DU7P250CA0004.outlook.office365.com
+ (2603:10a6:10:54f::19) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8901.20 via Frontend Transport; Wed,
+ 2 Jul 2025 11:58:59 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:c20f::7)
+ smtp.mailfrom=ycina.com; dkim=pass (signature was verified)
+ header.d=scotzy.onmicrosoft.com;dmarc=bestguesspass action=none
+ header.from=ycina.com;compauth=pass reason=109
+Received-SPF: Pass (protection.outlook.com: domain of ycina.com designates
+ 2a01:111:f403:c20f::7 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a01:111:f403:c20f::7;
+ helo=OSPPR02CU001.outbound.protection.outlook.com; pr=C
+Received: from OSPPR02CU001.outbound.protection.outlook.com
+ (2a01:111:f403:c20f::7) by DU6PEPF0000B622.mail.protection.outlook.com
+ (2603:10a6:18:3::20b) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8901.15 via Frontend Transport; Wed,
+ 2 Jul 2025 11:58:58 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=m9cr0g3JMCFJ2Ftt8AHfAnJxmQwbuLnH7Syo+TirbMlXwtJVoZAB6p5RHdScseIpyJ7tRmHWYoSew0K5LK3SDgf9YlZjAePINPmkCmjO/OysLidSHIWrCikMCS13bn0mDEB8XkWEuroVHNf2eeebftYu02uKtZWQiqNls0n4LnvUkvvVGJlQSRWQQ1QlP2GO8acYCZZonYoGYrs3WxVaOpLJc+CFXLuoDnqWh4XZURX2GB2cIbKxlNlSCIWU1OZDjQVg+eIyQ0EA7QmMYOGFna1e30BsKaa1z8ZKgsDouDvMf3AYkgzvhANzAS93ldDD9r7st+YH0zBArkmx8Ov7Ng==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=j7/Xxd0U9yf3bIwOmSPs5VNWQYYXhBpgQq5+HmWkdW0=;
+ b=vn/hifPsfRa0wa7osZdg6+MNxGUYw+2wewohtUb3HZSx6f90A85f1F0dk7WW7OMpm0nUPvPsmlujpIsefZ8ogi8y/28GtBNhrpJ1qMncg5uy+yvbztsbwkqBcrM/ysmJnYnuGyQ9vME6siZs8aNVvt6wPz1RVCQnMo7zuAyJcZeCMVZXCMy5vh87WQ06EM4MSe07eB3fylir66snEsrXJRJIiwCtSJR4vCStTRjMya/dIyw6Em+GCBhCSMaTFCPFZG/t6uclpe+ss5rmCgNts7Nj1Qgu/lAcFVkYV/csizeBod14i23WKNlA7bikEIpPPQVM/B2ynMGJYy6LQOikog==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=ycina.com; dmarc=pass action=none header.from=ycina.com;
+ dkim=pass header.d=ycina.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=scotzy.onmicrosoft.com; s=selector2-scotzy-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=j7/Xxd0U9yf3bIwOmSPs5VNWQYYXhBpgQq5+HmWkdW0=;
+ b=Jg7hT3Npba4gkRKYOL1VaKcqahNZTyg01SuUCNNYiezqocYpG0CoUrFTd9yy+OFl3BaHEWA/jc5/uypJI6L7RE5pDgxVnts6uveAVi8A1KEQB3QX95aq/Y1c7RMIBM2hIREEC7xz/Wndi3TroC6TiG96MYBDPbWjTxXugbdyqjY=
+Received: from PAVPR08MB9139.eurprd08.prod.outlook.com (2603:10a6:102:30c::5)
+ by DB3PR08MB8939.eurprd08.prod.outlook.com (2603:10a6:10:42b::5) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8901.19; Wed, 2 Jul
+ 2025 11:58:55 +0000
+Received: from PAVPR08MB9139.eurprd08.prod.outlook.com
+ ([fe80::859c:b59d:518a:9300]) by PAVPR08MB9139.eurprd08.prod.outlook.com
+ ([fe80::859c:b59d:518a:9300%7]) with mapi id 15.20.8880.029; Wed, 2 Jul 2025
+ 11:58:54 +0000
+From: =?windows-1255?B?+On36SDn+OD4?= <riki@ycina.com>
+To: Eitan Shamir <eitan@eislaw.co.il>
+Subject: =?windows-1255?B?Rlc6IOP46fn6IPfl4fUgWE1MLCDnLvQgNTE1NzI1MTgy?=
+Thread-Topic: =?windows-1255?B?4/jp+fog9+Xh9SBYTUwsIOcu9CA1MTU3MjUxODI=?=
+Thread-Index: AQHb6PEeByNnho7D7ECwVa0G2W6EK7Qevw0A
+Date: Wed, 2 Jul 2025 11:58:54 +0000
+Message-ID: <PAVPR08MB91399D9C76D98CB2BBA8DF56D040A@PAVPR08MB9139.eurprd08.prod.outlook.com>
+References: <f4a0781a627940fea8df3f770c44bf51@yl-invest.co.il>
+In-Reply-To: <f4a0781a627940fea8df3f770c44bf51@yl-invest.co.il>
+Accept-Language: he-IL, en-US
+Content-Language: he-IL
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=ycina.com;
+x-ms-traffictypediagnostic: PAVPR08MB9139:EE_|DB3PR08MB8939:EE_|DU6PEPF0000B622:EE_|AM7PPF7892A141F:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 90b08ce5-a833-4aca-9c52-08ddb95fd449
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|1800799024|366016|376014|8096899003|13003099007|38070700018;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?2ae1poOj23ZRUkbQX7bppG4QK8DHcNZHkzj4Bsv1uVozChzDqO5FseGeUZ8D?=
+ =?us-ascii?Q?Ekc8S7RKZMEEazpDBHYqnxHod+6/PVuCkNusq3H6gtcdnZDh7Au399WIF5lo?=
+ =?us-ascii?Q?6GTsOX5S9q1wJHrEX0LaYslCFfRGYCTyaAd6ZqvgLvnHGfAmHgiWM7IDD+hP?=
+ =?us-ascii?Q?fMzPP2LL00MU0SCLgFaCIP9SQbcuDzu4gCdntAvqjXoV/bVwTKrub6vYn4qn?=
+ =?us-ascii?Q?8tBMn6VlojPQO+BuFL5SqJqm2mXi4MJXe0Q0MC5drMa2MMiPs3qFRN+YqYu3?=
+ =?us-ascii?Q?B66LVKsveWD9MZu1X+mC+Bdvgpn4JTkHl1ihsDVESeUn0tlomCBSo34DLW3O?=
+ =?us-ascii?Q?Zgv5BDfR84Ap/4gPuCpFO6muIPjvRsvsmqKaAn9t1JcDCmQDkJJQesnxAQwI?=
+ =?us-ascii?Q?eaiYcuw5aQJ46xm1EtikSoJGBf8v7gQfClU3jEvA3ZKgk6zmoByYEPgDe5IN?=
+ =?us-ascii?Q?N/trDe5TetpcC06/Aqp+vqkn5bc2/1/YOc2h1gJgG6JewqhbWu4fqhrgZiDb?=
+ =?us-ascii?Q?ZlPIkO8PtwHL+NCuz0GA+VJ9yCgiq/bXlgLi3Pqcw932v1LuiBD0UYndqlyQ?=
+ =?us-ascii?Q?b6rc+Fmk+Gbp7tiJ5PFjKoos4c8szCU0lrZPqQwku94RECnxIIlc2qH4WMBe?=
+ =?us-ascii?Q?dmbj4s/XEZ4XYjMTNDtDVwHweboIobQ9ByatbVh8W/8di7iNzBMpWg1+dsR3?=
+ =?us-ascii?Q?yYU3rEnxKMQHg7B7/Nvz0T7wuV1EKhxEvQ8P/X0r/5HWaf5QxQ/FtV1QbTPl?=
+ =?us-ascii?Q?LVrC1T8z7GiKYRpqFBYMfUlOBTRUi/Vq4Kldpqj6KExB7KYzn61wX6yQMNZQ?=
+ =?us-ascii?Q?n7E2JC6MT+Q8WzydZLsRgqIswkBkxRjVKXTxicqNe2xwrS2mbCB2618P/FJU?=
+ =?us-ascii?Q?wutKS+Mwj3RUP0atnK9N6jWAGIkOnD+ep8Ux62HXD/r/LvwfCOIITn/zzDuq?=
+ =?us-ascii?Q?JvdHHpoN/jOLdenQE3cUBpk0QJJN2tPwg9xYiV8nY+qp8nYjXAC8XtasuM4Y?=
+ =?us-ascii?Q?o4b56IVPx84s39zrNhYL4LXxyqDlUeIHnM/3rD0DMSws69iT7nY6gvCrVol/?=
+ =?us-ascii?Q?jdUILXSrNAaL6sVRACGi985R0KFvG939B8iHlxZuWnLLlfInsyl6Cr/bfOiQ?=
+ =?us-ascii?Q?8eAhtLwvUeDDrQAYNrZE+2++J7v2kbqN8T4rLJJBDhQZd2oF9pOrnM7M5P/S?=
+ =?us-ascii?Q?wW0sSKL21dBcAcJUYr+0UWOthil+fQsdpNCF8a1t71yE69ffQF7z7tZS3iKn?=
+ =?us-ascii?Q?nQoAp7JAC/3fa+/KeCoJM9WNQoUqUlpUIESGAmVNjvWrFdlZhNEWa8bdUFRp?=
+ =?us-ascii?Q?E5jiYXSdM/BBIhfriEB4VJarRF1vRW5tXEcL+G2vxB+H383JAHXLzGBME7RW?=
+ =?us-ascii?Q?PyKu10kRQ5NkhLPJ4OEThA7+wbh02TindoWeNaW+9Wn7U5LM9/ONaP/xqH+A?=
+ =?us-ascii?Q?kFd/AkakNK0=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:PAVPR08MB9139.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(366016)(376014)(8096899003)(13003099007)(38070700018);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?us-ascii?Q?e2Q+L3oIlc7VmizIrlIM/lBdNkD5exhCkmpXAOIGkMWfeAKi7zyKLdh3Ljgs?=
+ =?us-ascii?Q?fQzyYqhYa4i7pKqyrZOtE+4xvdQ1GxdKciQb4wBBJF4q7pjrq1bSI6IycPGy?=
+ =?us-ascii?Q?qdNj4cTA97Wv5zmwqs1ZOV/4QEKMyyOKe8E+6/YEn9PFQLlbcvvdz5igaxv0?=
+ =?us-ascii?Q?LDxvMkAX8rTqfdYcKOwcC+XTCvpaxuy9BpHLe2AkUOtlq4SwEXUXk0XoQ3Bb?=
+ =?us-ascii?Q?G48MDtBwrrSoKW7iCgROdWVmuyq2G0hEX0LWVyd7g31tmbLn82ydQAXeO4jn?=
+ =?us-ascii?Q?IQ7ZzvWzgT0HXFspTn5GHjOiVZ4dSHEYoTc8q1mRFJWnlqW2qyfSOlfzyAxY?=
+ =?us-ascii?Q?bTWRFvZSfgkKNMWLnwNMhYse12ejuBIToDc6gsNTViYcNpXIyqOfGbnLt6d/?=
+ =?us-ascii?Q?W5iNupQHl+dVz2WJb/O7YFmKMiDSwkD29c/PqUPq6g4Sa1CqGa4zstbeRN9J?=
+ =?us-ascii?Q?rW83Rsk27YpORBxDc5Vg2BAf4NNxmBqEB4OSybiYBMoqFc/aV1vX38FQvt/E?=
+ =?us-ascii?Q?MlRr3jPCs14mxMMaHPhtJr2ZYROcbfjxrkRwKaz9d7wBPOnJ1prbCecHSNpU?=
+ =?us-ascii?Q?DaINwWK7Luw39IjXZAJm5krzkL8+lmQEwxM/DKn/Zg03KpcTcbmalg6Fjrwh?=
+ =?us-ascii?Q?2QMqVwiSdoY2JwG717beio/QtfsDZStyWUReYqgvVifTL/PsvS+dAQvB+LwD?=
+ =?us-ascii?Q?HmEan8+4h4v54Ufv3sh9sDMhmsrzXKSwlMT0J7OjC0UzMrbnxdm6xBFdGkp8?=
+ =?us-ascii?Q?7mv8Jcoe2SFDn34ZrUhKwmd30TisCObDtBp65t/A+yWX0hoTvxdU6zW1mu8d?=
+ =?us-ascii?Q?ZMMWW0dU+0LwsEEooPjv3u1tj2hGQM98tva2h9IkXksBagUipkt9Bxo5zS8G?=
+ =?us-ascii?Q?Tqsk46KW+8+PwRPB7s1veVheAAhgcNgARlRJowBoSuR/WMUot+1IsDziCisx?=
+ =?us-ascii?Q?Tg1ixiejRYWRVaCJ2vOMm/eQEsXnMq5+xJyxdLsSNxJdPCWO84S4DpvGxaVc?=
+ =?us-ascii?Q?kciWVe9VLIG7MJ8CVEhJTPvWTD7tVrj9gKNIerlKBIv1X4aOA9FDxn90utFn?=
+ =?us-ascii?Q?zt1pvK/gS+g8ovx+dH8bompHMJFI9hiVMb2/76Vcrdb5Bp6cjpvrhosw9KKa?=
+ =?us-ascii?Q?yFLjUQb8aeejsfr+kmjprfhCebf8zO+exIk6S70nOpn/h46NAbM4+jJ1SSbE?=
+ =?us-ascii?Q?ApPLafIZ1q7fU/UcY09Iiwy0GwAoUFqesjFydMYRzbFykpTxZu3+dqmWuyEa?=
+ =?us-ascii?Q?NAcoS1GIRRuzta/3cJxc5a8ZrA973Y3bA+cznsstaFMsamP47gma3ZYGDULu?=
+ =?us-ascii?Q?laclRDa5hTVRiHOUXI5X8YdVVC83QMy8ztrhoRFjm2o/NWijwe8JNmUtwITh?=
+ =?us-ascii?Q?ku11KHJqk5L+EM8JnIAXuBDbUj8B9edQGO7GA6SjNr4IF3ER40BiHDGWHv4B?=
+ =?us-ascii?Q?cfqqpa+i5Jt9JVODj/nHaR8uiXz4lkyvmNAJeKAwju6XpieYRYH9+JfZdZWz?=
+ =?us-ascii?Q?Vd2WC1ouv0HAY8Z2NW3UXRqyClW+wTLVwhzaXfN0EhuB7ihPLdJnkatgqJCO?=
+ =?us-ascii?Q?lQ5q8/xwCo0e7FkjC0s=3D?=
+Content-Type: multipart/alternative;
+	boundary="_000_PAVPR08MB91399D9C76D98CB2BBA8DF56D040APAVPR08MB9139eurp_"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB3PR08MB8939
+Return-Path: riki@ycina.com
+X-MS-Exchange-Organization-ExpirationStartTime: 02 Jul 2025 11:58:59.1104
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 90b08ce5-a833-4aca-9c52-08ddb95fd449
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: DU6PEPF0000B622.eurprd02.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: DU6PEPF0000B622.eurprd02.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: DU6PEPF0000B622.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: f7d7b889-77fd-4efd-1490-08ddb95fd1c7
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|35042699022|8096899003|13003099007;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:c20f::7;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:OSPPR02CU001.outbound.protection.outlook.com;PTR:mail-norwayeastazlp170130007.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(35042699022)(8096899003)(13003099007);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 02 Jul 2025 11:58:58.8444
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 90b08ce5-a833-4aca-9c52-08ddb95fd449
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DU6PEPF0000B622.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM7PPF7892A141F
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.4047485
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8901.017
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?YMLtXCZMVN5LMu45AqzHOrGrSM5pqhtFsiIO+GBgw2oZLixm/5xu5QDK?=
+ =?windows-1255?Q?RnLwgrAmxBPJsiCIHP+XkdLu3BQtWZJRbXHNuvshfvxbkDTfJNCczQI6?=
+ =?windows-1255?Q?MEyD7Y2iY32e8to2PQdRB2ED9Ae7IDXSCrMNztVV9yaoULkXLcI1yBvW?=
+ =?windows-1255?Q?8qnasPVAZfixXp6MdTPltGvieydTYtpfd+V4OPrei+NWeoctAv4n0OcM?=
+ =?windows-1255?Q?DEZxes/+aOSVVZ8WIeKKataF7vFVw8rt1Ie0eFDpHSUedw+N2TQ9MmnE?=
+ =?windows-1255?Q?PatoXklJPDDaxEjC3CkhD6HSGgJIRYwfme/0y9+17JSsPa7kc/jxcfDN?=
+ =?windows-1255?Q?eXyX+9snWEqFTvTrvxT3oxLFL1EwgoMqF9Q3Yr3MdeKL9+Vmckcu8UGg?=
+ =?windows-1255?Q?T4S8IWydQwoz1fEUQQfiYXj7OkMozQBzzK9j104I3QVEZN0Cvj87hNYq?=
+ =?windows-1255?Q?o8UWeKVtguoA9tLDvmy2hs+XmulLDIy7lYYdIcCt3pqfYV8kzR3HahZG?=
+ =?windows-1255?Q?6xNP2cPV2rX3MilLQa/lfZ3N4Euh/vALkk2dEDAPTeKcvX5LlStFcLqo?=
+ =?windows-1255?Q?+87hl+ysFQz4lfROP7qoaHm7F28Y0v+0wMzqvEohk26DfjjmdwYewxaR?=
+ =?windows-1255?Q?sUzfNkI0R6cJP2CxfzhnjADBeldsz98xnJ64vt2c2YNuS06s2VjMuN0q?=
+ =?windows-1255?Q?hDZf8DB3j1hWM5DH3XJGd2n3pvNQYGrsvfCCUmLMm/q+nd7MbPOLBMIQ?=
+ =?windows-1255?Q?pCPthRFjfYRDxD+CTpJcXKSCSEZu8Kgsg02bUDUDLEPOCI0ALm7G2Nzq?=
+ =?windows-1255?Q?d4yZyKsRCrQCXRB2leXNCRxR3htwJfkeqZ3fM4JmIlXY8FOzI1gNxWvE?=
+ =?windows-1255?Q?nBxzZdpcG+2VgO6KWKp005W0aYEQ25N/jP0mEy6rw1Hm9gv1eEWUUmen?=
+ =?windows-1255?Q?G+a+kAxlF/QmO4F088Yfb1L8hgvJWLklSAzXRZJs8tnUfbopzKS32vi0?=
+ =?windows-1255?Q?JAKghcHta1y1HXbiF9TopyCUAy/kTDp3E0DwmJeCFqRlxn4vCprZvwNA?=
+ =?windows-1255?Q?O+cJ5g1WkxTXB/+apg/GPwbYagVGCz71Qbx7eqBMJs0OdjOUkbddOgob?=
+ =?windows-1255?Q?Q/L0ztkq6Zlscp+PlbYtvso+W4j8H8Q5GnVKycdmatm94W2/YZb1sSCn?=
+ =?windows-1255?Q?Zyynq5TYV6ivtAmKK3bU46nZ3w1sk1mJ1Dt+hnTs07cNryKw8xw4bw7K?=
+ =?windows-1255?Q?wUWV/0uL4+PceP89w35MZRGwyyuR1/HrwUFJvpJOD4UsXcadrrWB660a?=
+ =?windows-1255?Q?HimTVyNIsOLBtQaXOxKibVjzZyQ/tv1VU7Qn0rC5pqgDr2pZ931G2GyB?=
+ =?windows-1255?Q?ZCXORMCDm0AqIHWIGiUiy0Jtwj+z5F4Cpp9bOPM/uQ3jaTjo/DW2PfVn?=
+ =?windows-1255?Q?SVt4smvdXWUu5FgW4bmeGBPlh59FKcz/zM4Fp5uwyYpDtzivjH0PoXk1?=
+ =?windows-1255?Q?b6e6/HmYwunDiM1Tko0AnPRrRz1K7plRC6FKjqvCArLhXfzX6L1/MdOf?=
+ =?windows-1255?Q?L21kUiFBj6LQG3DQ3g/bZCd5Zp1OMFLYZVHrwZ7zzaqOF1I1lPbDZKon?=
+ =?windows-1255?Q?hAst3hu0uzdsYtxUwwegikL+e/lgrb1iFGd7lrINJHAbVk0WtZBjMC7P?=
+ =?windows-1255?Q?sZfvgtODZxJwgwW2PYx79CNqkV+JopNz2IyJLd+PG+I3O0rYbIND/ic1?=
+ =?windows-1255?Q?tKgfMUb+8XbF4xcUZCUiNhPqiANyN3/xlYk/nM7aEJuJtZxSUjoDGOeh?=
+ =?windows-1255?Q?JsE0peivhz9TcVfew44lw7rYvcrje4mvkKuHNIROu1bRR2rPhN51Tu4i?=
+ =?windows-1255?Q?n13SHxYtNBVT1O6K6OW06KUtN2lxpoGobZbOTyMYw9uQkLki0tkFH2RL?=
+ =?windows-1255?Q?rOcbkZVdR6RhZAWcHQvVGON3lEad6wn5uKo/oqtec9wFr2Ov3Uw4u/xc?=
+ =?windows-1255?Q?Y22RpbyToNp37sjjBoz7Dj5HqDBf9di3dovE1NYKNwn+wbtRaxM=3D?=
+MIME-Version: 1.0
+
+--_000_PAVPR08MB91399D9C76D98CB2BBA8DF56D040APAVPR08MB9139eurp_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+=E0=E9=FA=EF =F9=EC=E5=ED
+=EC=E1=E3=E9=F7=FA=EB=ED =E1=F0=E3=E5=EF
+=FA=E5=E3=E4 =F8=E1=E4
+
+From: Maasikxml <Maasikxml@yl-invest.co.il>
+Sent: Sunday, June 29, 2025 3:27 PM
+To: =F8=E9=F7=E9 =E7=F8=E0=F8=FE <riki@ycina.com>
+Subject: =E3=F8=E9=F9=FA =F7=E5=E1=F5 XML, =E7.=F4 515725182
+
+=F9=EC=E5=ED =F8=E1,
+
+=E1=FA=E0=F8=E9=EA 18/06/2025 =E1=E5=F6=F2=E4 =E4=F4=F7=E3=E4 =F2"=E9 =E4=
+=EE=F2=F1=E9=F7 =E0=E9=FA=EF =F9=EE=E9=F8 =E7=E1=F8=FA =F2=E5=F8=EB=E9 =E3=
+=E9=EF =E7.=F4 515725182,
+
+=EC=E8=E5=E1=FA "=E9=EC=E9=EF =EC=F4=E9=E3=E5=FA - =E4=F9=FA=EC=EE=E5=FA =
+=EB=EC=EC=E9" =E1=F1=EA 2,250.00 =F9"=E7.
+
+
+=EC=E9=E3=E9=F2=FA=EB=ED, =E8=F8=ED =E4=FA=F7=E1=EC =F7=E5=E1=F5 XML =EC=E6=
+=E9=EB=E5=E9 =E7=F9=E1=E5=F0=E5=FA =E4=F2=E5=E1=E3=E9=ED.
+
+=F0=E1=F7=F9=EB=ED =EC=E4=F2=E1=E9=F8 =E0=EC=E9=F0=E5 =E0=FA =E4=F7=E5=E1=
+=F5 =E1=E3=E7=E9=F4=E5=FA.
+
+
+=EC=E9=E3=E9=F2=FA=EA,
+
+=E4=E7=EC =EE=E9=E5=ED 1 =E1=F4=E1=F8=E5=E0=F8 2025 =96 =EB=EC=EC =E4=EE=F2=
+=F1=E9=F7=E9=ED =E1=EE=F9=F7 =E9=E4=E9=E5 =EE=E7=E5=E9=E9=E1=E9=ED =E1=E4=
+=F2=E1=F8=FA =E3=E9=E5=E5=E7 =EE=EE=E5=EB=EF.
+
+
+***** =EE=F1=F4=F8 =F4=F0=E9=EE=E9 41056114 *****
+
+=95 =E0=ED =E4=F7=E5=E1=F5 =F9=E5=E3=F8 =E4=E9=E5=ED, =E0=F0=E0 =E4=FA=F2=
+=EC=EE=E5 =EE=E4=EE=E9=E9=EC
+
+
+=E1=E1=F8=EB=E4,
+
+
+=E9=EC=E9=EF =EC=F4=E9=E3=E5=FA
+=E8=EC=F4=E5=EF: 03-7132323 | =F4=F7=F1: 03-7132368
+=EE=E2=E3=EC =F2=EC, =E3=E9=E6=F0=E2=E5=F3 50 =FA=EC-=E0=E1=E9=E1, 6433222 =
+| www.yl-invest.co.il<http://www.yl-invest.co.il>
+
+
+
+
+--_000_PAVPR08MB91399D9C76D98CB2BBA8DF56D040APAVPR08MB9139eurp_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" xmlns:o=3D"urn:schemas-micr=
+osoft-com:office:office" xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:m=3D"http://schemas.microsoft.com/office/2004/12/omml" xmlns=3D"http:=
+//www.w3.org/TR/REC-html40"><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+<meta name=3D"Generator" content=3D"Microsoft Word 15 (filtered medium)">
+<style><!--
+/* Font Definitions */
+@font-face
+	{font-family:"Cambria Math";
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+@font-face
+	{font-family:Aptos;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	font-size:12.0pt;
+	font-family:"Times New Roman",serif;}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:#467886;
+	text-decoration:underline;}
+span.EmailStyle19
+	{mso-style-type:personal-reply;
+	font-family:"Aptos",sans-serif;
+	color:windowtext;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-size:10.0pt;
+	mso-ligatures:none;}
+@page WordSection1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext=3D"edit" spidmax=3D"1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext=3D"edit">
+<o:idmap v:ext=3D"edit" data=3D"1" />
+</o:shapelayout></xml><![endif]-->
+</head>
+<body lang=3D"EN-US" link=3D"#467886" vlink=3D"#96607D" style=3D"word-wrap:=
+break-word">
+<div class=3D"WordSection1">
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,s=
+ans-serif">=E0=E9=FA=EF =F9=EC=E5=ED<o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,s=
+ans-serif">=EC=E1=E3=E9=F7=FA=EB=ED =E1=F0=E3=E5=EF<o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,s=
+ans-serif">=FA=E5=E3=E4 =F8=E1=E4</span><span dir=3D"LTR" style=3D"font-siz=
+e:11.0pt;font-family:&quot;Aptos&quot;,sans-serif"><o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span dir=3D"LTR" style=3D"font-size:11.0pt;font-family:&quot;Aptos&quot;,s=
+ans-serif"><o:p>&nbsp;</o:p></span></p>
+<div>
+<div style=3D"border:none;border-top:solid #E1E1E1 1.0pt;padding:3.0pt 0cm =
+0cm 0cm">
+<p class=3D"MsoNormal"><b><span style=3D"font-size:11.0pt;font-family:&quot=
+;Calibri&quot;,sans-serif">From:</span></b><span style=3D"font-size:11.0pt;=
+font-family:&quot;Calibri&quot;,sans-serif"> Maasikxml &lt;Maasikxml@yl-inv=
+est.co.il&gt;
+<br>
+<b>Sent:</b> Sunday, June 29, 2025 3:27 PM<br>
+<b>To:</b> <span lang=3D"HE" dir=3D"RTL">=F8=E9=F7=E9 =E7=F8=E0=F8=FE</span=
+><span dir=3D"LTR"></span><span dir=3D"LTR"></span><span dir=3D"LTR"></span=
+><span dir=3D"LTR"></span> &lt;riki@ycina.com&gt;<br>
+<b>Subject:</b> <span lang=3D"HE" dir=3D"RTL">=E3=F8=E9=F9=FA =F7=E5=E1=F5<=
+/span><span dir=3D"LTR"></span><span dir=3D"LTR"></span><span dir=3D"LTR"><=
+/span><span dir=3D"LTR"></span> XML,
+<span lang=3D"HE" dir=3D"RTL">=E7.=F4 515725182</span><o:p></o:p></span></p=
+>
+</div>
+</div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span dir=3D"LTR"><o:p>&nbsp;</o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"margin-bottom:12.0pt;text-align=
+:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#=
+0B2161">=F9=EC=E5=ED =F8=E1,<br>
+<br>
+=E1=FA=E0=F8=E9=EA 18/06/2025 =E1=E5=F6=F2=E4 =E4=F4=F7=E3=E4 =F2&quot;=E9 =
+=E4=EE=F2=F1=E9=F7 =E0=E9=FA=EF =F9=EE=E9=F8 =E7=E1=F8=FA =F2=E5=F8=EB=E9 =
+=E3=E9=EF =E7.=F4 515725182,<br>
+<br>
+=EC=E8=E5=E1=FA &quot;=E9=EC=E9=EF =EC=F4=E9=E3=E5=FA - =E4=F9=FA=EC=EE=E5=
+=FA =EB=EC=EC=E9&quot; =E1=F1=EA <b>2,250.00 =F9&quot;=E7</b>.<br>
+<br>
+<br>
+=EC=E9=E3=E9=F2=FA=EB=ED, =E8=F8=ED =E4=FA=F7=E1=EC =F7=E5=E1=F5 </span><sp=
+an dir=3D"LTR" style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#0B2=
+161">XML</span><span dir=3D"RTL"></span><span dir=3D"RTL"></span><span lang=
+=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#0B2161"><s=
+pan dir=3D"RTL"></span><span dir=3D"RTL"></span>
+ =EC=E6=E9=EB=E5=E9 =E7=F9=E1=E5=F0=E5=FA =E4=F2=E5=E1=E3=E9=ED.<br>
+<br>
+=F0=E1=F7=F9=EB=ED =EC=E4=F2=E1=E9=F8 =E0=EC=E9=F0=E5 =E0=FA =E4=F7=E5=E1=
+=F5 =E1=E3=E7=E9=F4=E5=FA.<br>
+<br>
+<br>
+=EC=E9=E3=E9=F2=FA=EA, <br>
+<br>
+=E4=E7=EC =EE=E9=E5=ED 1 =E1=F4=E1=F8=E5=E0=F8 2025 =96 =EB=EC=EC =E4=EE=F2=
+=F1=E9=F7=E9=ED =E1=EE=F9=F7 =E9=E4=E9=E5 =EE=E7=E5=E9=E9=E1=E9=ED =E1=E4=
+=F2=E1=F8=FA =E3=E9=E5=E5=E7 =EE=EE=E5=EB=EF.<br>
+<br>
+<br>
+<u>***** =EE=F1=F4=F8 =F4=F0=E9=EE=E9 41056114 *****</u><br>
+<br>
+=95 =E0=ED =E4=F7=E5=E1=F5 =F9=E5=E3=F8 =E4=E9=E5=ED, =E0=F0=E0 =E4=FA=F2=
+=EC=EE=E5 =EE=E4=EE=E9=E9=EC<br>
+<br>
+<br>
+=E1=E1=F8=EB=E4, <br>
+<br>
+<br>
+<b>=E9=EC=E9=EF =EC=F4=E9=E3=E5=FA</b></span><span dir=3D"LTR" style=3D"fon=
+t-family:&quot;Arial&quot;,sans-serif;color:#0B2161"><o:p></o:p></span></p>
+<div align=3D"right">
+<table class=3D"MsoNormalTable" dir=3D"rtl" border=3D"0" cellspacing=3D"0" =
+cellpadding=3D"0" align=3D"right" style=3D"border-collapse:collapse">
+<tbody>
+<tr>
+<td style=3D"padding:3.75pt 3.75pt 3.75pt 3.75pt">
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed;mso-element:frame;mso-element-frame-hspace:2.25pt;mso-el=
+ement-wrap:around;mso-element-anchor-vertical:paragraph;mso-element-anchor-=
+horizontal:column;mso-element-left:right;mso-element-top:middle;mso-height-=
+rule:exactly">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif">=E8=EC=
+=F4=E5=EF: 03-7132323 | =F4=F7=F1: 03-7132368<br>
+=EE=E2=E3=EC =F2=EC, =E3=E9=E6=F0=E2=E5=F3 50 =FA=EC-=E0=E1=E9=E1, 6433222 =
+| </span><u><span style=3D"font-family:&quot;Arial&quot;,sans-serif"><a hre=
+f=3D"http://www.yl-invest.co.il"><span dir=3D"LTR">www.yl-invest.co.il</spa=
+n></a></span></u><span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,s=
+ans-serif"><o:p></o:p></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"margin-bottom:12.0pt;text-align=
+:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif;color:#=
+0B2161"><br>
+<br>
+<br>
+</span><span lang=3D"HE"><o:p></o:p></span></p>
+</div>
+</body>
+</html>
+
+--_000_PAVPR08MB91399D9C76D98CB2BBA8DF56D040APAVPR08MB9139eurp_--

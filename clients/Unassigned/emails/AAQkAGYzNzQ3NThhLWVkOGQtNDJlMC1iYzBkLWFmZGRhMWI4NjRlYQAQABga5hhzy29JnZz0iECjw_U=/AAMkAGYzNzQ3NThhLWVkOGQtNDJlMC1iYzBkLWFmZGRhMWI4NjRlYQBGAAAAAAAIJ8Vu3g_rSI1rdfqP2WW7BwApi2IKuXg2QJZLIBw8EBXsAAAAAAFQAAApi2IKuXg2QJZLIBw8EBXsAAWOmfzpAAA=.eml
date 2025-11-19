@@ -1,0 +1,979 @@
+Received: from DBAPR01MB6823.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:198::7) by PAVPR01MB10321.eurprd01.prod.exchangelabs.com with
+ HTTPS; Thu, 21 Aug 2025 13:13:55 +0000
+Received: from DBBPR09CA0046.eurprd09.prod.outlook.com (2603:10a6:10:d4::34)
+ by DBAPR01MB6823.eurprd01.prod.exchangelabs.com (2603:10a6:10:198::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9052.15; Thu, 21 Aug
+ 2025 13:13:53 +0000
+Received: from DU2PEPF00028D0E.eurprd03.prod.outlook.com
+ (2603:10a6:10:d4:cafe::f2) by DBBPR09CA0046.outlook.office365.com
+ (2603:10a6:10:d4::34) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9052.14 via Frontend Transport; Thu,
+ 21 Aug 2025 13:13:53 +0000
+Authentication-Results: spf=pass (sender IP is 2a00:1450:4864:20::133)
+ smtp.mailfrom=gmail.com; dkim=pass (signature was verified)
+ header.d=gmail.com;dmarc=pass action=none header.from=gmail.com;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of gmail.com designates
+ 2a00:1450:4864:20::133 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a00:1450:4864:20::133; helo=mail-lf1-x133.google.com; pr=C
+Received: from mail-lf1-x133.google.com (2a00:1450:4864:20::133) by
+ DU2PEPF00028D0E.mail.protection.outlook.com (2603:10a6:18:3::6c6) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.9052.8 via Frontend Transport; Thu, 21 Aug 2025 13:13:53 +0000
+Received: by mail-lf1-x133.google.com with SMTP id 2adb3069b0e04-55ce4b9c904so1133095e87.0
+        for <eitan@eislaw.co.il>; Thu, 21 Aug 2025 06:13:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1755782032; x=1756386832; darn=eislaw.co.il;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=x/rkdFVbpRMmHcc89LuAyPIeP39B6fAazvMFquQ5akI=;
+        b=gi3ia6qvcXMn33527VuVAlTMr8e54xFKqBZaZT3by2v7pAlJFJPOHHLKqVWkz5je/h
+         kn8UFaKhkpHivsGrNcBMoyXcf7eNb2mzwldJgYhWQsty2D+zA3eqE0lgoBsT3n6DZaeE
+         tFlZmNtQp3Y40kaf661Bb5FKH4igAfVhME7gSlYJ2AaRiSf0Yjbig9sesSFY8KvKitot
+         oTjhD53qlRLA9bLj+f8YpR2vQEc4FgjGMTfgzuCpKpMYHWPeiucnnBSRIE9No/SH9zJh
+         9FI0baPwvFbsumwGYpefekbu+tMVPyWj3UVfJ0DIXoOyZBeLuL913W3WH4/mj+BVcqGG
+         26Yw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1755782032; x=1756386832;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=x/rkdFVbpRMmHcc89LuAyPIeP39B6fAazvMFquQ5akI=;
+        b=KloX84VjjLRaXNhpfJfPBb5xLAPxmZzpYRIa4fbnBTLCFuzpFscDC9LfioVDju4eo7
+         qJd2Gq21ASjk7s7q4b/uUjps46HIiksDsZsWc0DhJpz/u1nHxiQ5uOQe5vmLQHgbrLns
+         0Exox/lhhJbUEnQCCRWWoLE6P24H2td9UExy/Z62Gi5cmluROJ4EmbKvR0sa+i5nBwRp
+         mnByXGKa0Bf2vHYMsiOipmy+bQoN3nfl1LFX8yuBaO23K1orcInMxR6BYt2TVLLQ5F2L
+         WdU6FEXIcA0sZE0ma/27EubXC0j9zy0pRq3//6bnjG53mMRMHGNUWLoNal8RZ07v3DV2
+         2YZA==
+X-Gm-Message-State: AOJu0Yy7LhJCYYj+aeCzvSYsA1V796/iRk+LgACIo289bi+NyzaDFqC2
+	q+fv1eKRVMVOwyM19iEx9aUK2BHHBOHEoKjUYtI0PwqdTM165e7ZqARigqMyZ3AI78jTLLEkCYF
+	+U4mVtn7glGhO61KGrGmKwgVfxM51Z1PIQEHL
+X-Gm-Gg: ASbGnctYiOHINwjsSbLsfS3N7Rr5miL5TNrLC6WpI5qW4ddWszQ0DLT/myfop7GZywL
+	k/7CAhQEx3xCp4foPRZyVlVcnnEpWWWlpb1tFcv2/0UmeTRwkd+T3ph4a/e/8A55oFYLb10uN/s
+	fSxDZDcIL8D8NRLDlnZW9MgRHq6leU7rfmc3Sn/39Uci6vHfxxV27IkcHzoyTOcHLfm/kDV7m96
+	Uwi/sw=
+X-Google-Smtp-Source: AGHT+IGggoMAbmnlOPQ7wgCf00ko7mDJAuv+8692fWV/NrU1Z0Hvqonbn3wxHw4u1xtXWrL/6Va6WR1QCCsczEZNWCY=
+X-Received: by 2002:a05:6512:32ce:b0:553:268e:5011 with SMTP id
+ 2adb3069b0e04-55e0da77fa1mr892223e87.26.1755782031935; Thu, 21 Aug 2025
+ 06:13:51 -0700 (PDT)
+References: <CAK2hBCuVf75wqUhfZeeKcAh3bVqTYSAPVgGjextuS=W4a4utAg@mail.gmail.com>
+ <CAK2hBCuBga_3QvRSYysq9NPhpw-DbVfaiv3n7Qz4NGk=afkoeg@mail.gmail.com> <DB7PR08MB3100A265DA21C60363FAE4E0EA2FA@DB7PR08MB3100.eurprd08.prod.outlook.com>
+In-Reply-To: <DB7PR08MB3100A265DA21C60363FAE4E0EA2FA@DB7PR08MB3100.eurprd08.prod.outlook.com>
+From: Nitsan Landman <nitsanland@gmail.com>
+Date: Thu, 21 Aug 2025 16:13:33 +0300
+X-Gm-Features: Ac12FXwklfotvbvekQL33I-62n0_wWl5QNpJDlf_t839CCZ83c6Wh_v0M0z4yNE
+Message-ID: <CAK2hBCtzzE9O7OBGzyOwQg77F1zPe=bE-zj-gVd5b=Stxd0bdw@mail.gmail.com>
+Subject: =?UTF-8?Q?Fwd=3A_Coordination_Regarding_Prenuptial_Agreement_and?=
+	=?UTF-8?Q?_Will_=E2=80=93_Cyprus_Residency_=7C_Nitsan_Landman?=
+To: Eitan Shamir <eitan@eislaw.co.il>, Iris Landman <ilandman@gmail.com>
+Content-Type: multipart/related; boundary="00000000000051302c063cdfdc57"
+Return-Path: nitsanland@gmail.com
+X-MS-Exchange-Organization-ExpirationStartTime: 21 Aug 2025 13:13:53.6534
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: bc9640bd-c780-4ebe-f32f-08dde0b493e5
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DU2PEPF00028D0E:EE_|DBAPR01MB6823:EE_|PAVPR01MB10321:EE_
+X-MS-Exchange-Organization-AuthSource: DU2PEPF00028D0E.eurprd03.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: bc9640bd-c780-4ebe-f32f-08dde0b493e5
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|69100299015|1032899013|7093399015|4053099003|13003099007|8096899003|2066899003;
+X-Forefront-Antispam-Report: CIP:2a00:1450:4864:20::133;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-lf1-x133.google.com;PTR:mail-lf1-x133.google.com;CAT:NONE;SFS:(13230040)(69100299015)(1032899013)(7093399015)(4053099003)(13003099007)(8096899003)(2066899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 21 Aug 2025 13:13:53.5763
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: bc9640bd-c780-4ebe-f32f-08dde0b493e5
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DU2PEPF00028D0E.eurprd03.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DBAPR01MB6823
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:01.7115103
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9052.000
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?L0JMSnRNQnVSelF6YVhPU1I5TFBsdVlRKzY3MTFBN3BzZTcwbU44NzdRMk1j?=
+ =?utf-8?B?aDludTJ0ZlUwTGFNSHd6YjcydTUydXpqZ3BWZk50cGRlM0RTa21xZlp1bnJ5?=
+ =?utf-8?B?d3JwN1RaRTVuUkkzdGVHRi9YbGxLRWh4eElRemFJRGZLUitqc2dOUzM5NFZN?=
+ =?utf-8?B?UmFoTjR5aFJiV0NzOGVqbkhQV2JFVXNmMG1tYWlac2hqa2RHQW41eW15TDc2?=
+ =?utf-8?B?TktWNzd1SlNRa1JYVi93cXlZeWc2RVp3Zm9DRENvUFhlZWQ5b0RJNFJZQnVC?=
+ =?utf-8?B?YTFId0txQ29PY2J6NFFtNzBITTN5VUpuOVIxVU1yS2Q2ZVFXYUkxMTZrQm5B?=
+ =?utf-8?B?eGl5WHB5YkkvWEJYY20wRHMrVVhiSUV6Ykt5SXIzSG9md0JYakFYa2FFcWhC?=
+ =?utf-8?B?eE1TSk4xTnRIUFEzYlV1VTJrOWhub2FUNHc4Z2xwalFFVFVhUlZrY1NuS1pQ?=
+ =?utf-8?B?dEdibGxXQllOWStreURtd0tXbUE0d3R4VHlkTEx3akJuT3FldlhMWFFEYXBH?=
+ =?utf-8?B?SlloUWRhTk1pNzMyOHR0bERKR2o1S3AvNllrbUtManlxckp3SlJIZWVDcmJq?=
+ =?utf-8?B?bTZWL1NCZDdHRVhsbThhbjBtZk1jdlZnb2lIVkUrbXQwZmZuZ3UzU3VMbHJ3?=
+ =?utf-8?B?ek5Hc1FMdm5kZWxKR0dlcDRDb0kyd2ZFZ1ZpVE4wZ2JlMzNUOXJ6TFNtVWFu?=
+ =?utf-8?B?RGRrdEFwUmdwTGJNbStZN29pcjQ5S245L0tFcHJFbzFsUE15WjQyU0NadWVk?=
+ =?utf-8?B?ZkhqakxycFE1d1NxUVllc0FkaWJSSm1rQk40Q0FCZVV2ZUkwOWFPbXNneGNx?=
+ =?utf-8?B?SUhrbW9rS05JQlJTYjY3Q0ptbnBMTzNlbUs5Yks0aGovc1BqWm1hcEJBd2xU?=
+ =?utf-8?B?Q1Zrc1luSVpzS3VwQ3paWWtBZERRNnNYRmpYaEIxZngwUG1paWVsMm5jZlk1?=
+ =?utf-8?B?Uk9GZGtuREMxNks0cnhPL0RTbVJzTUswOExPdFMxamI2WjQ5TW9zbDZPTitY?=
+ =?utf-8?B?cWR4RWowaytKTWx0Vml5NFJuNkI0S0hybCtQZmtZTnpjZTBGQ0FuUVFUVXpz?=
+ =?utf-8?B?ZU9iRmVkR2hNQTliOXlycHRqWXNmSTBKTVp6dkRRczFseitwTnZnMGJ0bS9K?=
+ =?utf-8?B?cTJxSTU4MzdvSFd2YW5sTDZGMkwwWXkzT1JhenhmRHJNNFd0cW5VZkNlVHNj?=
+ =?utf-8?B?aE5ZTWdYWG5lRWZnczZNUk8rZ3RnTWthYTJlT3hJTFh3NzI0aWlzS2dNYTBP?=
+ =?utf-8?B?cjZ4aDV0eTJ5M0FCNWFBZXk0QmswdDRTZFE5aUc2aW9BR21jdUFkclNUN0lP?=
+ =?utf-8?B?dW4zNG8wcW1NTjlGOElIYVFGYStya2hQWlVFQlp5Y3ltaDNSK0R3cTJRQkg5?=
+ =?utf-8?B?K2ZtWGJ3K3pQRGlSVjlTQ3h4V2hMT0tuY0Uza0xYV2NGRzdhKzQ0WG1aNWxh?=
+ =?utf-8?B?V2U2bEsvUG1XRWF3bXpvbTIxSzdNMzJ3TUY0bDRvOUxkRlVLNVlKSW9yVlRm?=
+ =?utf-8?B?dEYvVkZFeThIbzdZbFVtdFFoKzU0MmxhbTg4NWgrRHhzajhGMUxRU2MzMzJk?=
+ =?utf-8?B?bGxmVHlCanB5L3p3QXZSdW9IMTAxa1dERzBDbUE4ZS9WSDM2dmRqZ1dHQ1M1?=
+ =?utf-8?B?eVF5K1NqRG55cFNXaENUeFZUN0xCall4Y1dzU2NycHJFcC9tT1AxZnF2OUc0?=
+ =?utf-8?B?a3FjMTl0MllCR3RCUC9aa2syZHZQNDE0cm9SanFxd3lWcW9mT0J0enhseG1n?=
+ =?utf-8?B?QWo1REpyREN3bDJhMmd4bTZiVUxxaG50L29LemZkNEZqQXl5RmNhanI0T0NQ?=
+ =?utf-8?B?QWxMSTZHV2lrYTFuUUZaTmRVRUFzWEVJZTJsenhmejd0d0Nvd1FTZWRpQmZz?=
+ =?utf-8?B?TDVMRDhaVnViY3lRcUhYVEpJUGJ6TDViSXduc3dMc3VnVWoyVFhhdVhpd3Vv?=
+ =?utf-8?B?VkxDZllteC90b0NQSEpBTUJKbndveHhYRkRFRTRXOEJXMUt4R1ZvK01JUlVu?=
+ =?utf-8?B?aUpHYm5IQ00yV1BRdE9IbE5Fd1l0WldWNyt3eDdoM1pjaGhDTWdXRFRsY1p3?=
+ =?utf-8?B?TGVmUjZjU2NTZ1ZKMkdjRXUwQld0ZGIwWURHVEVsMHZySnZiQkFQeFRnb3c5?=
+ =?utf-8?B?UWdiS28rdWVwWGRSTjRlMmtFMXFIYWpvTlROYlNrT2dFbG5QQ1NVcWRCdTJX?=
+ =?utf-8?B?R01lOFRCNG1LenFZanZYN1JaVVVUSnl2ZkV0ejVZWjhGRlRaMEVVYXFCK0l6?=
+ =?utf-8?B?OHBUOWxLazlNbm81TWdMdTloY2t6REJoMmk1SXgvNUY5Z2tNdVhBWFRvNmM5?=
+ =?utf-8?B?TFIwK2pJSTRZNHZnenlPNEZOTEVIbm1BbnpsdUtybGQ0OU1FWS9TUnRlK3JT?=
+ =?utf-8?B?QTZ4VWpFbkNaRlhsL2JQa1lmRVc1eHVoclVLMk9temhjWTlURzR5cnpMMzdz?=
+ =?utf-8?B?cEgyNTdNd3AvQmhZbWFkb2ZhNU54Q2NHalpEMFBnWmR6ZFRTaVBGZ3g3eWM0?=
+ =?utf-8?B?ZHBsS2UvQnFiUS9vY1EyZ2N4Sy9OOWR0TUY5M2x1QUZTTTBMUzZ4akRjTWZZ?=
+ =?utf-8?B?RkpIMjV2b1JkVTJWYjh0bVU4RFpWek1PMkNnUGwxNUVQNGFJUURJbXVUYWhp?=
+ =?utf-8?B?dVdVcHZDQ2QzZ1huZ3hHTUN1WnNET3pydlVwVitxRlEvUzlhakJpK2FzOG1Q?=
+ =?utf-8?Q?Sa0c?=
+MIME-Version: 1.0
+
+--00000000000051302c063cdfdc57
+Content-Type: multipart/alternative; boundary="00000000000051302a063cdfdc56"
+
+--00000000000051302a063cdfdc56
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+=D7=94=D7=99=D7=99 =D7=90=D7=99=D7=AA=D7=9F :)
+
+=D7=9E=D7=A2=D7=91=D7=99=D7=A8=D7=94 =D7=9E=D7=99=D7=99=D7=9C =D7=A9=D7=A7=
+=D7=99=D7=91=D7=9C=D7=AA=D7=99 =D7=9E=D7=A2=D7=95=D7=B4=D7=93 =D7=A9=D7=A4=
+=D7=A0=D7=99=D7=AA=D7=99 =D7=9B=D7=93=D7=99 =D7=9C=D7=94=D7=AA=D7=99=D7=99=
+=D7=A2=D7=A5 =D7=90=D7=99=D7=AA=D7=94. =D7=98=D7=A8=D7=9D =D7=94=D7=A9=D7=
+=91=D7=AA=D7=99 =D7=9C=D7=94. =D7=A7=D7=99=D7=91=D7=9C=D7=AA=D7=99
+=D7=A2=D7=9C=D7=99=D7=94 =D7=94=D7=9E=D7=9C=D7=A6=D7=94 =D7=95=D7=90=D7=95=
+=D7=9C=D7=99 =D7=A9=D7=95=D7=95=D7=94 =D7=9C=D7=91=D7=93=D7=95=D7=A7 =D7=90=
+=D7=99=D7=AA=D7=94.
+
+=D7=98=D7=A0=D7=A7=D7=A1,
+=D7=A0=D7=99=D7=A6=D7=9F
+
+---------- Forwarded message ---------
+From: Rafaella Stylianou <rafaella.stylianou@gvasilioulaw.com>
+Date: Fri, Aug 8, 2025 at 11:40=E2=80=AFAM
+Subject: RE: Coordination Regarding Prenuptial Agreement and Will =E2=80=93=
+ Cyprus
+Residency | Nitsan Landman
+To: Nitsan Landman <nitsanland@gmail.com>
+=E2=80=AACc: =D7=90=D7=99=D7=A8=D7=99=D7=A1 =D7=9C=D7=A0=D7=93=D7=9E=D7=9F =
+<ilandman@gmail.com>, Konstantinos Vasiliou <
+konstantinos.vassiliou@gvasilioulaw.com>=E2=80=AC
+
+
+Dear mrs Landman,
+
+
+
+I trust my email finds you well.
+
+
+
+My apologies for the late reply.
+
+
+
+The Cyprus legal framework doesn=E2=80=99t allow and/or execute and/or reco=
+gnize
+the prenuptial agreements.  Therefore we cannot make one in Cyprus or
+execute one from abroad.
+
+
+
+However, we can assist you with the drafting and preparation of wills.
+
+
+
+Are you in Cyprus at the moment? I will be on annual leave the whole next
+week, but I will be back in the office on the 18th and we can take it from
+there.
+
+
+
+I remain at your disposal for any inquiries you may have.
+
+
+
+Best Regards,
+
+
+
+Rafaella A. Stylianou
+
+Advocate =E2=80=93 Legal Consultant,
+
+Mediator
+
+
+
+***************************************************
+
+*George A. Vasiliou LLC *
+
+Advocates - Legal Consultants
+
+22 Arch. Makarios III Ave.
+
+'Makaria Center', Office 402, 4th floor
+
+6017 Larnaca.
+
+Tel: +357 24622265 / 24622598 / 24622324
+
+Fax: +357 24620269
+
+Email: rafaella.stylianou@gvasilioulaw.com
+
+Web: http://www.gvasilioulaw.com.cy/
+
+P  Save a tree=E2=80=A6Please consider the impact on the environment before
+printing this e-mail.
+
+ ************************************************** *
+
+*IMPORTANT NOTICE:*
+
+
+
+This communication is strictly confidential and intended solely for the
+person to whom it is addressed, and it may be legally privileged. If you
+are not the intended recipient or have received this communication in error
+you may not copy, forward, disclose or use any part of it, please do not
+read it or show it to any other person, but notify us immediately and then
+delete it from your computer. Any unauthorised disclosure of information
+contained in this communication is strictly prohibited.
+
+
+
+No contract may be concluded on behalf of George A. Vasiliou LLC, nor
+service of process accepted, by email.
+
+
+
+
+
+
+
+*From:* Nitsan Landman <nitsanland@gmail.com>
+*Sent:* 04 August 2025 10:36
+*To:* Rafaella Stylianou <rafaella.stylianou@gvasilioulaw.com>
+*Cc:* =D7=90=D7=99=D7=A8=D7=99=D7=A1 =D7=9C=D7=A0=D7=93=D7=9E=D7=9F <ilandm=
+an@gmail.com>
+*Subject:* Re: Coordination Regarding Prenuptial Agreement and Will =E2=80=
+=93
+Cyprus Residency | Nitsan Landman
+
+
+
+Dear Rafaella,
+
+I hope you're doing well.
+I=E2=80=99m following up on my email from July 24th regarding setting up a =
+meeting
+to discuss the legal framework for a prenuptial agreement and will, in
+light of our relocation to Cyprus and upcoming change of status as
+permanent residents.
+
+We are currently coordinating the Israeli side with our local lawyers and
+would greatly appreciate your guidance on the Cypriot legal aspect.
+I also tried to reach you by phone at 24505979 today to see if we might
+coordinate directly.
+
+Looking forward to your reply and hoping we can set up a time to speak.
+
+Warm regards,
+Nitsan
+
+
+
+On Thu, Jul 24, 2025 at 6:54=E2=80=AFPM Nitsan Landman <nitsanland@gmail.co=
+m> wrote:
+
+Dear Rafaela,
+I hope this message finds you well.
+
+I was referred to you by attorney Lea Akko, who spoke very highly of you.
+My partner and I are Israeli citizens currently in the process of
+relocating to Cyprus, and we are about to become permanent residents.
+
+We are considering either getting married or registering as civil partners
+and wish to establish a mutual agreement in advance regarding our financial
+and personal arrangements. In parallel, we are also exploring the
+preparation of a will.
+
+At the moment, we are working with an Israeli law firm (attorneys Yifat and
+Sheli) to define the legal framework and intent of the agreement on the
+Israeli side.
+
+I would be grateful to coordinate a meeting with you, to better understand
+the applicable laws in Cyprus regarding prenuptial agreements and wills,
+and to ensure the process is handled correctly on *both sides*.
+
+Looking forward to hearing from you,
+
+Warm regards,
+Nitsan Landman
+
+
+
+--=20
+
+
+
+*=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=A0=D7=93=D7=9E=D7=9F*
+
+*nitsanland**@gmail.com <office@nitsanlandman.com>*
+
+
+
+*nitsanlandman.com* <https://nitsanlandman.com>
+
+
+
+[image: Image removed by sender.]
+<https://www.youtube.com/@nitsanlandman>[image:
+Image removed by sender.] <https://podcast.nitsanlandman.com/>[image: Image
+removed by sender.] <https://www.linkedin.com/in/nitsanlandman/>[image:
+Image removed by sender.]
+<https://www.facebook.com/groups/influencersil>[image:
+Image removed by sender.] <https://www.instagram.com/nitsanlandman/>[image:
+Image removed by sender.] <https://www.tiktok.com/@nitsanlandman>
+
+
+
+
+--=20
+
+
+
+*=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=A0=D7=93=D7=9E=D7=9F*
+
+*nitsanland**@gmail.com <office@nitsanlandman.com>*
+
+
+
+*nitsanlandman.com* <https://nitsanlandman.com>
+
+
+
+[image: Image removed by sender.]
+<https://www.youtube.com/@nitsanlandman>[image:
+Image removed by sender.] <https://podcast.nitsanlandman.com/>[image: Image
+removed by sender.] <https://www.linkedin.com/in/nitsanlandman/>[image:
+Image removed by sender.]
+<https://www.facebook.com/groups/influencersil>[image:
+Image removed by sender.] <https://www.instagram.com/nitsanlandman/>[image:
+Image removed by sender.] <https://www.tiktok.com/@nitsanlandman>
+
+
+
+
+--=20
+
+=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=A0=D7=93=D7=9E=D7=9F
+
+*nitsanland@gmail.com <office@nitsanlandman.com>*
+
+
+nitsanlandman.com
+
+
+<https://www.youtube.com/@nitsanlandman>
+<https://podcast.nitsanlandman.com/>
+<https://www.linkedin.com/in/nitsanlandman/>
+<https://www.facebook.com/groups/influencersil>
+<https://www.instagram.com/nitsanlandman/>
+<https://www.tiktok.com/@nitsanlandman>
+
+--00000000000051302a063cdfdc56
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><d=
+iv dir=3D"ltr"><div class=3D"gmail_default" style=3D"font-size:small;color:=
+#000000" dir=3D"rtl">=D7=94=D7=99=D7=99 =D7=90=D7=99=D7=AA=D7=9F :)</div><d=
+iv class=3D"gmail_default" style=3D"font-size:small;color:#000000" dir=3D"r=
+tl"><br></div><div class=3D"gmail_default" style=3D"font-size:small;color:#=
+000000" dir=3D"rtl">=D7=9E=D7=A2=D7=91=D7=99=D7=A8=D7=94 =D7=9E=D7=99=D7=99=
+=D7=9C =D7=A9=D7=A7=D7=99=D7=91=D7=9C=D7=AA=D7=99 =D7=9E=D7=A2=D7=95=D7=B4=
+=D7=93 =D7=A9=D7=A4=D7=A0=D7=99=D7=AA=D7=99 =D7=9B=D7=93=D7=99 =D7=9C=D7=94=
+=D7=AA=D7=99=D7=99=D7=A2=D7=A5 =D7=90=D7=99=D7=AA=D7=94. =D7=98=D7=A8=D7=9D=
+ =D7=94=D7=A9=D7=91=D7=AA=D7=99 =D7=9C=D7=94. =D7=A7=D7=99=D7=91=D7=9C=D7=
+=AA=D7=99 =D7=A2=D7=9C=D7=99=D7=94 =D7=94=D7=9E=D7=9C=D7=A6=D7=94 =D7=95=D7=
+=90=D7=95=D7=9C=D7=99 =D7=A9=D7=95=D7=95=D7=94 =D7=9C=D7=91=D7=93=D7=95=D7=
+=A7 =D7=90=D7=99=D7=AA=D7=94.</div><div class=3D"gmail_default" style=3D"fo=
+nt-size:small;color:#000000" dir=3D"rtl"><br></div><div class=3D"gmail_defa=
+ult" style=3D"font-size:small;color:#000000" dir=3D"rtl">=D7=98=D7=A0=D7=A7=
+=D7=A1,</div><div class=3D"gmail_default" style=3D"font-size:small;color:#0=
+00000" dir=3D"rtl">=D7=A0=D7=99=D7=A6=D7=9F</div><br><div class=3D"gmail_qu=
+ote gmail_quote_container"><div dir=3D"ltr" class=3D"gmail_attr">----------=
+ Forwarded message ---------<br>From: <strong class=3D"gmail_sendername" di=
+r=3D"auto">Rafaella Stylianou</strong> <span dir=3D"auto">&lt;<a href=3D"ma=
+ilto:rafaella.stylianou@gvasilioulaw.com">rafaella.stylianou@gvasilioulaw.c=
+om</a>&gt;</span><br>Date: Fri, Aug 8, 2025 at 11:40=E2=80=AFAM<br>Subject:=
+ RE: Coordination Regarding Prenuptial Agreement and Will =E2=80=93 Cyprus =
+Residency | Nitsan Landman<br>To: Nitsan Landman &lt;<a href=3D"mailto:nits=
+anland@gmail.com">nitsanland@gmail.com</a>&gt;<br>=E2=80=AACc: =D7=90=D7=99=
+=D7=A8=D7=99=D7=A1 =D7=9C=D7=A0=D7=93=D7=9E=D7=9F &lt;<a href=3D"mailto:ila=
+ndman@gmail.com">ilandman@gmail.com</a>&gt;, Konstantinos Vasiliou &lt;<a h=
+ref=3D"mailto:konstantinos.vassiliou@gvasilioulaw.com">konstantinos.vassili=
+ou@gvasilioulaw.com</a>&gt;=E2=80=AC<br></div><br><br><div class=3D"msg-428=
+8826425567192449">
+
+
+
+
+
+<div lang=3D"EN-GB" link=3D"blue" vlink=3D"purple" style=3D"word-wrap:break=
+-word">
+<div class=3D"m_-4288826425567192449WordSection1">
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">Dear mrs Landman,<u=
+></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">I trust my email fi=
+nds you well.
+<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">My apologies for th=
+e late reply.<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">The Cyprus legal fr=
+amework doesn=E2=80=99t allow and/or execute and/or recognize the prenuptia=
+l agreements.&nbsp; Therefore we cannot make one in Cyprus or execute one f=
+rom abroad.<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">However, we can ass=
+ist you with the drafting and preparation of wills.<u></u><u></u></span></p=
+>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">Are you in Cyprus a=
+t the moment? I will be on annual leave the whole next week, but I will be =
+back in the office on the 18<sup>th</sup> and we can take it from there.<u>=
+</u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt">I remain at your di=
+sposal for any inquiries you may have.<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Best Regards,<u></u><u=
+></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d"><u></u>&nbsp;<u></u></=
+span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Rafaella A. Stylianou<=
+u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Advocate =E2=80=93 Leg=
+al Consultant,&nbsp;
+<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Mediator</span><span l=
+ang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;Calibri&quot;,san=
+s-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:black">&nbsp;<u></u><u></u></sp=
+an></p>
+<p class=3D"MsoNormal"><b><span lang=3D"EN-US" style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Calibri&quot;,sans-serif;color:#1f497d">*******************=
+******************************</span></b><span lang=3D"EN-US" style=3D"font=
+-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;color:black"><u></u=
+><u></u></span></p>
+<p class=3D"MsoNormal"><b><span lang=3D"EN-US" style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Calibri&quot;,sans-serif;color:#1f497d">George A. Vasiliou =
+LLC
+</span></b><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot=
+;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Advocates - Legal Cons=
+ultants
+</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;Cal=
+ibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">22 Arch. Makarios III =
+Ave.
+</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;Cal=
+ibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">'Makaria Center', Offi=
+ce 402, 4th floor</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font=
+-family:&quot;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span></=
+p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">6017 Larnaca.</span><s=
+pan lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;Calibri&quot=
+;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Tel: +357 24622265 / 2=
+4622598 / 24622324<u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Fax: +357 24620269</sp=
+an><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;Calibri=
+&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Email:
+</span><span lang=3D"EL" style=3D"font-size:11.0pt;font-family:&quot;Calibr=
+i&quot;,sans-serif"><a href=3D"mailto:rafaella.stylianou@gvasilioulaw.com" =
+target=3D"_blank"><span lang=3D"EN-US" style=3D"color:#0563c1">rafaella.sty=
+lianou@gvasilioulaw.com</span></a></span><span style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span>=
+</p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">Web:
+</span><span style=3D"font-size:11.0pt;font-family:&quot;Calibri&quot;,sans=
+-serif"><a href=3D"http://www.gvasilioulaw.com.cy/" target=3D"_blank">http:=
+//www.gvasilioulaw.com.cy/</a></span><span lang=3D"EN-US" style=3D"font-siz=
+e:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;color:black"><u></u><u>=
+</u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:8.0pt;font-family:Webdings;=
+color:#92d050">P</span><span lang=3D"EN-US" style=3D"font-size:8.0pt;font-f=
+amily:&quot;Calibri&quot;,sans-serif;color:#92d050">&nbsp; Save a tree=E2=
+=80=A6Please consider the impact on the environment before printing
+ this e-mail.</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-fam=
+ily:&quot;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">&nbsp;<b>*************=
+************************************
+</b></span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot=
+;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><b><span lang=3D"EN-US" style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Calibri&quot;,sans-serif;color:#1f497d">IMPORTANT NOTICE:</=
+span></b><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-family:&quot;C=
+alibri&quot;,sans-serif;color:black"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:black">&nbsp;<u></u><u></u></sp=
+an></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">This communication is =
+strictly confidential and intended solely for the person to whom it is addr=
+essed, and it may be legally privileged. If you
+ are not the intended recipient or have received this communication in erro=
+r you may not copy, forward, disclose or use any part of it, please do not =
+read it or show it to any other person, but notify us immediately and then =
+delete it from your computer. Any
+ unauthorised disclosure of information contained in this communication is =
+strictly prohibited.</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;f=
+ont-family:&quot;Calibri&quot;,sans-serif;color:black"><u></u><u></u></span=
+></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:black">&nbsp;<u></u><u></u></sp=
+an></p>
+<p class=3D"MsoNormal"><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-=
+family:&quot;Calibri&quot;,sans-serif;color:#1f497d">No contract may be con=
+cluded on behalf of George A. Vasiliou LLC, nor service of process accepted=
+, by email.</span><span lang=3D"EN-US" style=3D"font-size:11.0pt;font-famil=
+y:&quot;Calibri&quot;,sans-serif"><u></u><u></u></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><u></u>&nbsp;<u></u=
+></span></p>
+<div style=3D"border:none;border-top:solid #e1e1e1 1.0pt;padding:3.0pt 0cm =
+0cm 0cm">
+<p class=3D"MsoNormal"><b><span lang=3D"EN-US" style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Calibri&quot;,sans-serif">From:</span></b><span lang=3D"EN-=
+US" style=3D"font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif"> =
+Nitsan Landman &lt;<a href=3D"mailto:nitsanland@gmail.com" target=3D"_blank=
+">nitsanland@gmail.com</a>&gt;
+<br>
+<b>Sent:</b> 04 August 2025 10:36<br>
+<b>To:</b> Rafaella Stylianou &lt;<a href=3D"mailto:rafaella.stylianou@gvas=
+ilioulaw.com" target=3D"_blank">rafaella.stylianou@gvasilioulaw.com</a>&gt;=
+<br>
+<b>Cc:</b> =D7=90=D7=99=D7=A8=D7=99=D7=A1 =D7=9C=D7=A0=D7=93=D7=9E=D7=9F &l=
+t;<a href=3D"mailto:ilandman@gmail.com" target=3D"_blank">ilandman@gmail.co=
+m</a>&gt;<br>
+<b>Subject:</b> Re: Coordination Regarding Prenuptial Agreement and Will =
+=E2=80=93 Cyprus Residency | Nitsan Landman<u></u><u></u></span></p>
+</div>
+<p class=3D"MsoNormal"><u></u>&nbsp;<u></u></p>
+<div>
+<div>
+<p class=3D"MsoNormal"><span style=3D"color:black">Dear Rafaella,<br>
+<br>
+I hope you're doing well.<br>
+I=E2=80=99m following up on my email from July 24th regarding setting up a =
+meeting to discuss the legal framework for a prenuptial agreement and will,=
+ in light of our relocation to Cyprus and upcoming change of status as perm=
+anent residents.<br>
+<br>
+We are currently coordinating the Israeli side with our local lawyers and w=
+ould greatly appreciate your guidance on the Cypriot legal aspect.<br>
+I also tried to reach you by phone at 24505979 today to see if we might coo=
+rdinate directly.<br>
+<br>
+Looking forward to your reply and hoping we can set up a time to speak.<br>
+<br>
+Warm regards,<br>
+Nitsan<u></u><u></u></span></p>
+</div>
+</div>
+<p class=3D"MsoNormal"><u></u>&nbsp;<u></u></p>
+<div>
+<div>
+<p class=3D"MsoNormal">On Thu, Jul 24, 2025 at 6:54<span style=3D"font-fami=
+ly:&quot;Arial&quot;,sans-serif">=E2=80=AF</span>PM Nitsan Landman &lt;<a h=
+ref=3D"mailto:nitsanland@gmail.com" target=3D"_blank">nitsanland@gmail.com<=
+/a>&gt; wrote:<u></u><u></u></p>
+</div>
+<blockquote style=3D"border:none;border-right:solid #cccccc 1.0pt;padding:0=
+cm 0cm 0cm 6.0pt;margin-left:4.8pt;margin-right:0cm">
+<div>
+<div>
+<p><span style=3D"color:black">Dear Rafaela,<br>
+I hope this message finds you well.</span><u></u><u></u></p>
+<p><span style=3D"color:black">I was referred to you by attorney Lea Akko, =
+who spoke very highly of you. My partner and I are Israeli citizens current=
+ly in the process of relocating to Cyprus, and we are about to become perma=
+nent residents.</span><u></u><u></u></p>
+<p><span style=3D"color:black">We are considering either getting married or=
+ registering as civil partners and wish to establish a mutual agreement in =
+advance regarding our financial and personal arrangements. In parallel, we =
+are also exploring the preparation
+ of a will.</span><u></u><u></u></p>
+<p><span style=3D"color:black">At the moment, we are working with an Israel=
+i law firm (attorneys Yifat and Sheli) to define the legal framework and in=
+tent of the agreement on the Israeli side.</span><u></u><u></u></p>
+<p><span style=3D"color:black">I would be grateful to coordinate a meeting =
+with you,<span class=3D"m_-4288826425567192449gmaildefault">&nbsp;</span>to=
+ better understand the applicable laws in Cyprus regarding prenuptial agree=
+ments and wills, and to ensure the process is handled correctly
+ on <u>both sides</u>.</span><u></u><u></u></p>
+<p style=3D"margin-bottom:12.0pt"><span style=3D"color:black">Looking forwa=
+rd to hearing from you,</span><u></u><u></u></p>
+<p><span style=3D"color:black">Warm regards,<br>
+Nitsan Landman</span><u></u><u></u></p>
+</div>
+<div>
+<p class=3D"MsoNormal"><u></u>&nbsp;<u></u></p>
+</div>
+<p class=3D"MsoNormal"><span class=3D"m_-4288826425567192449gmailsignaturep=
+refix">-- </span><u></u><u></u></p>
+<div>
+<div>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span dir=3D"LTR"><u></u>&nbsp;<u></u></span></p>
+<div align=3D"left">
+<table dir=3D"rtl" border=3D"0" cellspacing=3D"0" cellpadding=3D"0" style=
+=3D"border-collapse:collapse">
+<tbody>
+<tr style=3D"height:27.4pt">
+<td valign=3D"top" style=3D"border:none;border-top:solid #888888 2.25pt;pad=
+ding:5.0pt 5.0pt 5.0pt 5.0pt;height:27.4pt;overflow:hidden">
+<p dir=3D"RTL" style=3D"margin:1.0pt;text-align:right;direction:rtl;unicode=
+-bidi:embed">
+<b><span lang=3D"HE" style=3D"font-size:10.5pt;font-family:&quot;Arial&quot=
+;,sans-serif;color:black">=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=A0=D7=93=D7=9E=
+=D7=9F</span></b><span lang=3D"AR-SA"><u></u><u></u></span></p>
+</td>
+<td style=3D"border:none;border-top:solid #888887 2.25pt;padding:1.0pt 0cm =
+1.0pt 0cm;height:27.4pt;overflow:hidden">
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<u><span dir=3D"LTR" style=3D"font-size:10.5pt;font-family:&quot;Arial&quot=
+;,sans-serif;color:#888888">nitsanland</span></u><u><span lang=3D"AR-SA" di=
+r=3D"LTR"><a href=3D"mailto:office@nitsanlandman.com" target=3D"_blank"><sp=
+an dir=3D"RTL"></span><span dir=3D"RTL"></span><span dir=3D"RTL" style=3D"f=
+ont-size:10.5pt;font-family:&quot;Arial&quot;,sans-serif;color:#888888"><sp=
+an dir=3D"RTL"></span><span dir=3D"RTL"></span>@</span><span lang=3D"EN-GB"=
+ style=3D"font-size:10.5pt;font-family:&quot;Arial&quot;,sans-serif;color:#=
+888888">gmail.com</span></a></span></u><span lang=3D"AR-SA"><u></u><u></u><=
+/span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><u></u>&nbsp;<u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><a href=3D"https://nitsanlandman.com" target=3D"_blank=
+"><b><span lang=3D"EN-GB" dir=3D"LTR" style=3D"font-size:10.5pt;font-family=
+:&quot;Arial&quot;,sans-serif;color:#d1693c">nitsanlandman.com</span></b></=
+a><u></u><u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><u></u>&nbsp;<u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<a href=3D"https://www.youtube.com/@nitsanlandman" target=3D"_blank"><span =
+dir=3D"LTR" style=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#1155cc;border:none windowtext 1.0pt;padding:0cm;text-decoration:=
+none"><img border=3D"0" width=3D"27" height=3D"27" style=3D"width:.2812in;h=
+eight:.2812in" id=3D"m_-4288826425567192449Picture_x0020_1" src=3D"cid:ii_1=
+98ccc20b46bef104ff1" alt=3D"Image removed by sender."></span></a><a href=3D=
+"https://podcast.nitsanlandman.com/" target=3D"_blank"><span dir=3D"LTR" st=
+yle=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#115=
+5cc;border:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img bor=
+der=3D"0" width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in"=
+ id=3D"m_-4288826425567192449Picture_x0020_2" src=3D"cid:ii_198ccc20b46bef1=
+04ff1" alt=3D"Image removed by sender."></span></a><a href=3D"https://www.l=
+inkedin.com/in/nitsanlandman/" target=3D"_blank"><span dir=3D"LTR" style=3D=
+"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;bo=
+rder:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D=
+"0" width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D=
+"m_-4288826425567192449Picture_x0020_3" src=3D"cid:ii_198ccc20b46bef104ff1"=
+ alt=3D"Image removed by sender."></span></a><a href=3D"https://www.faceboo=
+k.com/groups/influencersil" target=3D"_blank"><span dir=3D"LTR" style=3D"fo=
+nt-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;borde=
+r:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0"=
+ width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_=
+-4288826425567192449Picture_x0020_4" src=3D"cid:ii_198ccc20b46bef104ff1" al=
+t=3D"Image removed by sender."></span></a><a href=3D"https://www.instagram.=
+com/nitsanlandman/" target=3D"_blank"><span dir=3D"LTR" style=3D"font-size:=
+11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;border:none w=
+indowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0" width=
+=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_-42888=
+26425567192449Picture_x0020_5" src=3D"cid:ii_198ccc20b46bef104ff1" alt=3D"I=
+mage removed by sender."></span></a><a href=3D"https://www.tiktok.com/@nits=
+anlandman" target=3D"_blank"><span dir=3D"LTR" style=3D"font-size:11.0pt;fo=
+nt-family:&quot;Arial&quot;,sans-serif;color:#1155cc;border:none windowtext=
+ 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0" width=3D"27" hei=
+ght=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_-4288826425567192=
+449Picture_x0020_6" src=3D"cid:ii_198ccc20b46bef104ff1" alt=3D"Image remove=
+d by sender."></span></a><span lang=3D"AR-SA"><u></u><u></u></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</blockquote>
+</div>
+<div>
+<p class=3D"MsoNormal"><br clear=3D"all">
+<span lang=3D"AR-SA" dir=3D"RTL"><u></u><u></u></span></p>
+</div>
+<div>
+<p class=3D"MsoNormal"><u></u>&nbsp;<u></u></p>
+</div>
+<p class=3D"MsoNormal"><span class=3D"m_-4288826425567192449gmailsignaturep=
+refix">-- </span><u></u><u></u></p>
+<div>
+<div>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span dir=3D"LTR"><u></u>&nbsp;<u></u></span></p>
+<div align=3D"left">
+<table dir=3D"rtl" border=3D"0" cellspacing=3D"0" cellpadding=3D"0" style=
+=3D"border-collapse:collapse">
+<tbody>
+<tr style=3D"height:27.4pt">
+<td valign=3D"top" style=3D"border:none;border-top:solid #888888 2.25pt;pad=
+ding:5.0pt 5.0pt 5.0pt 5.0pt;height:27.4pt;overflow:hidden">
+<p dir=3D"RTL" style=3D"margin:1.0pt;text-align:right;direction:rtl;unicode=
+-bidi:embed">
+<b><span lang=3D"HE" style=3D"font-size:10.5pt;font-family:&quot;Arial&quot=
+;,sans-serif;color:black">=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=A0=D7=93=D7=9E=
+=D7=9F</span></b><span lang=3D"AR-SA"><u></u><u></u></span></p>
+</td>
+<td style=3D"border:none;border-top:solid #888887 2.25pt;padding:1.0pt 0cm =
+1.0pt 0cm;height:27.4pt;overflow:hidden">
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<u><span dir=3D"LTR" style=3D"font-size:10.5pt;font-family:&quot;Arial&quot=
+;,sans-serif;color:#888888">nitsanland</span></u><u><span lang=3D"AR-SA" di=
+r=3D"LTR"><a href=3D"mailto:office@nitsanlandman.com" target=3D"_blank"><sp=
+an dir=3D"RTL"></span><span dir=3D"RTL"></span><span dir=3D"RTL" style=3D"f=
+ont-size:10.5pt;font-family:&quot;Arial&quot;,sans-serif;color:#888888"><sp=
+an dir=3D"RTL"></span><span dir=3D"RTL"></span>@</span><span lang=3D"EN-GB"=
+ style=3D"font-size:10.5pt;font-family:&quot;Arial&quot;,sans-serif;color:#=
+888888">gmail.com</span></a></span></u><span lang=3D"AR-SA"><u></u><u></u><=
+/span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><u></u>&nbsp;<u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><a href=3D"https://nitsanlandman.com" target=3D"_blank=
+"><b><span lang=3D"EN-GB" dir=3D"LTR" style=3D"font-size:10.5pt;font-family=
+:&quot;Arial&quot;,sans-serif;color:#d1693c">nitsanlandman.com</span></b></=
+a><u></u><u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"AR-SA"><u></u>&nbsp;<u></u></span></p>
+<p dir=3D"RTL" style=3D"margin-right:0cm;margin-bottom:1.0pt;margin-left:1.=
+0pt;text-align:right;direction:rtl;unicode-bidi:embed">
+<a href=3D"https://www.youtube.com/@nitsanlandman" target=3D"_blank"><span =
+dir=3D"LTR" style=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-se=
+rif;color:#1155cc;border:none windowtext 1.0pt;padding:0cm;text-decoration:=
+none"><img border=3D"0" width=3D"27" height=3D"27" style=3D"width:.2812in;h=
+eight:.2812in" id=3D"m_-4288826425567192449Picture_x0020_7" src=3D"cid:ii_1=
+98ccc20b46bef104ff1" alt=3D"Image removed by sender."></span></a><a href=3D=
+"https://podcast.nitsanlandman.com/" target=3D"_blank"><span dir=3D"LTR" st=
+yle=3D"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#115=
+5cc;border:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img bor=
+der=3D"0" width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in"=
+ id=3D"m_-4288826425567192449Picture_x0020_8" src=3D"cid:ii_198ccc20b46bef1=
+04ff1" alt=3D"Image removed by sender."></span></a><a href=3D"https://www.l=
+inkedin.com/in/nitsanlandman/" target=3D"_blank"><span dir=3D"LTR" style=3D=
+"font-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;bo=
+rder:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D=
+"0" width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D=
+"m_-4288826425567192449Picture_x0020_9" src=3D"cid:ii_198ccc20b46bef104ff1"=
+ alt=3D"Image removed by sender."></span></a><a href=3D"https://www.faceboo=
+k.com/groups/influencersil" target=3D"_blank"><span dir=3D"LTR" style=3D"fo=
+nt-size:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;borde=
+r:none windowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0"=
+ width=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_=
+-4288826425567192449Picture_x0020_10" src=3D"cid:ii_198ccc20b46bef104ff1" a=
+lt=3D"Image removed by sender."></span></a><a href=3D"https://www.instagram=
+.com/nitsanlandman/" target=3D"_blank"><span dir=3D"LTR" style=3D"font-size=
+:11.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#1155cc;border:none =
+windowtext 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0" width=
+=3D"27" height=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_-42888=
+26425567192449Picture_x0020_11" src=3D"cid:ii_198ccc20b46bef104ff1" alt=3D"=
+Image removed by sender."></span></a><a href=3D"https://www.tiktok.com/@nit=
+sanlandman" target=3D"_blank"><span dir=3D"LTR" style=3D"font-size:11.0pt;f=
+ont-family:&quot;Arial&quot;,sans-serif;color:#1155cc;border:none windowtex=
+t 1.0pt;padding:0cm;text-decoration:none"><img border=3D"0" width=3D"27" he=
+ight=3D"27" style=3D"width:.2812in;height:.2812in" id=3D"m_-428882642556719=
+2449Picture_x0020_12" src=3D"cid:ii_198ccc20b46bef104ff1" alt=3D"Image remo=
+ved by sender."></span></a><span lang=3D"AR-SA"><u></u><u></u></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class=3D"MsoNormal"><u></u>&nbsp;<u></u></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</div></div><div><br clear=3D"all"></div><div><br></div><span class=3D"gmai=
+l_signature_prefix">-- </span><br><div dir=3D"rtl" class=3D"gmail_signature=
+" data-smartmail=3D"gmail_signature"><div dir=3D"ltr"><div dir=3D"rtl"><spa=
+n><br><div dir=3D"rtl" style=3D"margin-right:0pt;text-align:left"><table st=
+yle=3D"text-align:right;border:none;border-collapse:collapse"><colgroup><co=
+l width=3D"161"><col width=3D"194"></colgroup><tbody><tr style=3D"height:27=
+.396484374999996pt"><td dir=3D"ltr" style=3D"border-top:solid #888888 2.25p=
+t;vertical-align:top;padding:5pt 5pt 5pt 5pt;overflow:hidden"><p dir=3D"rtl=
+" style=3D"line-height:1.37143;margin:1pt"><span style=3D"font-size:10.5pt;=
+font-family:Arial,sans-serif;color:rgb(0,0,0);background-color:transparent;=
+font-weight:700;vertical-align:baseline">=D7=A0=D7=99=D7=A6=D7=9F =D7=9C=D7=
+=A0=D7=93=D7=9E=D7=9F</span></p></td><td dir=3D"ltr" style=3D"border-top:so=
+lid #888887 2.25pt;vertical-align:middle;padding:1pt 0pt 1pt 0pt;overflow:h=
+idden"><p dir=3D"rtl" style=3D"line-height:1.37143;margin-left:1pt;margin-t=
+op:1pt;margin-bottom:1pt"><u><span style=3D"font-size:10.5pt;font-family:Ar=
+ial,sans-serif;color:rgb(136,136,136);background-color:transparent;vertical=
+-align:baseline">nitsanland</span><a href=3D"mailto:office@nitsanlandman.co=
+m" target=3D"_blank"><span style=3D"font-size:10.5pt;font-family:Arial,sans=
+-serif;color:rgb(136,136,136);background-color:transparent;vertical-align:b=
+aseline">@gmail.com</span></a></u></p><p dir=3D"rtl" style=3D"line-height:1=
+.37143;margin-left:1pt;margin-top:1pt;margin-bottom:1pt"><br></p><p dir=3D"=
+rtl" style=3D"line-height:1.37143;margin-left:1pt;margin-top:1pt;margin-bot=
+tom:1pt"><a href=3D"https://nitsanlandman.com" target=3D"_blank"><span styl=
+e=3D"font-size:10.5pt;font-family:Arial,sans-serif;color:rgb(209,105,60);ba=
+ckground-color:transparent;font-weight:700;vertical-align:baseline">nitsanl=
+andman.com</span></a></p><p dir=3D"rtl" style=3D"line-height:1.37143;margin=
+-left:1pt;margin-top:1pt;margin-bottom:1pt"><br></p><p dir=3D"rtl" style=3D=
+"line-height:1.2;margin-left:1pt;margin-top:1pt;margin-bottom:1pt"><a href=
+=3D"https://www.youtube.com/@nitsanlandman" target=3D"_blank"><span style=
+=3D"font-size:11pt;font-family:Arial,sans-serif;color:rgb(17,85,204);backgr=
+ound-color:transparent;vertical-align:baseline"><span style=3D"border:none;=
+display:inline-block;overflow:hidden;width:27px;height:27px"><img src=3D"ht=
+tps://lh7-us.googleusercontent.com/docsz/AD_4nXcHTea5x1Z0o7YMCkw0rJlsMqCz9b=
+-veIrltNV4tTOu69viBqYfuDuJ8N_Y0dmNaGmFq6EkmzOYO_lBSDTQC9yKB1DsSa-q0ar13OM_D=
+fk6vT73t-nzGi5Y3aFFyKNwjf_0KfORYHc6RFgMOgkgliKiPNwB?key=3DtmAA0lXwHbEBPfLNc=
+f-hjQ" width=3D"27" height=3D"27" style=3D"margin-left:0px;margin-top:0px">=
+</span></span></a><a href=3D"https://podcast.nitsanlandman.com/" target=3D"=
+_blank"><span style=3D"font-size:11pt;font-family:Arial,sans-serif;color:rg=
+b(17,85,204);background-color:transparent;vertical-align:baseline"><span st=
+yle=3D"border:none;display:inline-block;overflow:hidden;width:27px;height:2=
+7px"><img src=3D"https://lh7-us.googleusercontent.com/docsz/AD_4nXehVZchBn3=
+iQmLV6Mcp7rHrhlW_Bgal1X8kcUquc3lG4nPUx5ghvUtX21nzo4q30XR_OV55tEF2xaaEIkaijF=
+6o1dhEQ7uYPXSzbSyRR6IgOjuglPyUcNlWuzosiCAaAY8FvYqtYxoKTZp45ELvz2RWM10?key=
+=3DtmAA0lXwHbEBPfLNcf-hjQ" width=3D"27" height=3D"27" style=3D"margin-left:=
+0px;margin-top:0px"></span></span></a><a href=3D"https://www.linkedin.com/i=
+n/nitsanlandman/" target=3D"_blank"><span style=3D"font-size:11pt;font-fami=
+ly:Arial,sans-serif;color:rgb(17,85,204);background-color:transparent;verti=
+cal-align:baseline"><span style=3D"border:none;display:inline-block;overflo=
+w:hidden;width:27px;height:27px"><img src=3D"https://lh7-us.googleuserconte=
+nt.com/docsz/AD_4nXePc2in9M1lY0cQ7t3Ojq_cJT8Y85eP87fWiPKVhSvMpl4NgWFX-i_08r=
+0b96jSDrVp7OWBNjW22th9ufN_RnDh58yZXpc1xagFnMS9xD0wYHR2F6FE0zCULUkhIK9Z9sOD8=
+k_4Q0JupWfJyZu1vIABUlbz?key=3DtmAA0lXwHbEBPfLNcf-hjQ" width=3D"27" height=
+=3D"27" style=3D"margin-left:0px;margin-top:0px"></span></span></a><a href=
+=3D"https://www.facebook.com/groups/influencersil" target=3D"_blank"><span =
+style=3D"font-size:11pt;font-family:Arial,sans-serif;color:rgb(17,85,204);b=
+ackground-color:transparent;vertical-align:baseline"><span style=3D"border:=
+none;display:inline-block;overflow:hidden;width:27px;height:27px"><img src=
+=3D"https://lh7-us.googleusercontent.com/docsz/AD_4nXf-ahNXUcZi69YaUmzf8Mzy=
+K6XRuyTP5i3OIQvo71IwD_WTTDyCgtNL5pxSvn7DXyJrW1olk0itJC4L518KxZr5n26T9pZ9pxd=
+4yczYdMtywyDfeVj6K7P6QBtZ46dzK2KNG0e5CU37G0yC-VZt2YS8zBo?key=3DtmAA0lXwHbEB=
+PfLNcf-hjQ" width=3D"27" height=3D"27" style=3D"margin-left:0px;margin-top:=
+0px"></span></span></a><a href=3D"https://www.instagram.com/nitsanlandman/"=
+ target=3D"_blank"><span style=3D"font-size:11pt;font-family:Arial,sans-ser=
+if;color:rgb(17,85,204);background-color:transparent;vertical-align:baselin=
+e"><span style=3D"border:none;display:inline-block;overflow:hidden;width:27=
+px;height:27px"><img src=3D"https://lh7-us.googleusercontent.com/docsz/AD_4=
+nXdxQObV9u61FOsc4qP5fK196a45nb0TLD6IFnBj8p_tmJ88HIMeQ214KYMuJmWpK8Z8nl24YDq=
+vC7z005hev1yfHdRP47SEB2TeGMVtVrQXA121OB7w-av8wdeEYm-pgV58vDVdCDQgNl4P31JOyb=
+4o-cc?key=3DtmAA0lXwHbEBPfLNcf-hjQ" width=3D"27" height=3D"27" style=3D"mar=
+gin-left:0px;margin-top:0px"></span></span></a><a href=3D"https://www.tikto=
+k.com/@nitsanlandman" target=3D"_blank"><span style=3D"font-size:11pt;font-=
+family:Arial,sans-serif;color:rgb(17,85,204);background-color:transparent;v=
+ertical-align:baseline"><span style=3D"border:none;display:inline-block;ove=
+rflow:hidden;width:27px;height:27px"><img src=3D"https://lh7-us.googleuserc=
+ontent.com/docsz/AD_4nXezKe9HC0DJQML3PzKFmNLNpV-h2p5zl0vJzvBcXM3JJgz2suf8zU=
+uCYDrJ41J7AuVSRq8dNAKQFRBWErCG5xFpSXt9ydaorwLxHXyfQC8wODkiOl2NTEouupf_ZI_nx=
+-_VlMHc5-7SgG7Kk4wtUElpBNGc?key=3DtmAA0lXwHbEBPfLNcf-hjQ" width=3D"27" heig=
+ht=3D"27" style=3D"margin-left:0px;margin-top:0px"></span></span></a></p></=
+td></tr></tbody></table></div></span></div></div></div></div>
+
+--00000000000051302a063cdfdc56--
+
+--00000000000051302c063cdfdc57
+Content-Type: image/jpeg; name="~WRD0001.jpg"
+Content-Disposition: inline; filename="~WRD0001.jpg"
+Content-Transfer-Encoding: base64
+Content-ID: <ii_198ccc20b46bef104ff1>
+X-Attachment-Id: ii_198ccc20b46bef104ff1
+
+/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a
+HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy
+MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCABkAGQDASIA
+AhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQA
+AAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3
+ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWm
+p6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEA
+AwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSEx
+BhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElK
+U1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3
+uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iii
+gAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKA
+CiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAK
+KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAoo
+ooAKKKKACiiigAooooAKKKKACiiigD//2Q==
+
+--00000000000051302c063cdfdc57--

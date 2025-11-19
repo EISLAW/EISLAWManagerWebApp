@@ -1,0 +1,17 @@
+# Frontend (Vite build + static server)
+FROM node:20-bookworm AS build
+WORKDIR /app
+
+COPY frontend/package*.json /app/frontend/
+WORKDIR /app/frontend
+RUN npm ci
+
+# Build with API URL passed as build arg/env
+ARG VITE_API_URL=https://eislaw-api-01.azurewebsites.net
+ENV VITE_API_URL=${VITE_API_URL}
+RUN npm run build
+
+FROM nginx:1.27-alpine AS web
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://localhost/ || exit 1

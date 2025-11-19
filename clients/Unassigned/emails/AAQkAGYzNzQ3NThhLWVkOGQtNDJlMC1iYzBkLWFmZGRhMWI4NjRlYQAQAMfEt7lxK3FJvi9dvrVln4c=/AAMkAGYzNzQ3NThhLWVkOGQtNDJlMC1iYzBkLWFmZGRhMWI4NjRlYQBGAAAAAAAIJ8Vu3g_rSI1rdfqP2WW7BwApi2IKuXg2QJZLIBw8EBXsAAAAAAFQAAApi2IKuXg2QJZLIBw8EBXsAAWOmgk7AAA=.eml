@@ -1,0 +1,466 @@
+Received: from AM7PR01MB6801.eurprd01.prod.exchangelabs.com
+ (2603:10a6:20b:1ba::13) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Wed, 16 Jul 2025 13:30:03 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=O5XSG8RIjPlUVcfbbfcVKShLS/1GQVJsLrrDaJ7b8NU7Ot3+qK5TFfsbJWTu+PCzF79a98EdrDrm5cGNAJgKkv+5ZBBYYTfiI1ZHE2NfOIWcG56euwJSqYMDUcsxtPT5JgbdA7JSKkkbcNFpjPz751lXrmqtzKFdenBuV3Qn6eCRv3+Ddlp5966tnL6L7aPKCyfZHXbi+gl1rW9LgKDFZ7cfVdAABi80m1xHE4v/jNT5JEVWoO2B5vXBtSCBuFUFWH4tdpf5Iazs1FYQJ+OjcFqW9D9Tq7C6415wcvpZnFZphGZZpMqQUJocshuo75Tt5Wej0E3ea7mq3Ks98HM+uQ==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=5wb5iR1XnbVdSZyUPLdeAeNx0pVkKpdHZBQp8WdDW+A=;
+ b=jC4GPEWl2XZRBdX+bITuTsIxrSZMdGEWLseTIQ0buWbuhkfgFwwWfFH3zey8JqPWHHYhTJ1q8JjQ7SpIXZvF5YiZt9BywBAKKH8C1WJQXTyfz4WjrNX5cZLsBG+Ynkw9BPVrKXNCWvGVNNUxZUsfE632VkYYdeOtGcbMKg5Uwdu4rM7ka51oCjhOc3uX6wOAr6KlImfvtvlUVwIlG6dcxUkzZOZ161zGb3qlt1cTj/LSStHMDlbdsPf9ATyI0G7WlHVKE/lXsTt4apWSiP9upeeIbCNwx7UtJon7MHSxz6LyVsJc5+b5HOIuCGHSRCJob7Q8EYMbFi5dEbibxjwPbw==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:c20a::7) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=trdf.technion.ac.il; dmarc=pass (p=none sp=none pct=100)
+ action=none header.from=trdf.technion.ac.il; dkim=pass (signature was
+ verified) header.d=trdf.technion.ac.il; arc=pass (0 oda=0 ltdi=1)
+Received: from CWLP265CA0332.GBRP265.PROD.OUTLOOK.COM (2603:10a6:401:57::32)
+ by AM7PR01MB6801.eurprd01.prod.exchangelabs.com (2603:10a6:20b:1ba::13) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8943.20; Wed, 16 Jul
+ 2025 13:30:01 +0000
+Received: from AM4PEPF00027A67.eurprd04.prod.outlook.com
+ (2603:10a6:401:57:cafe::35) by CWLP265CA0332.outlook.office365.com
+ (2603:10a6:401:57::32) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8943.19 via Frontend Transport; Wed,
+ 16 Jul 2025 13:30:01 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:c20a::7)
+ smtp.mailfrom=trdf.technion.ac.il; dkim=pass (signature was verified)
+ header.d=trdf.technion.ac.il;dmarc=pass action=none
+ header.from=trdf.technion.ac.il;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of trdf.technion.ac.il
+ designates 2a01:111:f403:c20a::7 as permitted sender)
+ receiver=protection.outlook.com; client-ip=2a01:111:f403:c20a::7;
+ helo=PA4PR04CU001.outbound.protection.outlook.com; pr=C
+Received: from PA4PR04CU001.outbound.protection.outlook.com
+ (2a01:111:f403:c20a::7) by AM4PEPF00027A67.mail.protection.outlook.com
+ (2603:10a6:20f:fff4:0:5:0:4) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8922.22 via Frontend Transport; Wed,
+ 16 Jul 2025 13:29:59 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=dgQrF2IM7B6mAYbjO8/F0LXpqbDffRekDMminwtOhjn/hICg8tkMUbhGqrTzOnILdTp3IQUfpN9wVKg5aHld1BuCRSOK2UU9/O5sjgzqbUUnGBw8mnMcbLhCuT1mNrfW4is8MjPXtVuAj8sR3PdS4CvaYtbkWVQa0gGmUGEVhRHqJF9DNa1Lg97o6M+mDlJ+vkEoGg43YQyuSOchgsbysYvrvoAhX75db/CxzfI8nOj/qJItulpgaZydjLWPkWlRzWtluh41phC2Ft7i6LaS7MX54yt0PE3CAv5REeQLZRz75QgHupHn/hNxP0bgYBm601riFY9aguB/8UzehimF3A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=5wb5iR1XnbVdSZyUPLdeAeNx0pVkKpdHZBQp8WdDW+A=;
+ b=eXqL1y1nCmbBJNRj/oMvV9E1+L3WYCYo7Cpa2+eKrh3nV8jc+QG30/b7hw+z5+hQwZIk0CfFwRFG+McemMEgPzJh/ElUjbeklhWnKMYbfUsic3+LMeEGvzYyM4EoHwWrmTrJfzVo69285BQD14OQRjYv5+EvQ9gA35UG1ITbXwA61itC14azW5aIb3GLG/4rls01Ca/N7eRS8sibWeVcVWgc1CvVZqylTJ7zBjT4jrXpms4XMjK+kiBFktWCER8KslfTxjqktlB8RdVVrnhll2ZLFbBBB3vxrHpoKHlj4hTa31m2JR2tRar3Vog3h8eqa3xdHqYdgNPpHtNC1NoVKA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=fail (sender ip is
+ 132.68.1.192) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=trdf.technion.ac.il; dmarc=fail (p=none sp=none pct=100)
+ action=none header.from=trdf.technion.ac.il; dkim=none (message not signed);
+ arc=none (0)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=trdf.technion.ac.il;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=5wb5iR1XnbVdSZyUPLdeAeNx0pVkKpdHZBQp8WdDW+A=;
+ b=gBZYyb+LoiWGiCQArrPIO4gRGd1o5iNpLwRgTiEAsDzj5AichveLwSmaRC6Oolnw69Z0vjYHem0HXHoRJ5kEsPBtPEUwXM1vEMaqQ1NGxBb4i5ufr7o1WNPgS5SzgyfiifmQqksgWc0n1lt2AZgRqQExqiwH0YGKXa1+nxuoYlFtwdqlT5Sgebg0Irslr+lFOsj3BLxUgzjkog3Y9e2CmdbiqcrCcnAQiL2cvw3GUuKS6/fl5UV1+uLHE1S0tncF5AcPm2Fv9S02d2REVCcRsJ9XmyEdN5uGv9WsP+dXqJCQ/dwgu6VcWx/pkcv1I1DSxU1WuuRYarymkdOpVwrxtQ==
+Received: from DU2PR04CA0272.eurprd04.prod.outlook.com (2603:10a6:10:28c::7)
+ by DB9PR01MB9173.eurprd01.prod.exchangelabs.com (2603:10a6:10:367::11) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8922.32; Wed, 16 Jul
+ 2025 13:29:57 +0000
+Received: from DB3PEPF0000885E.eurprd02.prod.outlook.com
+ (2603:10a6:10:28c:cafe::a7) by DU2PR04CA0272.outlook.office365.com
+ (2603:10a6:10:28c::7) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8943.21 via Frontend Transport; Wed,
+ 16 Jul 2025 13:29:57 +0000
+X-MS-Exchange-Authentication-Results: spf=fail (sender IP is 132.68.1.192)
+ smtp.mailfrom=trdf.technion.ac.il; dkim=none (message not signed)
+ header.d=none;dmarc=fail action=none header.from=trdf.technion.ac.il;
+Received-SPF: Fail (protection.outlook.com: domain of trdf.technion.ac.il does
+ not designate 132.68.1.192 as permitted sender)
+ receiver=protection.outlook.com; client-ip=132.68.1.192;
+ helo=techunix.technion.ac.il;
+Received: from techunix.technion.ac.il (132.68.1.192) by
+ DB3PEPF0000885E.mail.protection.outlook.com (10.167.242.9) with Microsoft
+ SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.8922.22
+ via Frontend Transport; Wed, 16 Jul 2025 13:29:57 +0000
+Received: from SAP.TECHNION.AC.IL (tdcrmp.sap.technion.ac.il [132.68.6.66])
+	by techunix.technion.ac.il (Postfix) with ESMTP id E115310B58FC
+	for <EITAN@EISLAW.CO.IL>; Wed, 16 Jul 2025 16:29:54 +0300 (IDT)
+Date: Wed, 16 Jul 2025 16:26:58 +0300 (ISRAEL)
+From: <or.l@trdf.technion.ac.il>
+Subject: =?utf-8?Q?=D7=93=D7=A4=D7=99_=D7=9E=D7=99=D7=93=D7=A2_=D7=A2?=
+ =?utf-8?Q?=D7=91=D7=95=D7=A8_=D7=94=D7=AA=D7=95=D7=9B=D7=A0=D7=99=D7=AA_?=
+ =?utf-8?Q?=D7=9E=D7=9E=D7=95=D7=A0=D7=99_=D7=94=D7=92=D7=A0=D7=AA_=D7=94?=
+ =?utf-8?Q?=D7=A4=D7=A8=D7=98=D7=99=D7=95=D7=AA__-_=D7=91=D7=99=D7=94=22?=
+ =?utf-8?Q?=D7=A1_=D7=9C=D7=9C=D7=99=D7=9E=D7=95=D7=93=D7=99_=D7=94=D7=9E?=
+ =?utf-8?Q?=D7=A9=D7=9A_=D7=91=D7=98=D7=9B=D7=A0=D7=99=D7=95=D7=9F?=
+To: <EITAN@EISLAW.CO.IL>
+Message-ID: <ADR50000000036449350005056B81DBA1FD098C91EA0823ACC86@SAP.TECHNION.AC.IL>
+X-Mailer: SAP NetWeaver 750
+Content-Type: text/html;
+ charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Description: =?utf-8?Q?=D7=93=D7=A4=D7=99_=D7=9E=D7=99=D7=93?=
+ =?utf-8?Q?=D7=A2_=D7=A2=D7=91=D7=95=D7=A8_=D7=94=D7=AA=D7=95=D7=9B=D7=A0?=
+ =?utf-8?Q?=D7=99=D7=AA_=D7=9E=D7=9E=D7=95=D7=A0=D7=99_=D7=94=D7=92=D7=A0?=
+ =?utf-8?Q?=D7=AA_=D7=94=D7=A4=D7=A8=D7=98=D7=99=D7=95=D7=AA__-_=D7=91?=
+ =?utf-8?Q?=D7=99=D7=94=22=D7=A1?=
+Return-Path: or.l@trdf.technion.ac.il
+X-EOPAttributedMessage: 1
+X-MS-TrafficTypeDiagnostic: DB3PEPF0000885E:EE_|DB9PR01MB9173:EE_|AM4PEPF00027A67:EE_|AM7PR01MB6801:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 63bf82f4-1fa4-43fb-c864-08ddc46cdcda
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|376014|82310400026|36860700013|1800799024|8096899003;
+X-Microsoft-Antispam-Message-Info-Original: =?utf-8?B?K2NjMVNJYVlDOVFhbU9UNEtjVUttbVloUGM4LzZQSWUyZUI2Vzl4YTVrbWpt?=
+ =?utf-8?B?WHNpNTFuN2FiM1ZieHIvRHVURjhUcGFlNEJYZy9MOHBrYWFxV0JkdFNOWFVN?=
+ =?utf-8?B?U1RXVDZJbjJFUGVDdzFvTlFjZEExQ3pJK1Vhakkvb1kzeGVHaHF2SmN6MEZi?=
+ =?utf-8?B?eEVJd1RKSjlTWEgrQjRhazBrc2kzc3hLV05VUmlxMkRQZWQyTEhabXN2NENw?=
+ =?utf-8?B?a3pFKzN2REJMWXk3bm1vTmlYYWVVeTMzSGpjR2lRTHZxaXNKTHJESGo1Uy9S?=
+ =?utf-8?B?Q3FUOXpVTjlxMVNtRm12bjFsQWhRUXh4ZnZ3eGY1NVZYaXcxT3hIeTlnRnRr?=
+ =?utf-8?B?eGxTSHRjc090QW9FMEJITUxKajRmYUIycys4YVQ4MHA5WUZBSlFnenh6MVhB?=
+ =?utf-8?B?TVBkcHYrTW9ib205eUNRWGkxWExjbzlreElucmdsSlJQcS91b1J5SFYxbEd2?=
+ =?utf-8?B?M0RqTjBkNmNGSFZPQkZUOG9OdzllTUtDbVF2akFEcEdNQXRsNDZNTENmcU10?=
+ =?utf-8?B?Q2Y0d09uUlJtM0FDR3FMSWp2QnFCRXB2RXBJU2hyeWlPL0w4ZjFEOVhNK2Z3?=
+ =?utf-8?B?TkhYaWxBeHBLWVFMQmdIeDZTcWhxQmwwdTVaOHBjV1RzNEdwaFd5Q05FdkFx?=
+ =?utf-8?B?WTQxMnQ1Uk1QV0d1bnRFbWhEaWRhNzZKbytyaGNJQmJSeG5TczZYWFJ2NjFC?=
+ =?utf-8?B?a1l5WUZKUWtDNXd2WlRMKzJ6ak94T0tXaHdwc0t6Y3crNzRUYkhJbmFZU0lz?=
+ =?utf-8?B?MFJnOGNpLzMrT1FBYnJaNVdXYTMzclJ3ODJzWDA4Kys5WkVuNmJ2VThIc0Rz?=
+ =?utf-8?B?SCtQL0pKOEo2MlBLZXZ0YnBkcUVDd3RvMlRpMUtGOHZra2pCL0pEZkVSejNY?=
+ =?utf-8?B?QTRHUUZSbm96aGVuMXU5c0dpSjljTXZvZHpld0hldHQ1UTdwTTRSN2FzWU45?=
+ =?utf-8?B?QlJoTTdVNHhFcDNkMFJsM1FVYjR3SmFrUFNQVm1xZCt0UWJSVk56Z3d6Y01R?=
+ =?utf-8?B?ckFaU2NpN3hUZWo0VDJuR3N4KzF5NHFOTUpzM2J4NnYvQkJBazFRMVFSR2Q2?=
+ =?utf-8?B?YVdUVllZaW00V1B6bW1zYlJocUxNcWlkYTk0ZTVEZUgwcHppb1ptblVtdWVq?=
+ =?utf-8?B?Y3hYb1RScEJPV0dPUFl5a1VsWDIrM0Q5M000dDhDRWxKUmVkcFVyVjVUNWQ4?=
+ =?utf-8?B?NmtqMGdOVmx0WTM4Uld0MlVLRDdjbHFZdE1UbXlsVzBOdGxkQlZTanUrbmU3?=
+ =?utf-8?B?NFRRY0VmVHhZRmRLdXpKWis1c3cybFJKRVFyOE40YzA2UGNMK1hBY010UXFR?=
+ =?utf-8?B?OUtUdzh3SUV1R1FQbDhZQ2xCUmZ3WU9VblJISCtIdGlXNkZKc2xtR2gySW9z?=
+ =?utf-8?B?T2p0em95T2oyUGVTbzZPZHAyQUZKN0ZHOGlJdFZaZUtBcWRQNnZWamJBbFpX?=
+ =?utf-8?B?bjIrZ2o2Y2Z1R2RFZzcwUHhDRml3dXlCUGVnY2ROMFBERitDZHI0cFNJYm1M?=
+ =?utf-8?B?MHY4UzEyT00zNmlaMEV6aHFxMWpJc05BVkVSdE1DWmRqcEFYMjNOVmd6YWhj?=
+ =?utf-8?B?c3M4dGhlb29vSTRlM2lGRHVscjNDTUV5VGxWTiswdEVEZ05wcGNlQU1ZejB1?=
+ =?utf-8?B?bEtCalBnWFAyaHRuTXlIQlJzL2RqeXJMY2tydDA5a0ZwV3dESVVoWitzVXlZ?=
+ =?utf-8?B?aWxpcFZwZmlwc2cvWEJVenhieDBCWnJoaDd3QVoyNG5WYkVpbXZGbzJueVA1?=
+ =?utf-8?B?UVp4b2lBUXlFdXo3cEpqMHdEMDdocFF5MmliemJ6ME45cEE0SnQrNTJ5VTJm?=
+ =?utf-8?B?emtITTlPWE4zdFNObUdrcVhuMDR6V0xzZTZDTktVRWtHVmJmekNxZis2akU1?=
+ =?utf-8?B?WnAzUnBINk4wRXRyNnc1ZkwxcjJPMEVycGgrVExFQVZyeWdPVFF5Q3VhWFc3?=
+ =?utf-8?B?QWJpOFhISVRLaSt6SmV5MnNLZUxuMDZCN3BKdzJSclFQOGEyUlVpc251amxs?=
+ =?utf-8?B?Z290MUNFNC9RPT0=?=
+X-Forefront-Antispam-Report-Untrusted: CIP:132.68.1.192;CTRY:IL;LANG:he;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:techunix.technion.ac.il;PTR:techunix.technion.ac.il;CAT:NONE;SFS:(13230040)(376014)(82310400026)(36860700013)(1800799024)(8096899003);DIR:OUT;SFP:1102;
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB9PR01MB9173
+X-MS-Exchange-Organization-ExpirationStartTime: 16 Jul 2025 13:29:59.7316
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 63bf82f4-1fa4-43fb-c864-08ddc46cdcda
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: AM4PEPF00027A67.eurprd04.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: AM4PEPF00027A67.eurprd04.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: AM4PEPF00027A67.eurprd04.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: bf86447f-9cf5-42f8-14a1-08ddc46cdb70
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|35042699022|8096899003;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:c20a::7;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:PA4PR04CU001.outbound.protection.outlook.com;PTR:mail-francecentralazlp170130007.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(35042699022)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 16 Jul 2025 13:29:59.5703
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 63bf82f4-1fa4-43fb-c864-08ddc46cdcda
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=f1502c4c-ee2e-411c-9715-c855f6753b84;Ip=[132.68.1.192];Helo=[techunix.technion.ac.il]
+X-MS-Exchange-CrossTenant-AuthSource: AM4PEPF00027A67.eurprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM7PR01MB6801
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.8315604
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8922.017
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(4710137)(4712097)(4999163)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?L0p0RXZuSENlWWJzVUxvYzZ5SmhnbmpRUUhMSENFT2Q4SzlWQ08rS0RqdXhz?=
+ =?utf-8?B?cXBVZ2pkVFQyWVVMTU1oYWpZZ25ZYy95K2xKTUV2UTJacG1tcHc4bFQ0MWY0?=
+ =?utf-8?B?bFFpTUtXU0JtZDVkb2NqZ0ZLOWU2ZW9KVWtVY0V1d0RZOGUzWnhyYlhiRkoy?=
+ =?utf-8?B?K0d6THlhdmZPdVJocDdrcHV2TXlCV0EzWTBHTXRDQ1Nra3hhSE9OUHlRelNo?=
+ =?utf-8?B?RDB4a3c0NWovb1Qyb0hQMTJVNy9XWTdIWjJqQk9xckw0Rzl3T0Q1R1pPV0tQ?=
+ =?utf-8?B?Nnp6VXV5NWV2NmxBeUJyWjczbVdubTlJbWgwUSs2RzlaSWZhcll6VDZxajlN?=
+ =?utf-8?B?UWZmeDdHcTIrNjJGWlZ1eEtIL203Z1pQMllUN3VneGhRcjNXYTQxT3BXdEli?=
+ =?utf-8?B?eENTU1hKY1g5OFkxWU03bGphN08zTXZIMFIvM1JRWXlxTUVVK1JOcG5pSHdn?=
+ =?utf-8?B?dHFmQkxoeEhLTExrL3pUTWRSb0haaHNVTUtYYUxWNS84UDZVcUVKKzNvSVdw?=
+ =?utf-8?B?YldPblo0MitaRnVaTjh4dTFrWEJlZEtLSmJaK0RHc0haWE9ydTl3TlEvdnF6?=
+ =?utf-8?B?L2FHemJndUdVK3Y4d3dMZllUUFZsbkVXVUFFV1FOQlpGREJTdjFVNUdQc3cv?=
+ =?utf-8?B?QXVLZTd6WUNHTnd1enNBRWR5dExVRnJKMnVCOUpFVUZsZ0x1aURrdjlieHNz?=
+ =?utf-8?B?bmlTU01zSHlzMjZFMk5nVzBJWThLZEpCOVlwM1Z6V044ZHpaeDVOSXc2MlhQ?=
+ =?utf-8?B?aEM0YXFzc3ZCdTdZMDl1YzBGZk9GMWpuNXBJTVByQTJ0NTZzREtMQWx6cnBN?=
+ =?utf-8?B?czlNUjZKNW9VTzcvVnNyZjB3MS9aTEFFSzRreUFBYzNVa2VHS1RzM1RYYjhG?=
+ =?utf-8?B?c3o3RmRRQnFiZysvKytiYjlzWGU2Snp4NVhaNW43bUJOR2VYejZKd2Q3RVM4?=
+ =?utf-8?B?K21nSGVMa0J5VUpwVzYzdzhJdHR4bHA5aHZoZ21GYm5TbEthQnFSRTk1ZDAr?=
+ =?utf-8?B?V3hocVp6MU12STdQT01rSUFsODZaMm9TV2ZwNGJ6clM4OWpJaDZ6WnRCTzEw?=
+ =?utf-8?B?d25GQzNUYWIwVHQxcE95aGh1RWpMTmpMbTdJUmhqUUVEY0VtSWluVEJVcHp5?=
+ =?utf-8?B?T01vMkRORXV4RGxiOHdJcWp4cGFEbnZOZ3dGYTE4c3pvMnBZRHNJZVZWV3BZ?=
+ =?utf-8?B?c0ljM01mR1U0bEU0ZStKR2ZoTkpEeHFLT2RlZ0ZwQ1BxakZvZ0todlI2Tnlp?=
+ =?utf-8?B?VGpjSWw2YUN6NUNqeU5JZ2xSTGVIbzVyUXVmMmZITk9zMHpJdmVwQlBISVlh?=
+ =?utf-8?B?TmhGWCtGTkpIMHFSVTNkUUFvVy9PeUl2SnhqWWNWNWpFM3hEUU80Wmh4MmVW?=
+ =?utf-8?B?YWo5NHZieFFwZDE2RnJlbzJoTVN2VG9XRzkydmZWdnJjRHY0a2l2aWw4MktW?=
+ =?utf-8?B?cGlsZW5SY2M1L1o0dFk2SjNnODNod0VUS0dWVFJHSEp1N2pHRTJBWXZPR1RB?=
+ =?utf-8?B?dTdPK3U5emFyOXBTMjNoUk4xS1l3WXRQU2UrM3RsTkpITWxIajNwZzAwM0ZQ?=
+ =?utf-8?B?M2tMMDRnODhkR1VYY3hjY2RJdVhxQ2ZGVXpBeHczc0Q2eGowM3BvUVJDMnV1?=
+ =?utf-8?B?RVVQMXB2WnprSnpnOUV6bC9DTGQ3WERvMWMvVzJ4MWRDaUdId21CMUVleUNF?=
+ =?utf-8?B?VC9pQW4rdGlKSkZGNmtsUEpZSXpWOW9HeTRQMWhQSWZHankraFY0L3BTTjg5?=
+ =?utf-8?B?VlB0WGZ6VXh1RStRN3Y1OHZpODZDQ3I0MmdBRytZOEkxQ2lmSXRCaGZNYm9G?=
+ =?utf-8?B?OE1xOGFkRkZkRTJneml4RHM1Zkp3UXU1bUdRdVJjdG1qSGFsbW8yK3pEQWdZ?=
+ =?utf-8?B?aTluMkFvRDJneWlhWm1GYkNYbENtMXpGQUthcjIwQ0FJOXZqdjM5WEhheTVS?=
+ =?utf-8?B?bTRHNDF4RkhHNndwaHZVRVY2eXJPdUpiVm9SditsYmkrZFJHQnVJRkRYaDlm?=
+ =?utf-8?B?Q3ZhN1QzczRJRlVhTHduN0xzdlN3NGkxMUtucHZvZDZvTXhDcXpiWFljdGtv?=
+ =?utf-8?B?UVhxTkpJSFJ5Myt6ODdkdHRNSjVOZjdiMlFmV0FxaE56NU5EOWdIWGxnamJW?=
+ =?utf-8?B?VTQ4U096MlBzajV5NXd1aWtLekxpZ0pTMDhqRDh5OERXZVVpN0Z5aytWeTV5?=
+ =?utf-8?B?emYxUndFQmxoQjV1RHVWcWE1MVVaeXFEVlZEL2ZKd05SSEJ5bVl6T2ExZTFH?=
+ =?utf-8?B?Qm1EM3hjSFo4QXRmNmlOaFRLY1QrQVd4N1d2YlBXdVZ0RkdwMmJvdGp0c3RY?=
+ =?utf-8?B?V1dpRUE1L2xLc1hNdU5WYTh5NHo2dVFxTUlpUko2STZOZ1hqQ00wZjgzWGNQ?=
+ =?utf-8?B?TEVRdG10a0toMy9DbXpiMDFhYU95R0wvcmR5Tk15cS83WFZnazE5UlNzZVRG?=
+ =?utf-8?B?allvREdnWWpCOGY0OGdhVmVKWnA1a0FTNGhZSzlLMDFOV0lmbDFDNG8rWUdD?=
+ =?utf-8?B?VkJtY25Rb1BzK0JocGs3WmR5OU9KWTc1RlNhdjdjL2p6MnJCWlkxT3dISG9J?=
+ =?utf-8?B?WVhyWklKb2FyK0Q4azNPZDc1bXc5NDc1YUczaGpUTTdzcWU1QVFaeVNhUVJ6?=
+ =?utf-8?B?ZVNjN0luRUpNMmg3ZCsyd29tR1QvU1RWOEpwS1FZWlJGOXlJSVlCWkFoaE91?=
+ =?utf-8?B?Zzc1Tko4VnE4cVhNdmo3Q2lESGd5MGswQ0hpZHNYUm1jcnJIWXNhY0ZTeTF2?=
+ =?utf-8?B?NGJzMmNtdGR3aGlWMTRma2lMY0hiTnpOSXRiNW5teW9DMVFEbEExQVRXQ054?=
+ =?utf-8?B?Sk9pU1lMNURkdDJ2dW05MDJMZXdlTGcxV1c5bVVFcXpBTE5FSXNwWk1qbmhT?=
+ =?utf-8?B?S0pFcVZhWVR4MHFQbEJhVnJHUT09?=
+MIME-Version: 1.0
+
+<html xmlns=3D"http://www.w3.org/1999/xhtml"><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+
+</head>
+<body dir=3D"rtl">
+<p><span style=3D"font-family: arial, helvetica, sans-serif; font-size: 12p=
+t;"><span lang=3D"HE" style=3D"margin: 0px; padding: 0px; border: 0px; font=
+-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch:=
+ inherit; line-height: inherit; vertical-align: baseline;" xml:lang=3D"HE">=
+=D7=A9=D7=9C=D7=95=D7=9D&nbsp;=D7=A8=D7=91&nbsp;</span>=D7=90=D7=99=D7=AA=
+=D7=9F =D7=A9=D7=9E=D7=99=D7=A8<span style=3D"font-style: inherit; font-var=
+iant-ligatures: inherit; font-variant-caps: inherit; font-weight: inherit;"=
+>&nbsp;,</span></span></p>
+<p class=3D"x_MsoNormal" dir=3D"rtl" style=3D"margin: 0cm 0cm 0.0001pt; fon=
+t-size: 11pt; font-family: Calibri, sans-serif; direction: rtl; unicode-bid=
+i: embed; color: #201f1e; background-image: initial; background-position: i=
+nitial; background-size: initial; background-repeat: initial; background-at=
+tachment: initial; background-origin: initial; background-clip: initial;"><=
+span style=3D"font-family: arial, helvetica, sans-serif; font-size: 12pt;">=
+<span style=3D"color: #000000;"><span lang=3D"HE" style=3D"margin: 0px; pad=
+ding: 0px; border: 0px; font-style: inherit; font-variant: inherit; font-we=
+ight: inherit; font-stretch: inherit; line-height: inherit; vertical-align:=
+ baseline;" xml:lang=3D"HE">=D7=AA=D7=95=D7=93=D7=94 =D7=A9=D7=94=D7=AA=D7=
+=A2=D7=A0=D7=99=D7=99=D7=A0=D7=AA =D7=91=D7=AA=D7=95=D7=9B=D7=A0=D7=99=D7=
+=AA<span style=3D"margin: 0px; padding: 0px; border: 0px; font-style: inher=
+it; font-variant: inherit; font-weight: inherit; font-stretch: inherit; lin=
+e-height: inherit; vertical-align: baseline;">&nbsp;=D7=9E=D7=9E=D7=95=D7=
+=A0=D7=99 =D7=94=D7=92=D7=A0=D7=AA =D7=94=D7=A4=D7=A8=D7=98=D7=99=D7=95=D7=
+=AA</span><strong>&nbsp;</strong>- =D7=91=D7=A7=D7=9E=D7=A4=D7=95=D7=A1 =D7=
+=A9=D7=A8=D7=95=D7=A0=D7=94 =D7=AA=D7=9C =D7=90=D7=91=D7=99=D7=91,</span><s=
+pan lang=3D"HE" style=3D"margin: 0px; padding: 0px; border: 0px; font-style=
+: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inher=
+it; line-height: inherit; vertical-align: baseline;" xml:lang=3D"HE">&nbsp;=
+=D7=91=D7=91=D7=99=D7=AA =D7=94=D7=A1=D7=A4=D7=A8 =D7=9C=D7=9C=D7=99=D7=9E=
+=D7=95=D7=93=D7=99 =D7=94=D7=9E=D7=A9=D7=9A =D7=91=D7=98=D7=9B=D7=A0=D7=99=
+=D7=95=D7=9F</span><span dir=3D"ltr" style=3D"margin: 0px; padding: 0px; bo=
+rder: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit=
+; font-stretch: inherit; line-height: inherit; vertical-align: baseline;">.=
+</span><span lang=3D"HE" style=3D"margin: 0px; padding: 0px; border: 0px; f=
+ont-style: inherit; font-variant: inherit; font-weight: inherit; font-stret=
+ch: inherit; line-height: inherit; vertical-align: baseline;" xml:lang=3D"H=
+E"><br>
+<br>
+<strong>=D7=9C=D7=A6=D7=A4=D7=99=D7=99=D7=94 =D7=91=D7=93=D7=A4=D7=99 =D7=
+=94=D7=9E=D7=99=D7=93=D7=A2 =D7=A9=D7=9C =D7=94=D7=AA=D7=95=D7=9B=D7=A0=D7=
+=99=D7=AA,&nbsp;</strong></span></span><strong><span style=3D"color: #00000=
+0;"><span lang=3D"HE" style=3D"margin: 0px; padding: 0px; border: 0px; font=
+-style: inherit; font-variant: inherit; font-stretch: inherit; line-height:=
+ inherit; vertical-align: baseline;" xml:lang=3D"HE">=D7=99=D7=A9 =D7=9C=D7=
+=9C=D7=97=D7=95=D7=A5 =D7=A2=D7=9C =D7=94=D7=9C=D7=99=D7=A0=D7=A7:</span>&n=
+bsp;<a href=3D"http://www.admin.technion.ac.il/cont-edu/521555.pdf"> =D7=9E=
+=D7=9E=D7=95=D7=A0=D7=94 =D7=94=D7=92=D7=A0=D7=AA =D7=94=D7=A4=D7=A8=D7=98=
+=D7=99=D7=95=D7=AA 521555 =D7=AA&quot;=D7=90 </a><span style=3D"font-style:=
+ inherit; font-variant-ligatures: inherit; font-variant-caps: inherit;">&nb=
+sp;.</span></span></strong></span></p>
+<p class=3D"x_MsoNormal" dir=3D"rtl" style=3D"margin: 0cm 0cm 0.0001pt; fon=
+t-size: 11pt; font-family: Calibri, sans-serif; direction: rtl; unicode-bid=
+i: embed; color: #201f1e; background-image: initial; background-position: i=
+nitial; background-size: initial; background-repeat: initial; background-at=
+tachment: initial; background-origin: initial; background-clip: initial;">&=
+nbsp;</p>
+<ul style=3D"margin-top: 0cm;" type=3D"circle">
+<li class=3D"MsoListParagraph" dir=3D"rtl" style=3D"margin-right: 0cm; text=
+-align: justify; line-height: 150%; mso-list: l0 level1 lfo1;"><span style=
+=3D"font-size: 12pt; color: #003366; font-family: arial, helvetica, sans-se=
+rif;"><strong><span lang=3D"HE" xml:lang=3D"HE">=D7=9E=D7=95=D7=A2=D7=93 =
+=D7=A4=D7=AA=D7=99=D7=97=D7=94</span></strong><span lang=3D"HE" xml:lang=3D=
+"HE">:&nbsp;27/10/2025</span></span></li>
+<li class=3D"MsoListParagraph" dir=3D"rtl" style=3D"margin-right: 0cm; text=
+-align: justify; line-height: 150%; mso-list: l0 level1 lfo1;"><span style=
+=3D"font-size: 12pt; color: #003366; font-family: arial, helvetica, sans-se=
+rif;"><strong><span lang=3D"HE" xml:lang=3D"HE">=D7=9E=D7=A9=D7=9A =D7=94=
+=D7=AA=D7=95=D7=9B=D7=A0=D7=99=D7=AA</span></strong><span lang=3D"HE" xml:l=
+ang=3D"HE">: =D7=9B=D7=A9=D7=9C=D7=95=D7=A9=D7=94 =D7=97=D7=95=D7=93=D7=A9=
+=D7=99=D7=9D</span></span></li>
+<li class=3D"MsoListParagraph" dir=3D"rtl" style=3D"margin-right: 0cm; text=
+-align: justify; line-height: 150%; mso-list: l0 level1 lfo1;"><span style=
+=3D"font-size: 12pt; color: #003366; font-family: arial, helvetica, sans-se=
+rif;"><strong><span lang=3D"HE" xml:lang=3D"HE">=D7=99=D7=9E=D7=99 =D7=9C=
+=D7=99=D7=9E=D7=95=D7=93</span></strong><span lang=3D"HE" xml:lang=3D"HE">:=
+ =D7=99=D7=9E=D7=99 =D7=A9=D7=A0=D7=99</span></span></li>
+<li class=3D"MsoListParagraph" dir=3D"rtl" style=3D"margin-right: 0cm; text=
+-align: justify; line-height: 150%; mso-list: l0 level1 lfo1;"><span style=
+=3D"font-size: 12pt; color: #003366; font-family: arial, helvetica, sans-se=
+rif;"><strong><span lang=3D"HE" xml:lang=3D"HE">=D7=A9=D7=A2=D7=95=D7=AA =
+=D7=9C=D7=99=D7=9E=D7=95=D7=93</span></strong><span lang=3D"HE" xml:lang=3D=
+"HE">: 16:45-20:00</span></span></li>
+<li class=3D"MsoListParagraph" dir=3D"rtl" style=3D"margin-right: 0cm; text=
+-align: justify; line-height: 150%; mso-list: l0 level1 lfo1;"><span style=
+=3D"font-size: 12pt; font-family: arial, helvetica, sans-serif;"><span lang=
+=3D"HE" xml:lang=3D"HE"><span style=3D"color: #003366;">=D7=94=D7=9C=D7=99=
+=D7=9E=D7=95=D7=93=D7=99=D7=9D =D7=99=D7=AA=D7=A7=D7=99=D7=99=D7=9E=D7=95 =
+=D7=91=D7=97=D7=9C=D7=A7=D7=9D =D7=91=D7=A7=D7=9E=D7=A4=D7=95=D7=A1 =D7=94=
+=D7=98=D7=9B=D7=A0=D7=99=D7=95=D7=9F =D7=95=D7=91=D7=97=D7=9C=D7=A7=D7=9D =
+=D7=91=D7=9E=D7=AA=D7=9B=D7=95=D7=A0=D7=AA =D7=9E=D7=A7=D7=95=D7=95=D7=A0=
+=D7=AA =D7=91</span>&nbsp;-</span>&nbsp;<strong><span dir=3D"ltr" style=3D"=
+color: #0b76a0;">ZOOM</span></strong></span></li>
+</ul>
+<p class=3D"x_MsoNormal" dir=3D"rtl" style=3D"margin: 0cm 0cm 0.0001pt; fon=
+t-size: 11pt; font-family: Calibri, sans-serif; direction: rtl; unicode-bid=
+i: embed; color: #201f1e; background-image: initial; background-position: i=
+nitial; background-size: initial; background-repeat: initial; background-at=
+tachment: initial; background-origin: initial; background-clip: initial;"><=
+span style=3D"font-size: 12pt; font-family: arial, helvetica, sans-serif;">=
+<span style=3D"color: #000000;"><span lang=3D"HE" xml:lang=3D"HE">=D7=A7=D7=
+=9E=D7=A4=D7=95=D7=A1 =D7=94=D7=98=D7=9B=D7=A0=D7=99=D7=95=D7=9F =D7=91=D7=
+=AA&quot;=D7=90, =D7=9E=D7=AA=D7=97=D7=9D =D7=A9=D7=A8=D7=95=D7=A0=D7=94, =
+=D7=A8=D7=97' =D7=93=D7=95=D7=93 =D7=90=D7=9C=D7=A2=D7=96=D7=A8 =D7=9E=D7=
+=95=D7=9C =D7=94=D7=A7=D7=A8=D7=99=D7=94 =D7=95=D7=9C=D7=99=D7=93 =D7=AA=D7=
+=97=D7=A0=D7=AA =D7=A8=D7=9B=D7=91=D7=AA =D7=94=D7=A9=D7=9C=D7=95=D7=9D.&nb=
+sp;</span></span><span style=3D"color: #000000;"><span lang=3D"HE" xml:lang=
+=3D"HE"><br></span></span></span></p>
+<p class=3D"MsoNormal" dir=3D"rtl" style=3D"line-height: 16.5px; direction:=
+ rtl; unicode-bidi: embed;"><span style=3D"font-size: 12pt; font-family: ar=
+ial, helvetica, sans-serif;"><span style=3D"margin: 0px; padding: 0px; bord=
+er: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; =
+font-stretch: inherit; line-height: inherit; vertical-align: baseline;"><sp=
+an dir=3D"ltr" style=3D"margin: 0px; padding: 0px; border: 0px; font-style:=
+ inherit; font-variant: inherit; font-weight: inherit; font-stretch: inheri=
+t; line-height: inherit; vertical-align: baseline;">&nbsp;</span></span></s=
+pan></p>
+<p><span style=3D"font-family: arial, helvetica, sans-serif; font-size: 12p=
+t;"><span style=3D"margin: 0px; padding: 0px; border: 0px; font-style: inhe=
+rit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; li=
+ne-height: inherit; vertical-align: baseline;"><span lang=3D"HE" style=3D"m=
+argin: 0px; padding: 0px; border: 0px; font-style: inherit; font-variant: i=
+nherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; =
+vertical-align: baseline;" xml:lang=3D"HE">=D7=91=D7=91=D7=A8=D7=9B=D7=94</=
+span><span dir=3D"ltr" style=3D"margin: 0px; padding: 0px; border: 0px; fon=
+t-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch=
+: inherit; line-height: inherit; vertical-align: baseline;">,<br>
+<br></span></span>&nbsp;=D7=90=D7=95=D7=A8 =D7=9C=D7=91=D7=97=D7=A8</span><=
+/p>
+<p class=3D"MsoNormal" dir=3D"rtl"><span style=3D"font-size: 12pt; font-fam=
+ily: arial, helvetica, sans-serif;">&nbsp;03-696666/2</span></p>
+<p class=3D"MsoNormal" dir=3D"rtl"><span style=3D"font-family: tahoma, aria=
+l, helvetica, sans-serif;"><span style=3D"font-size: 10pt;"><span style=3D"=
+font-size: 12pt; font-family: arial, helvetica, sans-serif;">&nbsp;or.l@trd=
+f.technion.ac.il</span><br>
+<br></span><span style=3D"font-family: arial, helvetica, sans-serif;"><span=
+ style=3D"font-size: 10pt;"><span style=3D"margin: 0px; padding: 0px; borde=
+r: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; f=
+ont-stretch: inherit; line-height: inherit; vertical-align: baseline;">&nbs=
+p;</span><span style=3D"margin: 0px; padding: 0px; border: 0px; font-style:=
+ inherit; font-variant: inherit; font-weight: inherit; font-stretch: inheri=
+t; line-height: inherit; vertical-align: baseline; font-size: 8pt;">*<stron=
+g>&nbsp;<span dir=3D"rtl" lang=3D"HE" style=3D"margin: 0px; padding: 0px; b=
+order: 0px; font-style: inherit; font-variant: inherit; font-stretch: inher=
+it; line-height: inherit; vertical-align: baseline;" xml:lang=3D"HE">=D7=9E=
+=D7=99=D7=99=D7=9C =D7=96=D7=94 =D7=A0=D7=A9=D7=9C=D7=97 =D7=90=D7=95=D7=98=
+=D7=95=D7=9E=D7=98=D7=99=D7=AA =D7=A2&quot;=D7=99 =D7=9E=D7=A2=D7=A8=D7=9B=
+=D7=AA =D7=A9=D7=A8=D7=95=D7=AA =D7=9C=D7=9C=D7=A7=D7=95=D7=97</span></stro=
+ng></span></span><span style=3D"font-size: 10pt;"><span style=3D"margin: 0p=
+x; padding: 0px; border: 0px; font-style: inherit; font-variant: inherit; f=
+ont-weight: inherit; font-stretch: inherit; line-height: inherit; vertical-=
+align: baseline; font-size: 8pt;"><strong><span dir=3D"rtl" lang=3D"HE" sty=
+le=3D"margin: 0px; padding: 0px; border: 0px; font-style: inherit; font-var=
+iant: inherit; font-stretch: inherit; line-height: inherit; vertical-align:=
+ baseline;" xml:lang=3D"HE">&nbsp;&nbsp;</span></strong></span></span></spa=
+n></span></p>
+<p style=3D"margin-right: 0cm; margin-left: 0cm; font-size: 12pt; font-fami=
+ly: 'Times New Roman', serif; color: #201f1e; background-image: initial; ba=
+ckground-position: initial; background-size: initial; background-repeat: in=
+itial; background-attachment: initial; background-origin: initial; backgrou=
+nd-clip: initial; text-align: center;" align=3D"right"><span style=3D"font-=
+family: tahoma, arial, helvetica, sans-serif;"><strong><span style=3D"color=
+: #000000; font-size: 8pt;">&nbsp;</span></strong><span style=3D"font-size:=
+ 8pt;"><span style=3D"margin: 0px; padding: 0px; border: 0px; font-style: i=
+nherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit;=
+ line-height: inherit; vertical-align: baseline; color: #000000;">&nbsp;</s=
+pan><strong><span dir=3D"rtl" lang=3D"HE" style=3D"margin: 0px; padding: 0p=
+x; border: 0px; font-style: inherit; font-variant: inherit; font-weight: in=
+herit; font-stretch: inherit; line-height: inherit; vertical-align: baselin=
+e; color: black;" xml:lang=3D"HE">=D7=94=D7=98=D7=9B=D7=A0=D7=99=D7=95=D7=
+=9F # =D7=91=D7=99=D7=94&quot;=D7=A1 =D7=9C=D7=9C=D7=99=D7=9E=D7=95=D7=93=
+=D7=99 =D7=94=D7=9E=D7=A9=D7=9A =D7=95=D7=9C=D7=99=D7=9E=D7=95=D7=93=D7=99 =
+=D7=97=D7=95=D7=A5. =D7=97=D7=99=D7=A4=D7=94 073-3785050, =D7=AA&quot;=D7=
+=90 03-6966662</span></strong><strong><span style=3D"margin: 0px; padding: =
+0px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: =
+inherit; font-stretch: inherit; line-height: inherit; vertical-align: basel=
+ine; color: black;"><br></span></strong><strong><span style=3D"font-size: 1=
+0pt;"><a href=3D"https://cont-edu.technion.ac.il/" target=3D"_blank"><span =
+style=3D"margin: 0px; padding: 0px; border: 0px; font-style: inherit; font-=
+variant: inherit; font-stretch: inherit; line-height: inherit; vertical-ali=
+gn: baseline; color: black;">www.cont-edu.technion.ac.il</span></a></span><=
+/strong></span></span></p>
+<p class=3D"MsoNormal" dir=3D"rtl" style=3D"line-height: 16.5px; direction:=
+ rtl; unicode-bidi: embed; text-align: center;"><span style=3D"font-family:=
+ tahoma, arial, helvetica, sans-serif;">&nbsp;<span style=3D"font-size: 10p=
+t;"><span style=3D"font-size: 8pt;"><span dir=3D"rtl" lang=3D"HE" style=3D"=
+margin: 0px; padding: 0px; border: 0px; font-style: inherit; font-variant: =
+inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit;=
+ vertical-align: baseline;" xml:lang=3D"HE">=D7=91=D7=9E=D7=99=D7=93=D7=94 =
+=D7=95=D7=AA=D7=91=D7=A7=D7=A9=D7=95 =D7=9C=D7=94=D7=99=D7=9E=D7=97=D7=A7 =
+=D7=9E=D7=9F =D7=94=D7=9E=D7=90=D7=92=D7=A8 =D7=90=D7=95 =D7=A9=D7=9C=D7=90=
+ =D7=9C=D7=A7=D7=91=D7=9C =D7=93=D7=95=D7=90=D7=A8 =D7=90=D7=9C=D7=A7=D7=98=
+=D7=A8=D7=95=D7=A0=D7=99 =D7=A0=D7=95=D7=A1=D7=A3<br></span><span style=3D"=
+margin: 0px; padding: 0px; border: 0px; font-style: inherit; font-variant: =
+inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit;=
+ vertical-align: baseline;">,</span></span><span style=3D"margin: 0px; padd=
+ing: 0px; border: 0px; font-style: inherit; font-variant: inherit; font-wei=
+ght: inherit; font-stretch: inherit; line-height: inherit; vertical-align: =
+baseline;"><span dir=3D"rtl" lang=3D"HE" style=3D"margin: 0px; padding: 0px=
+; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inh=
+erit; font-stretch: inherit; line-height: inherit; vertical-align: baseline=
+; color: inherit;" xml:lang=3D"HE"><span style=3D"font-size: 8pt;"><span st=
+yle=3D"margin: 0px; padding: 0px; border: 0px; font-style: inherit; font-va=
+riant: inherit; font-weight: inherit; font-stretch: inherit; line-height: i=
+nherit; vertical-align: baseline;"><span dir=3D"rtl" lang=3D"HE" style=3D"m=
+argin: 0px; padding: 0px; border: 0px; font-style: inherit; font-variant: i=
+nherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; =
+vertical-align: baseline; color: inherit;" xml:lang=3D"HE">=D7=AA=D7=95=D7=
+=9B=D7=9C=D7=95</span>&nbsp;<span dir=3D"rtl" lang=3D"HE" style=3D"margin: =
+0px; padding: 0px; border: 0px; font-style: inherit; font-variant: inherit;=
+ font-weight: inherit; font-stretch: inherit; line-height: inherit; vertica=
+l-align: baseline; color: inherit;" xml:lang=3D"HE">=D7=9C=D7=94=D7=A1=D7=
+=99=D7=A8 =D7=90=D7=AA =D7=A2=D7=A6=D7=9E=D7=9B=D7=9D =D7=9E=D7=A8=D7=A9=D7=
+=99=D7=9E=D7=AA =D7=94=D7=93=D7=99=D7=95=D7=95=D7=A8 =D7=A2&quot;=D7=99</sp=
+an>&nbsp;<span dir=3D"rtl" lang=3D"HE" style=3D"margin: 0px; padding: 0px; =
+border: 0px; font-style: inherit; font-variant: inherit; font-weight: inher=
+it; font-stretch: inherit; line-height: inherit; vertical-align: baseline; =
+color: inherit;" xml:lang=3D"HE">=D7=9E=D7=A9=D7=9C=D7=95=D7=97 =D7=9E=D7=
+=99=D7=99=D7=9C =D7=9C=D7=9B=D7=AA=D7=95=D7=91=D7=AA&nbsp;&nbsp;<a href=3D"=
+mailto:cs.marketing@technion.ac.il" target=3D"_blank">=D7=94=D7=A1=D7=A8=D7=
+=94 =D7=9E=D7=A8=D7=A9=D7=99=D7=9E=D7=AA =D7=94=D7=AA=D7=A4=D7=95=D7=A6=D7=
+=94</a>&nbsp;&nbsp;</span><span dir=3D"rtl" lang=3D"HE" style=3D"margin: 0p=
+x; padding: 0px; border: 0px; font-style: inherit; font-variant: inherit; f=
+ont-weight: inherit; font-stretch: inherit; line-height: inherit; vertical-=
+align: baseline; color: inherit;" xml:lang=3D"HE">=D7=A2=D7=9D =D7=94=D7=9E=
+=D7=99=D7=9C=D7=94&nbsp;</span></span><strong><span dir=3D"rtl" lang=3D"HE"=
+ style=3D"margin: 0px; padding: 0px; border: 0px; font-style: inherit; font=
+-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height=
+: inherit; vertical-align: baseline;" xml:lang=3D"HE">=D7=94=D7=A1=D7=A8</s=
+pan></strong><span style=3D"margin: 0px; padding: 0px; border: 0px; font-st=
+yle: inherit; font-variant: inherit; font-weight: inherit; font-stretch: in=
+herit; line-height: inherit; vertical-align: baseline;"><br></span></span><=
+span style=3D"font-size: 8pt;">=D7=91=D7=99=D7=A6=D7=95=D7=A2 =D7=94=D7=94=
+=D7=A1=D7=A8=D7=94 =D7=90=D7=95 =D7=94=D7=9E=D7=97=D7=99=D7=A7=D7=94 =D7=99=
+=D7=9B=D7=95=D7=9C=D7=94 =D7=9C=D7=90=D7=A8=D7=95=D7=9A =D7=A2=D7=93 2 =D7=
+=99=D7=9E=D7=99 =D7=A2=D7=A1=D7=A7=D7=99=D7=9D =D7=9E=D7=99=D7=95=D7=9D =D7=
+=A7=D7=91=D7=9C=D7=AA =D7=94=D7=94=D7=95=D7=93=D7=A2=D7=9451</span></span><=
+/span></span></span></p>
+</body>
+</html>

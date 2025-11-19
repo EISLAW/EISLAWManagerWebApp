@@ -1,0 +1,796 @@
+Received: from AM7PR01MB7089.eurprd01.prod.exchangelabs.com
+ (2603:10a6:20b:1ba::11) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Sun, 3 Aug 2025 20:15:14 +0000
+Received: from AM6P192CA0064.EURP192.PROD.OUTLOOK.COM (2603:10a6:209:82::41)
+ by AM7PR01MB7089.eurprd01.prod.exchangelabs.com (2603:10a6:20b:1ba::11) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9009.12; Sun, 3 Aug
+ 2025 20:15:12 +0000
+Received: from AMS1EPF0000003F.eurprd04.prod.outlook.com
+ (2603:10a6:209:82:cafe::e) by AM6P192CA0064.outlook.office365.com
+ (2603:10a6:209:82::41) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8989.20 via Frontend Transport; Sun,
+ 3 Aug 2025 20:15:12 +0000
+Authentication-Results: spf=pass (sender IP is 2607:f8b0:4864:20::22c)
+ smtp.mailfrom=navina.ai; dkim=pass (signature was verified)
+ header.d=navina.ai;dmarc=pass action=none header.from=navina.ai;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of navina.ai designates
+ 2607:f8b0:4864:20::22c as permitted sender) receiver=protection.outlook.com;
+ client-ip=2607:f8b0:4864:20::22c; helo=mail-oi1-x22c.google.com; pr=C
+Received: from mail-oi1-x22c.google.com (2607:f8b0:4864:20::22c) by
+ AMS1EPF0000003F.mail.protection.outlook.com (2603:10a6:20f:fff4:0:2:0:4) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.9009.8 via Frontend Transport; Sun, 3 Aug 2025 20:15:11 +0000
+Received: by mail-oi1-x22c.google.com with SMTP id 5614622812f47-433fa926cb9so898421b6e.2
+        for <eitan@eislaw.co.il>; Sun, 03 Aug 2025 13:15:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=navina.ai; s=google; t=1754252110; x=1754856910; darn=eislaw.co.il;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=Rlw/lvjGCKZstz4HxUILmWlnQAOEDEGdkYjQlmGcVH8=;
+        b=V5vu0LRIZbstJzB7zormsZno6UJ68exFV0ET+Ko7qoFLmXDjEIHBpwbxwDtLt6RDvL
+         9ax3ZgMrwfdpVRRYZ38lFNpSOdjOXbxDYWuEVuoPhpzsrsHpFpX7WxOHdiBZGu05Z9bJ
+         Bn3DfbKqRrIijZUyAqW9CjUCi9EuZ4yIuSnWoby+52qIS/83UEsu/NpeG/VF5FfePkO1
+         0lVAMwXSq7SNG4CinMQ0rMuEPYI/I9qw0IaBVFNfkXlDCZu1BIXAvVBDSwXl1Lgp8xrq
+         JCpC7VpWeX2EWdPZeA6ReeHFG3eYKWj6CzIp09zxo85hUhRCbEDaNvN8Q2GymunF+FXM
+         BwaQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1754252110; x=1754856910;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=Rlw/lvjGCKZstz4HxUILmWlnQAOEDEGdkYjQlmGcVH8=;
+        b=UwmYVQCPMpfJ4W2Wf4mpqCt7sPyKMbgL6b4OdGg64CYiHPLp6+lRPQXcHzNN7A3ABC
+         +7/IgsIMHeKWcwPBPoQWCP9n9ujaLL2fTsfLzKGhfzcqcruQfxgLLvri9UQXzZpLpUBV
+         4hQiO+3TO15T4Mni9BZcNfPzyLVUPMTxyHNCT35IavPx1smYafUH1x52FZsGXFWi/lH0
+         e6BIUPmCwXWuVjIiTJjEZhnx/qsDjJO3wuF+wNbSpo42QxxeBMqWl/jzrJXaaXZ8V0af
+         SQL99lbl7QKWhaIuSNlCSkzpcUHzeziTXPnhUwNod4ffl8xQ1cvJCEePbFjUeMaNcMPd
+         A0AQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWeVeh/9LKxnok/rNfZ9hEcvw8PjSjEjwVRMAziuYijC+4nIXgqAHX/gPRHv4dxmLZG2YU81A==@eislaw.co.il
+X-Gm-Message-State: AOJu0Yx58438oAYYJTGeoJlVvk3ACJ6zh0UcOi8R2QdToSOottQS5UAI
+	9C6eGl8tZR1bTkLzfRWbow24cZx4GCqXrZUmwn+HnGStem4QcbOOeDcWwyCHDXpfVu3F2e+okm0
+	s6+vgghOTwaOAMkS6lQZ0Ojx94F75zkIxGUmKXo7VFg==
+X-Gm-Gg: ASbGnctT5uVqsH66YxqG4Wrdnngctgy9p+ECvicB5GZ4A8XtuONRRtkigSiwbfcS31n
+	1S/VYxtl5oC9eZwd+gY33nKmb2duFBtsGzIMQvhJ16zgcyzjkrxJFxFJUg4jpLxCMmcr/Ldb8vx
+	T8b8utNc9yVLgBPPJm0cQNQENBSYqHfoaJewiABsI0f+3kHuJmlY91WWU2VrNF02VEPp1WTAWLh
+	p2jfOo=
+X-Google-Smtp-Source: AGHT+IFGZGT7KHo1BGGR5pjttZEZGgVurjGqYeaaQ9IkMCj1Px46ex9BsnT0WIg4xUvZoACIPD1m8KzLhNcxlyZN13A=
+X-Received: by 2002:a05:6808:6890:20b0:433:f07e:eeb1 with SMTP id
+ 5614622812f47-433f07eef9bmr3021428b6e.11.1754252110097; Sun, 03 Aug 2025
+ 13:15:10 -0700 (PDT)
+References: <CAFteEziJRBu3Vk0erH1On6Rx04iQfvJoaMdGX4X1GALxwF7NHA@mail.gmail.com>
+ <IA4PR10MB8710A4C4D154784444549D258D5CA@IA4PR10MB8710.namprd10.prod.outlook.com>
+ <CAL_se2OEeN9_V8RSjg6GnB0rkXEm1+YGsUwjByS1A6nyH5uf0A@mail.gmail.com>
+ <IA4PR10MB8710E35C90D9616BEF1C36138D5AA@IA4PR10MB8710.namprd10.prod.outlook.com>
+ <CAL_se2P00BX+ftRq_qWdJRNjY9OMrid2Lw+6KPL9zCRHJWNfSg@mail.gmail.com>
+ <DBBPR01MB104599AC73FFD33BC59C4061AFA25A@DBBPR01MB10459.eurprd01.prod.exchangelabs.com>
+ <CAL_se2P+SD2vWN3YWUMc9K75gfg4QYZwEb6JK9U5PUhDKRXpcw@mail.gmail.com>
+ <DBBPR01MB104590A46F339075DEBC98ECDFA27A@DBBPR01MB10459.eurprd01.prod.exchangelabs.com>
+ <CAL_se2OjcJ+0Tz3AUqUK3fwEgZ518BL-OiX-N6-Dnw75NXd9ig@mail.gmail.com> <DBBPR01MB10459037B62622523E262A0EDFA27A@DBBPR01MB10459.eurprd01.prod.exchangelabs.com>
+In-Reply-To: <DBBPR01MB10459037B62622523E262A0EDFA27A@DBBPR01MB10459.eurprd01.prod.exchangelabs.com>
+From: =?UTF-8?Q?Tali_Meroz=E2=80=8C?= <tali.meroz@navina.ai>
+Date: Sun, 3 Aug 2025 23:14:54 +0300
+X-Gm-Features: Ac12FXzxcSJHv2-GrmfbEVJwL9Mpolucqsrv8aouNZsCrpBfmcmdQbq8oezyKjc
+Message-ID: <CAL_se2OCHQ0qgiOgxPu+vA1NHEJ=gUteiQOB7kJfT62GwFfS7w@mail.gmail.com>
+Subject: =?UTF-8?B?UmU6IOKAjyDigI8g4oCPIE5hdmluYSAtIFp1IGNvbnN1bHRpbmc=?=
+To: alon harel <alon@eislaw.co.il>
+Cc: Irit Polak <Irit@zu-consulting.com>, Hila Dalal Shemesh <hila.ds@navina.ai>, Legal <legal@navina.ai>, 
+	Eitan Shamir <eitan@eislaw.co.il>
+Content-Type: multipart/alternative; boundary="000000000000de8610063b7ba589"
+Return-Path: tali.meroz@navina.ai
+X-MS-Exchange-Organization-ExpirationStartTime: 03 Aug 2025 20:15:12.1953
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: a525dc0f-87de-4610-d672-08ddd2ca73a5
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: AMS1EPF0000003F:EE_|AM7PR01MB7089:EE_|AS8PR01MB10319:EE_
+X-MS-Exchange-Organization-AuthSource: AMS1EPF0000003F.eurprd04.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: a525dc0f-87de-4610-d672-08ddd2ca73a5
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|43022699015|69100299015|5073199012|13003099007|7053199007|4076899003|8096899003;
+X-Forefront-Antispam-Report: CIP:2607:f8b0:4864:20::22c;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-oi1-x22c.google.com;PTR:mail-oi1-x22c.google.com;CAT:NONE;SFS:(13230040)(43022699015)(69100299015)(5073199012)(13003099007)(7053199007)(4076899003)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 03 Aug 2025 20:15:11.6000
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: a525dc0f-87de-4610-d672-08ddd2ca73a5
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: AMS1EPF0000003F.eurprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM7PR01MB7089
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.1250303
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9009.009
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(4710137)(4713098)(4999163)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?cXF0SlA0TVV2RkFBTXBoYzFPM21sRURFVlB5UVVyMnNnOGRaeTd5VXU3bzBL?=
+ =?utf-8?B?cm5PZTFqRUR6TG1IMW10aVIzWXdXd0lVcFcxSVNzNzB2czYvaDRPTTI2Z2Q5?=
+ =?utf-8?B?S2l2ZEd2ZHFaV3lGdFg0RzluMUFpNDh1RjFSUEQ2K2podFZGR3dUUUlxZ2Za?=
+ =?utf-8?B?Y1cwUnNNcVNPWXRmZkxQRWlKSmtDRVVjMm8vV0tNTUhpaXhIaVh5UVlYcm5y?=
+ =?utf-8?B?TVlJL29OaEF5eklxTmVJdXB1VElHQVNzMFRNNEVWdjBycXg1WXRDaGpJdGZs?=
+ =?utf-8?B?UkpHeXgyakJ4M0FRZlVlZTIrT0JrVXVTLzR3SS9EdmU1MktuTzlQcUlSZ0Iy?=
+ =?utf-8?B?ZkdTNWh3MzU1SWxOVXdXMFllZ3pOWmZzR3BPSDFYbUd0a0xnTkZHbXVEWStF?=
+ =?utf-8?B?THMzbEthWXBEUHVUUmZ0dDhFVWVJNGhmTVR1RUMwRm1xbkJPOHp5UkpKYTNW?=
+ =?utf-8?B?SGVDS0ZUWXQ2em5KWi9XQjc4NnUrZEgvU2hjNmplbTAxdDBJcXVkSy9seWJw?=
+ =?utf-8?B?dEJHOUJwV2N5MUJETFUya00zbjl4MnVFZ0UrYUdobmZGWG5hR0V0RzEyV2Fi?=
+ =?utf-8?B?Wk1mK1NMMURvUEhUNUV5Y0YwbVhoc3hZbzMwUFk4Q2hBaVcyaXhIYjdPUjlT?=
+ =?utf-8?B?VGFlUkNCdi9PT3hpOEplbXhOcVRldW8wWW5vMUd5dkhpN212N0cybjNBaUh3?=
+ =?utf-8?B?NmFab28rd2tzM3dmWHEvOTA5dEMzTWlmTTcxZ2lJU3A4R3oyWmlldDEwWUVO?=
+ =?utf-8?B?Z0s3QXl5bkUrVlNadHZjT0svMjhidUxNaDhPK085SDJYMmQvaFJMVzNvSVJG?=
+ =?utf-8?B?TjFMbm1EVnNSMGF4SHF2NmtZVWgvQzRBNkV2OGtwV29ubmJrYm5yTVJ0bFZj?=
+ =?utf-8?B?T0lWV256ZlhJMi81YTAxNFhBK1hIZk4wTlVpK3lQd0I4SW5ENGhGT1U1bzU3?=
+ =?utf-8?B?cStqV2lhNDh5b0c4UE5hdVh3WDRzNXorMy9IMW1EcTVjbi9qWWovYit2S0lS?=
+ =?utf-8?B?aGVaWjc5RDhGVzZmQW5adGFPZzhRaFV5VTZCTjFNVEhGV01JOHI1a29mamJF?=
+ =?utf-8?B?Y3NrbDZpNVRwR2pkam15UFhzQ0UxMEVVTVlybWEyN3dBZzhHRUtwVCs1TU5r?=
+ =?utf-8?B?NjFXek1sVFc4ZzBKRVJESDJxUlBBUk5vYURUb0dpMUNvS244U1I4Nmt1QUYv?=
+ =?utf-8?B?dGhWcXkwbGRSN0VraGVDbyt1bVdKU0tseXR3NkRQcVJZd3FSUzUvVlROVTQ0?=
+ =?utf-8?B?eWpTdWVBZkxXSXJKUVk5b0p6Nkw1WVdKQ2szS010aGMreEM4T2g2NTBWQnFI?=
+ =?utf-8?B?WnpVUWZLNjdLUG5YaFhLTjlPYVdpNUtPTE8yS2dZejhyQXBVWEMvT1RXQUZK?=
+ =?utf-8?B?aHRGN0dJMVFrdTFpTjc5WHBZMTdVSURlaDZpeUl0TWYrYS9jS0ttVW5wdVNn?=
+ =?utf-8?B?LzZBazJ1N1hCWGthVEVmTDFuSnkxY1pMUjFmMTJIZ2UveFV0R3dvVnpsYnBV?=
+ =?utf-8?B?VGVpS0g1UC95Yk1lNWpmSDBZOUZJRHdlUFB5ZjJFMy9TWjNJVUhydnkvblBS?=
+ =?utf-8?B?SjZRTC95SE9mUCtDdmxBMjBOS2tqbGp6a095S0RtYzAzZmYvTlM5Mnl3RG1R?=
+ =?utf-8?B?RC81Q0t5Y1FxWUV0eGZrVXVITkxCcDgzZ0YyNTVaSWM3SnVvVXZEQjUrNm5Z?=
+ =?utf-8?B?WmFTdVd3QVFGaUw0N1JNd1VJTzFuMFJQVnMxRmt4TGg3RlV2MjlXMllURzF4?=
+ =?utf-8?B?YmtCTWlzL092dHFrcjlpUUl4SjZjWGROVkdMY3FsNk0xOHlSeUlpR055N2hR?=
+ =?utf-8?B?VzNwR2YxMEV2aG1IeTAvR1FLVVRtRkRMVGwzVTNMYjRqUTVLR05FZDkrRndB?=
+ =?utf-8?B?SWJDcnNFd1JMWkRDUmlEOTBiM1h1Y1ZLRi9sbFdmMWZ3RFMwTkl1T1BGRHRQ?=
+ =?utf-8?B?MTFqNnFDNmtMdXZTVlZ2aUdWWUgwTmZrbHZyOUlaNGlrSVhFM3JSVXpheERi?=
+ =?utf-8?B?Z092VjkvZ3F6RUluWXRibCtxQWFNRmFWQnhWbXMzbisvYkdkQUN4cXM4Uklx?=
+ =?utf-8?B?dTVCZVhQaEt3Rk9TRkRsaTNHb0QrZGd3L29vTWhqd0lRZkZpbUZJeXVKbG5I?=
+ =?utf-8?B?dkliSXgyeXQwaXNhQWNPaEY1OTZMOUJPbVo3QTVYaXRYY0ZLTXp4UFh1d2dK?=
+ =?utf-8?B?N08vTUtTUk52UDJtb294eWc0dHcxNjFjSG5MNFFvM25GclVPTDVJbllkZUkv?=
+ =?utf-8?B?UXJVN0xRZlVXV3NZY2U1d1hGRkJZUUdVSXJwRHoxWHM1SWlkbWNEcEVQaEdl?=
+ =?utf-8?B?SmVxcWxPbUlZN1AyVlNDblpCcmZ2enBhWC8xNEw5c0lkcXRRZ004KzZQbUhN?=
+ =?utf-8?B?dS9tUjE5dHhuc0FjMmtyZUY1a1ZzVlFrNGF0bU82Y2FyUjZaU0FYMEdib3lp?=
+ =?utf-8?B?a1BuWVl3RXMrYmxXbjJ1TFMrUlZLcnNSNVEydTVBTVR1MzRNTnZFenRDUXFJ?=
+ =?utf-8?B?NjY3V0JLMytOSndMNDNGQ2lkZjZIeU1aQlBmZlNZckZVNjNIMHcrNnd0ZWRY?=
+ =?utf-8?B?VnZBNCtaMDdUNkhtTUlMdUdhMVlURlFxb2grVWJRQStWQm00ZTJyQ1VQbWpz?=
+ =?utf-8?B?U1hDTmJreHRnVFRBNFZLaEFBMzFYVXdPVHRKMU1yYkN6VXN3T2NDOEt4d1pW?=
+ =?utf-8?B?RDJpUzM2N2xsVTRrUFdtbzJhZ2J5b0NzaDk3ZXkwOVgxZVlxVWxDMXhqVVZj?=
+ =?utf-8?Q?3dQ281DxVSpdyQHAsu955tC?=
+MIME-Version: 1.0
+
+--000000000000de8610063b7ba589
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+15TXmSDXkNec15XXnywNCg0K16rXldeT15QuINeU16nXmdeg15XXmdeZ150g15HXodei15nXpNeZ
+INeU15HXotec15XXqiDXkS1JUCDXnten15XXkdec15nXnS4NCtec15Ag16DXldeb15wg15zXlNeh
+15vXmdedINec157XkteR15zXqiDXkNeX16jXmdeV16og15HXnten16jXlCDXqdecIEdyb3NzIE5l
+Z2xpZ2VuY2UuDQoNCteR15HXqNeb15QsDQrXmNec15kNCg0KT24gVGh1LCBKdWwgMzEsIDIwMjUg
+YXQgNDo0M+KAr1BNIGFsb24gaGFyZWwgPGFsb25AZWlzbGF3LmNvLmlsPiB3cm90ZToNCg0KPiDX
+lNeZ15ksDQo+DQo+INee16Yi15Eg15jXmdeV15jXlCDXntei15XXk9eb16DXqi4NCj4NCj4g15DX
+nNeV158NCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ICrXnteQ16o6KiBUYWxp
+IE1lcm964oCMIDx0YWxpLm1lcm96QG5hdmluYS5haT4NCj4gKuKAj+KAj9eg16nXnNeXOiog15nX
+ldedINeX157Xmdep15kgMzEg15nXldec15kgMjAyNSAxNjowOQ0KPiAq4oCP4oCP15DXnDoqIGFs
+b24gaGFyZWwgPGFsb25AZWlzbGF3LmNvLmlsPg0KPiAq16LXldeq16c6KiBJcml0IFBvbGFrIDxJ
+cml0QHp1LWNvbnN1bHRpbmcuY29tPjsgSGlsYSBEYWxhbCBTaGVtZXNoIDwNCj4gaGlsYS5kc0Bu
+YXZpbmEuYWk+OyBMZWdhbCA8bGVnYWxAbmF2aW5hLmFpPjsgRWl0YW4gU2hhbWlyIDwNCj4gZWl0
+YW5AZWlzbGF3LmNvLmlsPg0KPiAq4oCP4oCP16DXldep15A6KiBSZTog4oCPIOKAjyBOYXZpbmEg
+LSBadSBjb25zdWx0aW5nDQo+DQo+INeU15kg15DXnNeV158sDQo+DQo+INee16fXldeR15wuDQo+
+DQo+INeq15XXk9eULA0KPiDXmNec15kNCj4NCj4gT24gVGh1LCBKdWwgMzEsIDIwMjUgYXQgMjo0
+MeKAr1BNIGFsb24gaGFyZWwgPGFsb25AZWlzbGF3LmNvLmlsPiB3cm90ZToNCj4NCj4g15TXmdeZ
+INeY15zXmSwNCj4NCj4g15DXoNeZINeo15XXpteUINec16HXm9edINeQ16og15TXk9eR16jXmded
+INeV15zXldeV15PXkCDXqdeQ16DXl9eg15Ug157XmdeV16nXqNeZ150gLQ0KPg0KPg0KPiAgICAx
+LiBadSDXntei16DXmden15Qg15zXm9edINeo16nXmdeV158g15zXm9ecINeUIC0gIFByZSBFeGlz
+dGluZyBNYXRlcmlhbHMgINeb15og16nXqteV15vXnNeVDQo+ICAgINec15TXqdeq157XqSDXkdeq
+15XXpteo15kg15TXqdeZ16jXldeq15nXnS4NCj4gICAgMi4gWnUgINeq16LXoNeZ16cg15zXm9ed
+INeR16LXnNeV16og16jXpyDXnNeq15XXpteo15nXnSDXqdeU150g16HXpNem15nXpNeZ15nXnSDX
+qdec15vXnSDXm9ee15Ug16DXqteV16DXmdedINep15zXm9edINeQ15UNCj4gICAg16jXqdeZ157X
+qiDXnNen15XXl9eV16ouDQo+ICAgIDMuIFp1ICDXqteV15vXnCDXnNeU16nXqtee16kg15HXm9ec
+INeU16rXldem16jXmdedINep15nXldeV16bXqNeVINeV15TXpNeZ16rXldeX15nXnSDXqdeZ16TX
+ldeq15fXlSDXkdee16HXkteo16og15TXodeb150NCj4gICAg15bXlCDXkdeZ158g15TXpteT15PX
+mdedINei150g15zXp9eV15fXldeqINeQ15fXqNeZ150g16nXnCBadSAg15XXkdec15HXkyDXqdec
+15Ag16rXktec15Qg157XmdeT16Ig16HXldeT15kg16nXnNeb150uDQo+DQo+DQo+INeb15vXnCDX
+qdeW15Qg157Xp9eV15HXnCwg15DXqdec15cg15jXmdeV15jXlCDXnteq15XXp9eg16og15HXqten
+15XXldeUINep16DXldeb15wg15zXodeS15XXqCDXkNeqINeU15TXodeb150uDQo+DQo+INeQ15zX
+ldefDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAq157XkNeqOiogVGFsaSBN
+ZXJveuKAjCA8dGFsaS5tZXJvekBuYXZpbmEuYWk+DQo+ICrigI/igI/XoNep15zXlzoqINeZ15XX
+nSDXqNeR15nXoteZIDMwINeZ15XXnNeZIDIwMjUgMTM6MjYNCj4gKuKAj+KAj9eQ15w6KiBhbG9u
+IGhhcmVsIDxhbG9uQGVpc2xhdy5jby5pbD4NCj4gKtei15XXqtenOiogSXJpdCBQb2xhayA8SXJp
+dEB6dS1jb25zdWx0aW5nLmNvbT47IEhpbGEgRGFsYWwgU2hlbWVzaCA8DQo+IGhpbGEuZHNAbmF2
+aW5hLmFpPjsgTGVnYWwgPGxlZ2FsQG5hdmluYS5haT47IEVpdGFuIFNoYW1pciA8DQo+IGVpdGFu
+QGVpc2xhdy5jby5pbD4NCj4gKuKAj+KAj9eg15XXqdeQOiogUmU6IOKAjyBOYXZpbmEgLSBadSBj
+b25zdWx0aW5nDQo+DQo+INeU15kg15DXnNeV158sDQo+DQo+INeq15XXk9eULiDXmdepINeb157X
+lCDXoNen15XXk9eV16og16nXoNeV16rXqNeVINek16rXldeX15XXqjoNCj4NCj4gMS4g16jXqdec
+16DXldeqINeX157Xldeo15QgLSDXm9eq15HXqiDXqdeU16bXoteqINek16nXqNeUIC0g15DXoNeZ
+INec15Ag15vXnCDXm9eaINee15HXmdeg15Qg157XlCDXlNem16LXqi4g157XlCDXkNeg15kNCj4g
+157XpNeh16TXodeqPw0KPiAyLiDXqteV16bXqNeZ150g16nXmdeV16bXqNeVINeR157XmdeV15fX
+kyDXoteR15XXqNeZ16DXlSDXldee15HXldeh16HXmdedINei15wg157XmdeT16Ig15XXlNeg15fX
+mdeV16og16nXnNeg15UgIChDbGllbnQNCj4gU3BlY2lmaWMgRGVsaXZlcmFibGVzKSAtINem16jX
+mdeb15nXnSDXnNeU15nXldeqINeR15HXotec15XXqteg15Ug15XXnNeQINeR16jXmdep15nXldef
+INeb16TXmSDXqdeb16rXkdeqLiDXlteUINec15ANCj4g16HXldeq16gg15DXqiDXlteUINep157X
+ldeq16gg15zXlteVINec15TXqdeq157XqSDXkdeZ15PXoiDXldeR16DXmdeh15nXldefINeU16DX
+pteR16gg15zXnteq158g16nXmdeo15XXqiDXnNec16fXldeX15XXqiDXkNeX16jXmdedLA0KPiDX
+ldec15Ag15LXldeo16Ig157Xkdei15zXldeq15Qg15HXp9eg15nXmdefINeU16jXldeX16DXmSDX
+kdeVINeg16LXqdeUINep15nXnteV16kg15zXpteV16jXmiDXmdeZ16bXldeoINeU16rXldem16jX
+mdedINep15zXoNeVLg0KPiAzLiDXqNeZ16nXmdeV158g15zXqdeZ157XldepINeR16fXoNeZ15nX
+nyDXlNeo15XXl9eg15kgKFByZS1FeGlzdGluZyBNYXRlcmlhbHMpICDXlNeb15zXldecINeR16rX
+ldem16jXmdedDQo+IChEZWxpdmVyYWJsZXMpICAtINeR16LXmden16jXldefINeU16HXoteZ16Mg
+157Xp9eV15HXnCDXkNeR15wg15DXnteV16gg15zXl9eV15wg15LXnSDXotecINeq15XXpteo15nX
+nSDXlNeb15zXldec15nXnQ0KPiDXkdeq15XXpteo15nXnSDXlNeh16TXpteZ16TXmdeZ150g15XX
+ktedINei15wg16rXldem16jXmdedINeb15zXnNeZ15nXnS4NCj4NCj4g157Xpteo16TXqiDXlNeh
+15vXnSDXkdeg15XXodeXINee16LXldeT15vXnyDXnteh15XXntefINeb16DXkteTINeU16DXldeh
+15cg16nXqdec15fXqi4NCj4NCj4g15HXkdeo15vXlCwNCj4g15jXnNeZDQo+DQo+DQo+DQo+IE9u
+IFR1ZSwgSnVsIDI5LCAyMDI1IGF0IDU6MTTigK9QTSBhbG9uIGhhcmVsIDxhbG9uQGVpc2xhdy5j
+by5pbD4gd3JvdGU6DQo+DQo+INeU15nXmSDXmNec15ksDQo+DQo+INeR15TXntep15og15zXqdeZ
+15fXqteg15UsINee16Yi15Eg15TXmNeZ15XXmNeUINeU157XqteV16fXoNeqLg0KPg0KPiDXkNec
+15XXnw0KPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gKtee15DXqjoqIFRhbGkg
+TWVyb3rigIwgPHRhbGkubWVyb3pAbmF2aW5hLmFpPg0KPiAq4oCP4oCP16DXqdec15c6KiDXmdeV
+150g16nXoNeZIDI4INeZ15XXnNeZIDIwMjUgMTY6NDQNCj4gKuKAj+KAj9eQ15w6KiBJcml0IFBv
+bGFrIDxJcml0QHp1LWNvbnN1bHRpbmcuY29tPg0KPiAq16LXldeq16c6KiBIaWxhIERhbGFsIFNo
+ZW1lc2ggPGhpbGEuZHNAbmF2aW5hLmFpPjsgTGVnYWwgPGxlZ2FsQG5hdmluYS5haT47DQo+IGFs
+b24gaGFyZWwgPGFsb25AZWlzbGF3LmNvLmlsPg0KPiAq4oCP4oCP16DXldep15A6KiBSZTogTmF2
+aW5hIC0gWnUgY29uc3VsdGluZw0KPg0KPiBIaSBJcml0LA0KPg0KPiBUaGFua3MsIEknbGwgcmV2
+aWV3Lg0KPiAgQXJlIHlvdSBhdmFpbGFibGUgZm9yIGEgcXVpY2sgY2FsbCB0b21vcnJvdyBhdCAx
+NjowMCBpbiBjYXNlIHdlIG5lZWQgdG8NCj4gZGlzY3VzcyBhbnl0aGluZz8NCj4NCj4gVGhhbmtz
+LA0KPiBUYWxpDQo+DQo+IE9uIE1vbiwgSnVsIDI4LCAyMDI1IGF0IDQ6MDTigK9QTSBJcml0IFBv
+bGFrIDxJcml0QHp1LWNvbnN1bHRpbmcuY29tPiB3cm90ZToNCj4NCj4gSGkgVGFsaSwNCj4NCj4N
+Cj4NCj4gUGxlYXNlIGZpbmQgYXR0YWNoZWQgd2l0aCBvdXIgY29tbWVudHMuIEkgc3VnZ2VzdCB0
+byBoYXZlIGEgc2hvcnQgY2FsbCB0bw0KPiBkaXNjdXNzIDQuNC00LjUNCj4NCj4gUGxlYXNlIGxl
+dCB1cyBrbm93IGlmIHlvdSBhcmUgYXZhaWxhYmxlIHRvbW9ycm93IHNvbWUgdGltZSBhZnRlciAx
+MjozMA0KPg0KPg0KPg0KPiBUaGFua3MNCj4NCj4NCj4NCj4gKkZyb206KiBUYWxpIE1lcm964oCM
+IDx0YWxpLm1lcm96QG5hdmluYS5haT4NCj4gKlNlbnQ6KiBUaHVyc2RheSwgMjQgSnVseSAyMDI1
+IDIzOjUzDQo+ICpUbzoqIElyaXQgUG9sYWsgPElyaXRAenUtY29uc3VsdGluZy5jb20+DQo+ICpD
+YzoqIEhpbGEgRGFsYWwgU2hlbWVzaCA8aGlsYS5kc0BuYXZpbmEuYWk+OyBMZWdhbCA8bGVnYWxA
+bmF2aW5hLmFpPg0KPiAqU3ViamVjdDoqIFJlOiBOYXZpbmEgLSBadSBjb25zdWx0aW5nDQo+DQo+
+DQo+DQo+IEhpIElyaXQsDQo+DQo+IFRoYW5rcyBmb3Igc2VuZGluZyB0aGUgdXBkYXRlZCBhZ3Jl
+ZW1lbnQuIFBsZWFzZSBmaW5kIGF0dGFjaGVkIHRoZQ0KPiBmb2xsb3dpbmcgZG9jdW1lbnRzOg0K
+Pg0KPiBhLiBUaGUgdXBkYXRlZCBhZ3JlZW1lbnQgd2l0aCBvdXIgc3VnZ2VzdGVkIGNoYW5nZXMu
+IFRoZSBtYWluIHBvaW50IGlzIHRvDQo+IGNsYXJpZnkgdGhhdCBhbnkgd29yayBwZXJmb3JtZWQg
+c3BlY2lmaWNhbGx5IGZvciBOYXZpbmEsIGFuZCBiYXNlZCBvbiBvdXINCj4gZGF0YSBvciBpbnRl
+bGxlY3R1YWwgcHJvcGVydHksIHdpbGwgYmUgb3duZWQgYnkgdXMuDQo+IEZvciBleGFtcGxlOg0K
+Pg0KPiAgICAtIENvbmZpZ3VyYXRpb24gb2YgTmV0U3VpdGUgdG8gcmVmbGVjdCBOYXZpbmHigJlz
+IGJ1c2luZXNzIHByb2Nlc3Nlcw0KPiAgICAtIERvY3VtZW50YXRpb24gY3JlYXRlZCBzcGVjaWZp
+Y2FsbHkgZm9yIG91ciBmaW5hbmNpYWwgd29ya2Zsb3dzDQo+ICAgIC0gRGF0YSBtaWdyYXRpb24g
+bWFwcGluZyBiYXNlZCBvbiBvdXIgaW50ZXJuYWwgc3lzdGVtcyBhbmQgc3RydWN0dXJlDQo+DQo+
+IGIuIFRoZSBTdGF0ZW1lbnQgb2YgV29yayAoU09XKSB3aXRoIG1pbm9yIHVwZGF0ZXMgdG8gYWxp
+Z24gb24gdGltZWxpbmVzDQo+IGFuZCBlbnN1cmUgY29uc2lzdGVuY3kgYmV0d2VlbiB0aGUgU09X
+IGFuZCB0aGUgbWFpbiBhZ3JlZW1lbnQuDQo+DQo+IGMuIE91ciBJVCBhbmQgU2VjdXJpdHkgQWRk
+ZW5kdW0sIHdoaWNoIHdl4oCZcmUgYWRkaW5nIHRvIHRoZSBzZXJ2aWNlcw0KPiBhZ3JlZW1lbnQg
+c2luY2UgeW91ciB0ZWFtIHdpbGwgYmUgYWNjZXNzaW5nIG91ciBzeXN0ZW1zLg0KPg0KPiBCZXN0
+IHJlZ2FyZHMsDQo+IFRhbGkNCj4NCj4NCj4NCj4gT24gV2VkLCBKdWwgMjMsIDIwMjUgYXQgMTI6
+MzHigK9BTSBJcml0IFBvbGFrIDxJcml0QHp1LWNvbnN1bHRpbmcuY29tPg0KPiB3cm90ZToNCj4N
+Cj4gSGkgSGlsYSwNCj4NCj4NCj4NCj4gUGxlYXNlIHNlZSBhdHRhY2hlZCB3aXRoIG91ciBjb21t
+ZW50cy4NCj4NCj4gUGxlYXNlIGxldCBtZSBrbm93IGlmIHRoZSByZW1hcmtzIGFyZSBhZ3JlZWQg
+YnkgeW91IHNvIHdlIGNhbiBzaGFyZSBhDQo+IHZlcnNpb24gZm9yIGV4ZWN1dGlvbi4NCj4NCj4N
+Cj4NCj4NCj4NCj4gVGhhbmtzIQ0KPg0KPg0KPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NCj4NCj4gKkZyb206KiBIaWxhIERhbGFsIFNoZW1lc2ggPGhpbGEuZHNAbmF2aW5hLmFpPg0K
+PiAqU2VudDoqIFN1bmRheSwgSnVseSAyMCwgMjAyNSAxMTowMyBQTQ0KPiAqVG86KiBJcml0IFBv
+bGFrIDxJcml0QHp1LWNvbnN1bHRpbmcuY29tPg0KPiAqQ2M6KiBMZWdhbCA8bGVnYWxAbmF2aW5h
+LmFpPg0KPiAqU3ViamVjdDoqIE5hdmluYSAtIFp1IGNvbnN1bHRpbmcNCj4NCj4NCj4NCj4gSGkg
+SXJpdCwNCj4NCj4gUGxlYXNlIGZpbmQgYXR0YWNoZWQgb3VyIHNlcnZpY2UgYWdyZWVtZW50Lg0K
+Pg0KPiBXZeKAmWxsIGJlIGF0dGFjaGluZyB0aGUgZXhoaWJpdCB5b3Ugc2hhcmVkIHRvIHRoaXMg
+ZG9jdW1lbnQuDQo+DQo+IExldCBtZSBrbm93IGlmIHlvdSBoYXZlIGFueSBjb21tZW50cy4NCj4N
+Cj4gQmVzdCwNCj4NCj4gSGlsYQ0KPg0KPg0KPg0KPiAqSGlsYSBEYWxhbCBTaGVtZXNoKg0KPg0K
+PiBWUCBGaW5hbmNlDQo+DQo+IHd3dy5uYXZpbmEuYWkNCj4NCj4gTGlua2VkSW4gPGh0dHBzOi8v
+d3d3LmxpbmtlZGluLmNvbS9pbi9oaWxhLWRhbGFsLXNoZW1lc2gtMDM2OWExYTkvPg0KPg0KPg0K
+--000000000000de8610063b7ba589
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><d=
+iv dir=3D"ltr"><div dir=3D"rtl">=D7=94=D7=99 =D7=90=D7=9C=D7=95=D7=9F,</div=
+><div dir=3D"rtl"><br></div><div dir=3D"rtl">=D7=AA=D7=95=D7=93=D7=94. =D7=
+=94=D7=A9=D7=99=D7=A0=D7=95=D7=99=D7=99=D7=9D =D7=91=D7=A1=D7=A2=D7=99=D7=
+=A4=D7=99 =D7=94=D7=91=D7=A2=D7=9C=D7=95=D7=AA =D7=91-IP =D7=9E=D7=A7=D7=95=
+=D7=91=D7=9C=D7=99=D7=9D.&nbsp;</div><div dir=3D"rtl">=D7=9C=D7=90 =D7=A0=
+=D7=95=D7=9B=D7=9C =D7=9C=D7=94=D7=A1=D7=9B=D7=99=D7=9D =D7=9C=D7=9E=D7=92=
+=D7=91=D7=9C=D7=AA =D7=90=D7=97=D7=A8=D7=99=D7=95=D7=AA =D7=91=D7=9E=D7=A7=
+=D7=A8=D7=94 =D7=A9=D7=9C Gross Negligence.&nbsp;</div><div dir=3D"rtl"><br=
+></div><div dir=3D"rtl">=D7=91=D7=91=D7=A8=D7=9B=D7=94,</div><div dir=3D"rt=
+l">=D7=98=D7=9C=D7=99</div></div><br><div class=3D"gmail_quote"><div dir=3D=
+"ltr" class=3D"gmail_attr">On Thu, Jul 31, 2025 at 4:43=E2=80=AFPM alon har=
+el &lt;<a href=3D"mailto:alon@eislaw.co.il" target=3D"_blank">alon@eislaw.c=
+o.il</a>&gt; wrote:<br></div><blockquote class=3D"gmail_quote" style=3D"mar=
+gin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1=
+ex"><div>
+
+
+
+
+<div dir=3D"rtl">
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=94=D7=99=D7=99,</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=9E=D7=A6&quot;=D7=91 =D7=98=D7=99=D7=95=D7=98=D7=94 =D7=9E=D7=A2=D7=95=
+=D7=93=D7=9B=D7=A0=D7=AA.</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=90=D7=9C=D7=95=D7=9F</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167appendonsend"></div>
+<hr style=3D"display:inline-block;width:98%">
+<div id=3D"m_128127957366098633m_-7027764743071062167divRplyFwdMsg" dir=3D"=
+rtl"><font face=3D"Calibri, sans-serif" style=3D"font-size:11pt" color=3D"#=
+000000"><b>=D7=9E=D7=90=D7=AA:</b> Tali Meroz=E2=80=8C &lt;<a href=3D"mailt=
+o:tali.meroz@navina.ai" target=3D"_blank">tali.meroz@navina.ai</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=A9=D7=9C=D7=97:</b> =D7=99=D7=95=D7=9D&nbsp;=
+=D7=97=D7=9E=D7=99=D7=A9=D7=99 31 =D7=99=D7=95=D7=9C=D7=99 2025 16:09<br>
+<b>=E2=80=8F=E2=80=8F=D7=90=D7=9C:</b> alon harel &lt;<a href=3D"mailto:alo=
+n@eislaw.co.il" target=3D"_blank">alon@eislaw.co.il</a>&gt;<br>
+<b>=D7=A2=D7=95=D7=AA=D7=A7:</b> Irit Polak &lt;<a href=3D"mailto:Irit@zu-c=
+onsulting.com" target=3D"_blank">Irit@zu-consulting.com</a>&gt;; Hila Dalal=
+ Shemesh &lt;<a href=3D"mailto:hila.ds@navina.ai" target=3D"_blank">hila.ds=
+@navina.ai</a>&gt;; Legal &lt;<a href=3D"mailto:legal@navina.ai" target=3D"=
+_blank">legal@navina.ai</a>&gt;; Eitan Shamir &lt;<a href=3D"mailto:eitan@e=
+islaw.co.il" target=3D"_blank">eitan@eislaw.co.il</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=95=D7=A9=D7=90:</b> Re: =E2=80=8F =E2=80=8F =
+Navina - Zu consulting</font>
+<div>&nbsp;</div>
+</div>
+<div>
+<div dir=3D"ltr">
+<div dir=3D"rtl">=D7=94=D7=99 =D7=90=D7=9C=D7=95=D7=9F,</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=D7=9E=D7=A7=D7=95=D7=91=D7=9C.</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=D7=AA=D7=95=D7=93=D7=94,</div>
+<div dir=3D"rtl">=D7=98=D7=9C=D7=99</div>
+</div>
+<br>
+<div>
+<div dir=3D"ltr">On Thu, Jul 31, 2025 at 2:41=E2=80=AFPM alon harel &lt;<a =
+href=3D"mailto:alon@eislaw.co.il" target=3D"_blank">alon@eislaw.co.il</a>&g=
+t; wrote:<br>
+</div>
+<blockquote style=3D"margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204=
+,204,204);padding-left:1ex">
+<div>
+<div dir=3D"rtl">
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=94=D7=99=D7=99 =D7=98=D7=9C=D7=99,</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=90=D7=A0=D7=99 =D7=A8=D7=95=D7=A6=D7=94 =D7=9C=D7=A1=D7=9B=D7=9D =D7=90=
+=D7=AA =D7=94=D7=93=D7=91=D7=A8=D7=99=D7=9D =D7=95=D7=9C=D7=95=D7=95=D7=93=
+=D7=90 =D7=A9=D7=90=D7=A0=D7=97=D7=A0=D7=95 =D7=9E=D7=99=D7=95=D7=A9=D7=A8=
+=D7=99=D7=9D -&nbsp;</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<ol start=3D"1" style=3D"direction:rtl;margin-top:0px;margin-bottom:0px;lis=
+t-style-type:decimal">
+<li style=3D"font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calib=
+ri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0);direction:rtl">
+<div role=3D"presentation" style=3D"direction:rtl">Zu =D7=9E=D7=A2=D7=A0=D7=
+=99=D7=A7=D7=94 =D7=9C=D7=9B=D7=9D =D7=A8=D7=A9=D7=99=D7=95=D7=9F =D7=9C=D7=
+=9B=D7=9C =D7=94 -&nbsp; Pre Existing Materials&nbsp; =D7=9B=D7=9A =D7=A9=
+=D7=AA=D7=95=D7=9B=D7=9C=D7=95 =D7=9C=D7=94=D7=A9=D7=AA=D7=9E=D7=A9 =D7=91=
+=D7=AA=D7=95=D7=A6=D7=A8=D7=99 =D7=94=D7=A9=D7=99=D7=A8=D7=95=D7=AA=D7=99=
+=D7=9D.</div>
+</li><li style=3D"font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,=
+Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0);direction:rtl"=
+>
+<div role=3D"presentation" style=3D"direction:rtl">Zu&nbsp; =D7=AA=D7=A2=D7=
+=A0=D7=99=D7=A7 =D7=9C=D7=9B=D7=9D =D7=91=D7=A2=D7=9C=D7=95=D7=AA =D7=A8=D7=
+=A7 =D7=9C=D7=AA=D7=95=D7=A6=D7=A8=D7=99=D7=9D =D7=A9=D7=94=D7=9D =D7=A1=D7=
+=A4=D7=A6=D7=99=D7=A4=D7=99=D7=99=D7=9D =D7=A9=D7=9C=D7=9B=D7=9D =D7=9B=D7=
+=9E=D7=95 =D7=A0=D7=AA=D7=95=D7=A0=D7=99=D7=9D =D7=A9=D7=9C=D7=9B=D7=9D =D7=
+=90=D7=95 =D7=A8=D7=A9=D7=99=D7=9E=D7=AA =D7=9C=D7=A7=D7=95=D7=97=D7=95=D7=
+=AA.</div>
+</li><li style=3D"font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,=
+Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0);direction:rtl"=
+>
+<div role=3D"presentation" style=3D"direction:rtl">Zu&nbsp; =D7=AA=D7=95=D7=
+=9B=D7=9C =D7=9C=D7=94=D7=A9=D7=AA=D7=9E=D7=A9 =D7=91=D7=9B=D7=9C =D7=94=D7=
+=AA=D7=95=D7=A6=D7=A8=D7=99=D7=9D =D7=A9=D7=99=D7=95=D7=95=D7=A6=D7=A8=D7=
+=95 =D7=95=D7=94=D7=A4=D7=99=D7=AA=D7=95=D7=97=D7=99=D7=9D =D7=A9=D7=99=D7=
+=A4=D7=95=D7=AA=D7=97=D7=95 =D7=91=D7=9E=D7=A1=D7=92=D7=A8=D7=AA =D7=94=D7=
+=A1=D7=9B=D7=9D =D7=96=D7=94 =D7=91=D7=99=D7=9F =D7=94=D7=A6=D7=93=D7=93=D7=
+=99=D7=9D =D7=A2=D7=9D =D7=9C=D7=A7=D7=95=D7=97=D7=95=D7=AA =D7=90=D7=97=D7=
+=A8=D7=99=D7=9D =D7=A9=D7=9C Zu&nbsp; =D7=95=D7=91=D7=9C=D7=91=D7=93 =D7=A9=
+=D7=9C=D7=90 =D7=AA=D7=92=D7=9C=D7=94 =D7=9E=D7=99=D7=93=D7=A2 =D7=A1=D7=95=
+=D7=93=D7=99 =D7=A9=D7=9C=D7=9B=D7=9D.&nbsp;</div>
+<div style=3D"font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Cali=
+bri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0);direction:rtl">
+<div role=3D"presentation" style=3D"direction:rtl"><br>
+</div>
+</div>
+</li></ol>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=9B=D7=9B=D7=9C =D7=A9=D7=96=D7=94 =D7=9E=D7=A7=D7=95=D7=91=D7=9C, =D7=
+=90=D7=A9=D7=9C=D7=97 =D7=98=D7=99=D7=95=D7=98=D7=94 =D7=9E=D7=AA=D7=95=D7=
+=A7=D7=A0=D7=AA =D7=91=D7=AA=D7=A7=D7=95=D7=95=D7=94 =D7=A9=D7=A0=D7=95=D7=
+=9B=D7=9C =D7=9C=D7=A1=D7=92=D7=95=D7=A8 =D7=90=D7=AA =D7=94=D7=94=D7=A1=D7=
+=9B=D7=9D.</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=90=D7=9C=D7=95=D7=9F</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61appendonsend"></div>
+<hr style=3D"display:inline-block;width:98%">
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61divRplyFwdMsg" dir=3D"rtl"><font face=3D"Calibri, sans-serif" color=3D"#0=
+00000" style=3D"font-size:11pt"><b>=D7=9E=D7=90=D7=AA:</b> Tali Meroz=E2=80=
+=8C &lt;<a href=3D"mailto:tali.meroz@navina.ai" target=3D"_blank">tali.mero=
+z@navina.ai</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=A9=D7=9C=D7=97:</b> =D7=99=D7=95=D7=9D&nbsp;=
+=D7=A8=D7=91=D7=99=D7=A2=D7=99 30 =D7=99=D7=95=D7=9C=D7=99 2025 13:26<br>
+<b>=E2=80=8F=E2=80=8F=D7=90=D7=9C:</b> alon harel &lt;<a href=3D"mailto:alo=
+n@eislaw.co.il" target=3D"_blank">alon@eislaw.co.il</a>&gt;<br>
+<b>=D7=A2=D7=95=D7=AA=D7=A7:</b> Irit Polak &lt;<a href=3D"mailto:Irit@zu-c=
+onsulting.com" target=3D"_blank">Irit@zu-consulting.com</a>&gt;; Hila Dalal=
+ Shemesh &lt;<a href=3D"mailto:hila.ds@navina.ai" target=3D"_blank">hila.ds=
+@navina.ai</a>&gt;; Legal &lt;<a href=3D"mailto:legal@navina.ai" target=3D"=
+_blank">legal@navina.ai</a>&gt;;
+ Eitan Shamir &lt;<a href=3D"mailto:eitan@eislaw.co.il" target=3D"_blank">e=
+itan@eislaw.co.il</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=95=D7=A9=D7=90:</b> Re: =E2=80=8F Navina - Z=
+u consulting</font>
+<div>&nbsp;</div>
+</div>
+<div>
+<div dir=3D"ltr">
+<div dir=3D"rtl">=D7=94=D7=99 =D7=90=D7=9C=D7=95=D7=9F,</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=D7=AA=D7=95=D7=93=D7=94. =D7=99=D7=A9 =D7=9B=D7=9E=D7=94 =
+=D7=A0=D7=A7=D7=95=D7=93=D7=95=D7=AA =D7=A9=D7=A0=D7=95=D7=AA=D7=A8=D7=95 =
+=D7=A4=D7=AA=D7=95=D7=97=D7=95=D7=AA:</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">1. =D7=A8=D7=A9=D7=9C=D7=A0=D7=95=D7=AA =D7=97=D7=9E=D7=95=
+=D7=A8=D7=94 - =D7=9B=D7=AA=D7=91=D7=AA =D7=A9=D7=94=D7=A6=D7=A2=D7=AA =D7=
+=A4=D7=A9=D7=A8=D7=94 - =D7=90=D7=A0=D7=99 =D7=9C=D7=90 =D7=9B=D7=9C =D7=9B=
+=D7=9A =D7=9E=D7=91=D7=99=D7=A0=D7=94 =D7=9E=D7=94 =D7=94=D7=A6=D7=A2=D7=AA=
+. =D7=9E=D7=94 =D7=90=D7=A0=D7=99 =D7=9E=D7=A4=D7=A1=D7=A4=D7=A1=D7=AA?&nbs=
+p;</div>
+<div dir=3D"rtl">2. =D7=AA=D7=95=D7=A6=D7=A8=D7=99=D7=9D =D7=A9=D7=99=D7=95=
+=D7=A6=D7=A8=D7=95 =D7=91=D7=9E=D7=99=D7=95=D7=97=D7=93 =D7=A2=D7=91=D7=95=
+=D7=A8=D7=99=D7=A0=D7=95&nbsp;=D7=95=D7=9E=D7=91=D7=95=D7=A1=D7=A1=D7=99=D7=
+=9D =D7=A2=D7=9C =D7=9E=D7=99=D7=93=D7=A2 =D7=95=D7=94=D7=A0=D7=97=D7=99=D7=
+=95=D7=AA =D7=A9=D7=9C=D7=A0=D7=95&nbsp; (Client Specific Deliverables) - =
+=D7=A6=D7=A8=D7=99=D7=9B=D7=99=D7=9D =D7=9C=D7=94=D7=99=D7=95=D7=AA =D7=91=
+=D7=91=D7=A2=D7=9C=D7=95=D7=AA=D7=A0=D7=95 =D7=95=D7=9C=D7=90 =D7=91=D7=A8=
+=D7=99=D7=A9=D7=99=D7=95=D7=9F =D7=9B=D7=A4=D7=99 =D7=A9=D7=9B=D7=AA=D7=91=
+=D7=AA. =D7=96=D7=94 =D7=9C=D7=90 =D7=A1=D7=95=D7=AA=D7=A8 =D7=90=D7=AA =D7=
+=96=D7=94 =D7=A9=D7=9E=D7=95=D7=AA=D7=A8&nbsp;=D7=9C=D7=96=D7=95 =D7=9C=D7=
+=94=D7=A9=D7=AA=D7=9E=D7=A9 =D7=91=D7=99=D7=93=D7=A2 =D7=95=D7=91=D7=A0=D7=
+=99=D7=A1=D7=99=D7=95=D7=9F =D7=94=D7=A0=D7=A6=D7=91=D7=A8&nbsp;=D7=9C=D7=
+=9E=D7=AA=D7=9F =D7=A9=D7=99=D7=A8=D7=95=D7=AA =D7=9C=D7=9C=D7=A7=D7=95=D7=
+=97=D7=95=D7=AA =D7=90=D7=97=D7=A8=D7=99=D7=9D, =D7=95=D7=9C=D7=90 =D7=92=
+=D7=95=D7=A8=D7=A2 =D7=9E=D7=91=D7=A2=D7=9C=D7=95=D7=AA=D7=94&nbsp;=D7=91=
+=D7=A7=D7=A0=D7=99=D7=99=D7=9F
+ =D7=94=D7=A8=D7=95=D7=97=D7=A0=D7=99 =D7=91=D7=95 =D7=A0=D7=A2=D7=A9=D7=94=
+ =D7=A9=D7=99=D7=9E=D7=95=D7=A9 =D7=9C=D7=A6=D7=95=D7=A8=D7=9A =D7=99=D7=99=
+=D7=A6=D7=95=D7=A8 =D7=94=D7=AA=D7=95=D7=A6=D7=A8=D7=99=D7=9D =D7=A9=D7=9C=
+=D7=A0=D7=95.&nbsp;</div>
+<div dir=3D"rtl">3. =D7=A8=D7=99=D7=A9=D7=99=D7=95=D7=9F =D7=9C=D7=A9=D7=99=
+=D7=9E=D7=95=D7=A9 =D7=91=D7=A7=D7=A0=D7=99=D7=99=D7=9F =D7=94=D7=A8=D7=95=
+=D7=97=D7=A0=D7=99 (Pre-Existing Materials)&nbsp;&nbsp;=D7=94=D7=9B=D7=9C=
+=D7=95=D7=9C =D7=91=D7=AA=D7=95=D7=A6=D7=A8=D7=99=D7=9D (Deliverables)&nbsp=
+; - =D7=91=D7=A2=D7=99=D7=A7=D7=A8=D7=95=D7=9F =D7=94=D7=A1=D7=A2=D7=99=D7=
+=A3 =D7=9E=D7=A7=D7=95=D7=91=D7=9C =D7=90=D7=91=D7=9C =D7=90=D7=9E=D7=95=D7=
+=A8 =D7=9C=D7=97=D7=95=D7=9C =D7=92=D7=9D =D7=A2=D7=9C =D7=AA=D7=95=D7=A6=
+=D7=A8=D7=99=D7=9D =D7=94=D7=9B=D7=9C=D7=95=D7=9C=D7=99=D7=9D =D7=91=D7=AA=
+=D7=95=D7=A6=D7=A8=D7=99=D7=9D =D7=94=D7=A1=D7=A4=D7=A6=D7=99=D7=A4=D7=99=
+=D7=99=D7=9D =D7=95=D7=92=D7=9D =D7=A2=D7=9C =D7=AA=D7=95=D7=A6=D7=A8=D7=99=
+=D7=9D =D7=9B=D7=9C=D7=9C=D7=99=D7=99=D7=9D.&nbsp;</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=D7=9E=D7=A6=D7=A8=D7=A4=D7=AA =D7=94=D7=A1=D7=9B=D7=9D =
+=D7=91=D7=A0=D7=95=D7=A1=D7=97 =D7=9E=D7=A2=D7=95=D7=93=D7=9B=D7=9F =D7=9E=
+=D7=A1=D7=95=D7=9E=D7=9F =D7=9B=D7=A0=D7=92=D7=93 =D7=94=D7=A0=D7=95=D7=A1=
+=D7=97 =D7=A9=D7=A9=D7=9C=D7=97=D7=AA.</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl">=D7=91=D7=91=D7=A8=D7=9B=D7=94,</div>
+<div dir=3D"rtl">=D7=98=D7=9C=D7=99</div>
+<div dir=3D"rtl"><br>
+</div>
+<div dir=3D"rtl"><br>
+</div>
+</div>
+<br>
+<div>
+<div dir=3D"ltr">On Tue, Jul 29, 2025 at 5:14=E2=80=AFPM alon harel &lt;<a =
+href=3D"mailto:alon@eislaw.co.il" target=3D"_blank">alon@eislaw.co.il</a>&g=
+t; wrote:<br>
+</div>
+<blockquote style=3D"margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204=
+,204,204);padding-left:1ex">
+<div>
+<div dir=3D"rtl">
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=94=D7=99=D7=99 =D7=98=D7=9C=D7=99,</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=91=D7=94=D7=9E=D7=A9=D7=9A =D7=9C=D7=A9=D7=99=D7=97=D7=AA=D7=A0=D7=95, =
+=D7=9E=D7=A6&quot;=D7=91 =D7=94=D7=98=D7=99=D7=95=D7=98=D7=94 =D7=94=D7=9E=
+=D7=AA=D7=95=D7=A7=D7=A0=D7=AA.</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+<br>
+</div>
+<div style=3D"direction:rtl;font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFo=
+ntService,Calibri,Helvetica,sans-serif;font-size:12pt;color:rgb(0,0,0)">
+=D7=90=D7=9C=D7=95=D7=9F</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349appendonsend"></div>
+<hr style=3D"display:inline-block;width:98%">
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349divRplyFwdMsg" dir=3D"rtl">
+<font face=3D"Calibri, sans-serif" color=3D"#000000" style=3D"font-size:11p=
+t"><b>=D7=9E=D7=90=D7=AA:</b> Tali Meroz=E2=80=8C &lt;<a href=3D"mailto:tal=
+i.meroz@navina.ai" target=3D"_blank">tali.meroz@navina.ai</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=A9=D7=9C=D7=97:</b> =D7=99=D7=95=D7=9D&nbsp;=
+=D7=A9=D7=A0=D7=99 28 =D7=99=D7=95=D7=9C=D7=99 2025 16:44<br>
+<b>=E2=80=8F=E2=80=8F=D7=90=D7=9C:</b> Irit Polak &lt;<a href=3D"mailto:Iri=
+t@zu-consulting.com" target=3D"_blank">Irit@zu-consulting.com</a>&gt;<br>
+<b>=D7=A2=D7=95=D7=AA=D7=A7:</b> Hila Dalal Shemesh &lt;<a href=3D"mailto:h=
+ila.ds@navina.ai" target=3D"_blank">hila.ds@navina.ai</a>&gt;; Legal &lt;<a=
+ href=3D"mailto:legal@navina.ai" target=3D"_blank">legal@navina.ai</a>&gt;;=
+ alon harel &lt;<a href=3D"mailto:alon@eislaw.co.il" target=3D"_blank">alon=
+@eislaw.co.il</a>&gt;<br>
+<b>=E2=80=8F=E2=80=8F=D7=A0=D7=95=D7=A9=D7=90:</b> Re: Navina - Zu consulti=
+ng</font>
+<div>&nbsp;</div>
+</div>
+<div>
+<div dir=3D"ltr">Hi&nbsp;Irit,
+<div><br>
+</div>
+<div>Thanks, I'll review.</div>
+<div>&nbsp;Are you available&nbsp;for a quick call tomorrow at 16:00 in cas=
+e we need to discuss anything?</div>
+<div><br>
+</div>
+<div>Thanks,</div>
+<div>Tali&nbsp;</div>
+</div>
+<br>
+<div>
+<div dir=3D"ltr">On Mon, Jul 28, 2025 at 4:04=E2=80=AFPM Irit Polak &lt;<a =
+href=3D"mailto:Irit@zu-consulting.com" target=3D"_blank">Irit@zu-consulting=
+.com</a>&gt; wrote:<br>
+</div>
+<blockquote style=3D"margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204=
+,204,204);padding-left:1ex">
+<div>
+<div lang=3D"en-IL">
+<div>
+<p><span lang=3D"en-IL">Hi Tali,<u></u><u></u></span></p>
+<p><span lang=3D"en-IL"><u></u>&nbsp;<u></u></span></p>
+<p><span lang=3D"en-IL">Please find attached with our comments. I suggest t=
+o have a short call to discuss 4.4-4.5<u></u><u></u></span></p>
+<p><span lang=3D"en-IL">Please let us know if you are available tomorrow so=
+me time after 12:30<u></u><u></u></span></p>
+<p><span lang=3D"en-IL"><u></u>&nbsp;<u></u></span></p>
+<p><span lang=3D"en-IL">Thanks</span><span lang=3D"HE" dir=3D"RTL" style=3D=
+"font-family:Arial,sans-serif"><u></u><u></u></span></p>
+<p><span lang=3D"en-IL"><u></u>&nbsp;<u></u></span></p>
+<div style=3D"border-right:none;border-bottom:none;border-left:none;border-=
+top:1pt solid rgb(225,225,225);padding:3pt 0cm 0cm">
+<p><b><span lang=3D"EN-US" style=3D"font-size:11pt;font-family:Calibri,sans=
+-serif">From:</span></b><span lang=3D"EN-US" style=3D"font-size:11pt;font-f=
+amily:Calibri,sans-serif"> Tali Meroz=E2=80=8C &lt;<a href=3D"mailto:tali.m=
+eroz@navina.ai" target=3D"_blank">tali.meroz@navina.ai</a>&gt;
+<br>
+<b>Sent:</b> Thursday, 24 July 2025 23:53<br>
+<b>To:</b> Irit Polak &lt;<a href=3D"mailto:Irit@zu-consulting.com" target=
+=3D"_blank">Irit@zu-consulting.com</a>&gt;<br>
+<b>Cc:</b> Hila Dalal Shemesh &lt;<a href=3D"mailto:hila.ds@navina.ai" targ=
+et=3D"_blank">hila.ds@navina.ai</a>&gt;; Legal &lt;<a href=3D"mailto:legal@=
+navina.ai" target=3D"_blank">legal@navina.ai</a>&gt;<br>
+<b>Subject:</b> Re: Navina - Zu consulting<u></u><u></u></span></p>
+</div>
+<p><u></u>&nbsp;<u></u></p>
+<div>
+<p>Hi Irit,<br>
+<br>
+Thanks for sending the updated agreement. Please find attached the followin=
+g documents:<br>
+<br>
+a. The updated agreement with our suggested changes. The main point is to c=
+larify that any work performed specifically for Navina, and based on our da=
+ta or intellectual property, will be owned by us.<br>
+For example:<u></u><u></u></p>
+<ul type=3D"disc">
+<li>Configuration of NetSuite to reflect Navina=E2=80=99s business processe=
+s<u></u><u></u></li><li>Documentation created specifically for our financia=
+l workflows<u></u><u></u></li><li>Data migration mapping based on our inter=
+nal systems and structure<u></u><u></u></li></ul>
+<p style=3D"margin-bottom:12pt">b. The Statement of Work (SOW) with minor u=
+pdates to align on timelines and ensure consistency between the SOW and the=
+ main agreement.<br>
+<br>
+c. Our IT and Security Addendum, which we=E2=80=99re adding to the services=
+ agreement since your team will be accessing our systems.<br>
+<br>
+Best regards,<br>
+Tali<u></u><u></u></p>
+</div>
+<p><u></u>&nbsp;<u></u></p>
+<div>
+<div>
+<p>On Wed, Jul 23, 2025 at 12:31<span style=3D"font-family:Arial,sans-serif=
+">=E2=80=AF</span>AM Irit Polak &lt;<a href=3D"mailto:Irit@zu-consulting.co=
+m" target=3D"_blank">Irit@zu-consulting.com</a>&gt; wrote:<u></u><u></u></p=
+>
+</div>
+<blockquote style=3D"border-top:none;border-right:none;border-bottom:none;b=
+order-left:1pt solid rgb(204,204,204);padding:0cm 0cm 0cm 6pt;margin-left:4=
+.8pt;margin-right:0cm">
+<div>
+<div>
+<p>Hi Hila,<u></u><u></u></p>
+</div>
+<div>
+<p><u></u>&nbsp;<u></u></p>
+</div>
+<div>
+<p>Please see attached with our comments.&nbsp;<u></u><u></u></p>
+</div>
+<div>
+<p>Please let me know if the remarks are agreed by you so we can share a ve=
+rsion for execution.&nbsp;<u></u><u></u></p>
+</div>
+<div>
+<p>&nbsp;<u></u><u></u></p>
+</div>
+<div>
+<p><u></u>&nbsp;<u></u></p>
+</div>
+<div>
+<p>Thanks!&nbsp;<u></u><u></u></p>
+</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349x_m_2750955076389630365m_-2835198922313510898m_-2=
+732426600182018384ms-outlook-mobile-body-separator-line">
+<p><u></u>&nbsp;<u></u></p>
+</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349x_m_2750955076389630365m_-2835198922313510898m_-2=
+732426600182018384mail-editor-reference-message-container">
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349x_m_2750955076389630365m_-2835198922313510898m_-2=
+732426600182018384mail-editor-reference-message-container">
+<div align=3D"center" style=3D"text-align:center">
+<hr size=3D"2" width=3D"98%" align=3D"center">
+</div>
+<div id=3D"m_128127957366098633m_-7027764743071062167x_m_-11123759644744179=
+61x_m_-4139461577809210349x_m_2750955076389630365m_-2835198922313510898m_-2=
+732426600182018384divRplyFwdMsg">
+<p><b><span style=3D"font-family:Calibri,sans-serif">From:</span></b><span =
+style=3D"font-family:Calibri,sans-serif">&nbsp;Hila Dalal Shemesh &lt;<a hr=
+ef=3D"mailto:hila.ds@navina.ai" target=3D"_blank">hila.ds@navina.ai</a>&gt;=
+<br>
+<b>Sent:</b>&nbsp;Sunday, July 20, 2025 11:03 PM<br>
+<b>To:</b>&nbsp;Irit Polak &lt;<a href=3D"mailto:Irit@zu-consulting.com" ta=
+rget=3D"_blank">Irit@zu-consulting.com</a>&gt;<br>
+<b>Cc:</b>&nbsp;Legal &lt;<a href=3D"mailto:legal@navina.ai" target=3D"_bla=
+nk">legal@navina.ai</a>&gt;<br>
+<b>Subject:</b>&nbsp;Navina - Zu consulting</span> <u></u><u></u></p>
+<div>
+<p><span style=3D"font-family:Calibri,sans-serif">&nbsp;<u></u><u></u></spa=
+n></p>
+</div>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:black">Hi Irit,<u></u>=
+<u></u></span></p>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:black">Please find&nbs=
+p;attached our service agreement.<u></u><u></u></span></p>
+</div>
+<div>
+<p>We=E2=80=99ll be attaching the exhibit you shared to this document<span =
+style=3D"font-family:Arial,sans-serif;color:black">.</span><u></u><u></u></=
+p>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:black">Let me know if =
+you have any comments.<u></u><u></u></span></p>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:black">Best,<u></u><u>=
+</u></span></p>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:black">Hila<u></u><u><=
+/u></span></p>
+</div>
+<div>
+<p><span style=3D"font-family:Arial,sans-serif;color:rgb(32,18,77)"><u></u>=
+&nbsp;<u></u></span></p>
+</div>
+<div>
+<p><b><span style=3D"font-size:11pt;font-family:Arial,sans-serif;color:rgb(=
+32,18,77)"><img border=3D"0" width=3D"24" height=3D"28" id=3D"m_12812795736=
+6098633m_-7027764743071062167x_m_-1112375964474417961x_m_-41394615778092103=
+49x_m_2750955076389630365_x0000_i1027" style=3D"width: 0.25in; height: 0.29=
+16in;" src=3D"https://lh3.googleusercontent.com/9TzyuWEvN6RBv5D76BrofKDeRn_=
+pRsbG7x65roAhgMhjHOLVNDks3qdROp4uEIl2prsAGBwg7WH0EZcB_X6PpBc3HQjw6xZ_WU72yy=
+JxXSBXhVvolxw8BO8K3pN0SqYcq0tta4YDw6Y-cUpFWnALd6Y"></span></b><span style=
+=3D"font-size:11pt;font-family:Arial,sans-serif;color:rgb(32,18,77)"><u></u=
+><u></u></span></p>
+</div>
+<div>
+<p><b>Hila Dalal Shemesh</b><u></u><u></u></p>
+</div>
+<div>
+<p>VP Finance<u></u><u></u></p>
+</div>
+<div>
+<p><span style=3D"color:rgb(17,85,204)"><a href=3D"http://www.navina.ai/" t=
+arget=3D"_blank"><span style=3D"color:rgb(17,85,204)">www.navina.ai</span><=
+/a><u></u><u></u></span></p>
+</div>
+<div>
+<p><a href=3D"https://www.linkedin.com/in/hila-dalal-shemesh-0369a1a9/" tar=
+get=3D"_blank">LinkedIn</a><u></u><u></u></p>
+</div>
+<div>
+<p><span style=3D"font-size:11pt;font-family:Arial,sans-serif;color:black">=
+<img border=3D"0" width=3D"71" height=3D"28" id=3D"m_128127957366098633m_-7=
+027764743071062167x_m_-1112375964474417961x_m_-4139461577809210349x_m_27509=
+55076389630365_x0000_i1026" style=3D"width: 0.7395in; height: 0.2916in;" sr=
+c=3D"https://lh4.googleusercontent.com/GZZPGVDNCt1PucvpvvWui-0WRtB8EDLRATpL=
+B42k_EJ1CXj2vFM65ko8gN8y9-O3V3d_XDZUsacTrvaO42IQsOGLC1-CWtsBBi3wPOjz-uv5RBH=
+Ep9LniRBMqn_xCzLCygtQv2EBvp2XtHz-ERHcdh4"></span><u></u><u></u></p>
+</div>
+<div>
+<p><u></u><u></u></p>
+</div>
+</div>
+</div>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+
+</div></blockquote></div>
+
+--000000000000de8610063b7ba589--

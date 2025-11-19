@@ -1,0 +1,820 @@
+Received: from VI0PR01MB11416.eurprd01.prod.exchangelabs.com
+ (2603:10a6:800:25c::9) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Mon, 12 May 2025 09:50:34 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=SK0UMZFUgq4gS2z0ByIg4iKVOkp3/5RHuuSEDe6XCqC/ZPqUft/OZQUY3E/fQaixv6l+/w3H88kZeFEejChdBqQSsvFSm8Bawqkz9vD8rrgSGL4ZmCHg60Whj/wmKgJ6RJNe0DQsUHR2+lPWjjIm7wZqWubc4BF2/rWBxlqJ/RR6LfJUG/FCfX7r2EYYj/I6vLXLMbncLokSz1IXrWBm9C7PrZuJfXxT0+Fva3+n9hk6erx3FZA4WUgJRaCFPwZ6Uq2XAaGOzGdOOi/Jz97EVMGld64tqIwiabMwLr6BNItm+XHEXhZE2dL3KEjxBwFaONrlTubeZ40yAN/AOXCL7A==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=kWiLoxZlPxJDOINCZAy4c6CatFnNP+6EKQ90a5Re3bw=;
+ b=MeITt1sV4Yj37HWFccJNNIwbnz+pzgQMrB0iPMM/ZTnvQpDMNAQ6LmGAyK5PmgwljMBxQH0F8m1Tdu5welrUAs7rgL5BH3drwrG1MaIRD+vPiMBbQGQ7X7weqcC1jlvCqIg2vgDsABaXEI1P0O77j9dTAoys77+nxtwueEv7IbycABQ0cqIdIucfSoAL8zAUsGq5gMop6fYgUpc+cpfpyLSuRi2YQs8YiVh5UIbFn3Ne+8upkaeDuKbhCbuRXi2/L9hkxV8nux/izovW1h0S70nnKp/jxa2JgrVNKkzvWIa0LtS1YvwemzqDV8A+rmy2TCZZUKBrpAyw4gHIObmAPg==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 139.138.61.222) smtp.rcpttodomain=eislaw.co.il smtp.mailfrom=shibolet.com;
+ dmarc=pass (p=quarantine sp=quarantine pct=100) action=none
+ header.from=shibolet.com; dkim=pass (signature was verified)
+ header.d=shibolet.com; arc=pass (0 oda=1 ltdi=1
+ spf=[1,1,smtp.mailfrom=shibolet.com] dkim=[1,1,header.d=shibolet.com]
+ dmarc=[1,1,header.from=shibolet.com])
+Received: from AM0PR03CA0029.eurprd03.prod.outlook.com (2603:10a6:208:14::42)
+ by VI0PR01MB11416.eurprd01.prod.exchangelabs.com (2603:10a6:800:25c::9) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8722.28; Mon, 12 May
+ 2025 09:50:32 +0000
+Received: from AMS0EPF000001B4.eurprd05.prod.outlook.com
+ (2603:10a6:208:14:cafe::5f) by AM0PR03CA0029.outlook.office365.com
+ (2603:10a6:208:14::42) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8722.25 via Frontend Transport; Mon,
+ 12 May 2025 09:50:31 +0000
+Authentication-Results: spf=pass (sender IP is 139.138.61.222)
+ smtp.mailfrom=shibolet.com; dkim=pass (signature was verified)
+ header.d=shibolet.com;dmarc=pass action=none
+ header.from=Shibolet.com;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of shibolet.com designates
+ 139.138.61.222 as permitted sender) receiver=protection.outlook.com;
+ client-ip=139.138.61.222; helo=esa1.hc1630-26.c3s2.iphmx.com; pr=C
+Received: from esa1.hc1630-26.c3s2.iphmx.com (139.138.61.222) by
+ AMS0EPF000001B4.mail.protection.outlook.com (10.167.16.168) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.8722.18 via Frontend Transport; Mon, 12 May 2025 09:50:31 +0000
+X-CSE-ConnectionGUID: Bt1zFoIXSLKdNI3OAwGvFg==
+X-CSE-MsgGUID: TNB/hI2sTUSnCoAnX6ZjmA==
+Received: from mail-am6eur05lp2111.outbound.protection.outlook.com (HELO EUR05-AM6-obe.outbound.protection.outlook.com) ([104.47.18.111])
+  by ob1.hc1630-26.c3s2.iphmx.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2025 12:50:30 +0300
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=Xn5/hXeuF4GMHKleUXrOVRfmEkIBsZ55ix6rZxQhCcRBmVhLf/RBs2i1zWev9O65XwKBScBdECXLhlXk5sPucO/gBy75HNkB27T7YgpxQ44zJfzLm4fXyyKkTnkw0SSs0lAjZ4Pk36gCSDOQG9OAU0N3RGQ7zDcpLwPh+O8DGBTqht+m5BK9Gf2jO52mjYlX1yjbFjiZ52WS0S9ygw5nZLJ/3OXwxxjn1UXhtygRLdHhF5P0evbX7bGflrx6+k3guiLbg1iygfOPZX2uIr3i5cxbzarcWc2vVCHna+N8n5sC5NgaEvdA50dR8LdI1SL4giUCKP7M25sY2PxwSDF/8g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=kWiLoxZlPxJDOINCZAy4c6CatFnNP+6EKQ90a5Re3bw=;
+ b=bslMu/locKck990LBzba6ydMLSXiQOR72PNnsBGgcrYYQLwhfrGSk/QQeR5nHz/6wD/cyc+PdYDGcma9ZR63WD9ycB1ycwvvSqX6UabY/wqfVzEGprqnjLMwIBYF+Xr6cBzZzkbnN34Aok16mpGOMEtZbVhPk0E3RM1xIBTpiIeuH0dmYv/NFNwJTwT5Vow//MiTjfs0bEfNKO21bEqgs4GU54cFGBkVniE5Q/ORD1EwzuAwYLl77TeVdU2FAYO0ej8RnT/pWD3bGRSCs+9vMFbQ7Rfpmb7704joRFhstqOQ4bLwPfVL0ENPx6O5tdHkyJUKgR8FttW6U+XJa0B3MA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=shibolet.com; dmarc=pass action=none header.from=shibolet.com;
+ dkim=pass header.d=shibolet.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=shibolet.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kWiLoxZlPxJDOINCZAy4c6CatFnNP+6EKQ90a5Re3bw=;
+ b=vnS1Yea7MpwtcO13yRzw0pnbWyhkJXhytX04GLANn3moRgjqVSb/3o5kGpEO8lHVqA/RPlITaRLpQc3luDHYxEILHxCSTNLfRtVKmWNs+O4V+b3UnK+HKhpcBYvYDPTDhKN7Xk46q0giQ5qe94Ufq/TtdACleqvs59ryX8eGzEA=
+Received: from GV2PR03MB8828.eurprd03.prod.outlook.com (2603:10a6:150:bf::21)
+ by AM7PR03MB6231.eurprd03.prod.outlook.com (2603:10a6:20b:142::13) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8722.26; Mon, 12 May
+ 2025 09:50:26 +0000
+Received: from GV2PR03MB8828.eurprd03.prod.outlook.com
+ ([fe80::1d08:b6df:9310:1f02]) by GV2PR03MB8828.eurprd03.prod.outlook.com
+ ([fe80::1d08:b6df:9310:1f02%4]) with mapi id 15.20.8722.027; Mon, 12 May 2025
+ 09:50:25 +0000
+From: Oshra Peleg <O.Peleg@Shibolet.com>
+To: Dror Harpaz <D.Harpaz@Shibolet.com>, Inbar Mackin <I.Mackin@Shibolet.com>,
+	Eitan Shamir <eitan@eislaw.co.il>, Yael Shamir <yael@eislaw.co.il>, "Yossi
+ Silam" <yossi@scs-law.org>
+Subject: =?windows-1255?B?4eD4IOny9+EgKO759Ccg4OT45fDpIODl8ejp7yDm5ezh+OIp?=
+Thread-Topic: =?windows-1255?B?4eD4IOny9+EgKO759Ccg4OT45fDpIODl8ejp7yDm5ezh+OIp?=
+Thread-Index: AdvDIxwikdyq0Vl1T825HE1DMpkyHAAACwEw
+Content-Class:
+Date: Mon, 12 May 2025 09:50:25 +0000
+Message-ID: <GV2PR03MB88283B181879A42C40E8D7C48D97A@GV2PR03MB8828.eurprd03.prod.outlook.com>
+Accept-Language: he-IL, en-US
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+msip_labels:
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=Shibolet.com;
+x-ms-exchange-calendar-series-instance-id: BAAAAIIA4AB0xbcQGoLgCAAAAABAbW4+PMPbAQAAAAAAAAAAEAAAADZjEZOCvjBIpfLoedbrqRc=
+x-ms-traffictypediagnostic: GV2PR03MB8828:EE_MeetingMessage|AM7PR03MB6231:EE_MeetingMessage|AMS0EPF000001B4:EE_|VI0PR01MB11416:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 4a420c7d-64d3-444c-5098-08dd913a6ef5
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|376014|69100299015|1800799024|366016|8096899003|38070700018|13003099007;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?ObI0aO4KNB9AymuPS0ohUsiKnTkvyguiAhoWxXTPREe0cYXITbKfBAMsLaKV?=
+ =?us-ascii?Q?/XoCs73yMUCENlgwiaPrujOUc2H/V58886h3YdgNA1I+RbMgZwZd7Hs9wg6c?=
+ =?us-ascii?Q?svI/XxNH+ZFbJw1zrAvuI74hRfQBSBRoEcrky5Kps0FQZSzR6CqEirgwRe01?=
+ =?us-ascii?Q?HAtH+mSthdU6A9LvTZYVIP56qyI1mN0JPtu0RU3rFgwExQlw7UjDQQE4jSyq?=
+ =?us-ascii?Q?eB5ATbnnsxWA1nCkQoKKc4/6Lqwky5dvU+pPAHBbBWvUN37kw0kA6pAKVVOW?=
+ =?us-ascii?Q?ofRXEJnd+St7pXhRBQdzQRhUY3uSQsokf0iARbLRf4TTpSD6pZmnI8YMmOV3?=
+ =?us-ascii?Q?w1NDBUlKCgbYXVdlQn5NGZZmlIopdUgZA+ViIZCVM6OzPmCDfnfqzS8kJQzJ?=
+ =?us-ascii?Q?q/tH1RPX/dIiNEQr7e5FXA/4dqYivwfQnWQ/YF+bWsVPc+OVnAz1C+tFx8oE?=
+ =?us-ascii?Q?LU52eOUAO330OVGKBL4qKMVosGQtMCjVoctn5Q3PG3f3emiRNvDWPUHS9+EV?=
+ =?us-ascii?Q?Pn1StEYWSC6ewX+jmx6rVjIbjBKsVOZN3jcNRppbmmrS2UD6Si0MM0pmMID9?=
+ =?us-ascii?Q?AmyCI7eUuAP+hcPKm5tsWodRhJn7GOoJ/Kj+m+qQKkpep3ZDwSsCu6jSRw6x?=
+ =?us-ascii?Q?SbMSrFeja9HB4jgw8/Kke6+mg8M6juYBNeZ5ep18cg0crZ9RwHU1Vw9NU3Q6?=
+ =?us-ascii?Q?fzCU0/jq6O3KEel5Z0Vpcb2+7ljctBHFKNhh+gST1+kK99kE3oLvAUo3ZuFV?=
+ =?us-ascii?Q?BxMvCn+VmH6u/WvQdjLzL5LqgGq54kW/OPqYSnThSkcuJCICfdfgmlpPszkK?=
+ =?us-ascii?Q?0Z5bnuoXamy+KlaiQHDa3uGT5HBqtxGq19GbrSkkW2+XnP2zwkUuMg8ihlyM?=
+ =?us-ascii?Q?KE89K8gHop2M1JniSkLi+kBJZkbOuzZnU/j/pFCiYqbZr+owcIe9XwGIOAy2?=
+ =?us-ascii?Q?qrk3HEzHTqiE35/HsthQ/9eYScP0DrUuV4S6lRqYmfTsHDywmfaChx4ZmwJk?=
+ =?us-ascii?Q?Qj2P/Dl1dR/8J1JoyL2SDa5kbsOOJ9nKvUqaDP/Hp18Mlwzn4MY3QeooFAJj?=
+ =?us-ascii?Q?YrtcPgEaGkue+5LReeMe68T0SEB8lvUwh9XX9D9SdH9wdAXQQDGwL5HCm7JV?=
+ =?us-ascii?Q?kf+dzjlejNoi4geVdvnayLQWy2dwtIpCVHR2UwbhEzVuRup9yRkU98Uq4Kqh?=
+ =?us-ascii?Q?UgFYmwxXO8PZP/1hYZxRLHvv98l0y3GDv2EVSxKPTIv5U7oa5A4Nd4rqgL6q?=
+ =?us-ascii?Q?VWakn5zszIvRydWZtBm6J4NPqm69zAWjOfc3XAjMb05GUd/sNNE2HorN/8dh?=
+ =?us-ascii?Q?Gn90RLJrohkfirbE49zoQZVJvcShk7bUtJEu+z1cAOPe1k9LIxKoYAdQXp/c?=
+ =?us-ascii?Q?z59Y8fzoDxCvYQBJHP+98wRJFSaaF8rPGV3FzcRe949tLStY4qNU6OigZyP1?=
+ =?us-ascii?Q?soG1cEgZA/M=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:GV2PR03MB8828.eurprd03.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(69100299015)(1800799024)(366016)(8096899003)(38070700018)(13003099007);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?windows-1255?Q?z8zLB2joZ6KPC2KMmatd3qIBSm0+nly/LkZhZrFdhW5J/c5dwGVXou0f?=
+ =?windows-1255?Q?QN3hIUmvKsN0SSmV/Fs7muKB1c0ZNIVcQjcQkBTEQabL+jNJXZsDNhU4?=
+ =?windows-1255?Q?o8MJY5F75mxM118FTHc4+4h1UYrWQvdxdRSwpb++UL9xjNoM6hBF8EPa?=
+ =?windows-1255?Q?4EhStxc81zRf0zc4PT/+qicornfHeCDTqttW/XSUbXlUEngHgKDaUjub?=
+ =?windows-1255?Q?Chi/PSCI0bwVXPvvTErBTAco7vJvp0UpxAx5z2vmuMgP1RGbcjzaYfuW?=
+ =?windows-1255?Q?gBPomONg7nfVTBpZqeIX+A2wpn/1bMp7rxr3ZloeZqZ+khFqeq/OPVjv?=
+ =?windows-1255?Q?RPJhNY8efuTYATY9DCyo4XCw3ZZWttOHhMVM7P1qM2KX3MGvGaeQ4rWg?=
+ =?windows-1255?Q?ZpgYiKK17YUzxmCljlIZqEAYZsZTlfLlLXH2d9BomfGmKNrg00feHF++?=
+ =?windows-1255?Q?5kg4NUiIKyB+GDBwOIPvsyNlfmB/IR88GFkCEsZig+jsbqnpBfEpYdNW?=
+ =?windows-1255?Q?JCph4Vw5vsXClmdPSpJoFZV5kydhYoLkO5o1Grue0/eFabIL1r8Iz2Bs?=
+ =?windows-1255?Q?GF1U8AJNYInQMHcDzBa4kX5auxW3L1poCPAccOa5GjvlZegzzuoYyAWW?=
+ =?windows-1255?Q?JwQOJYSqv+muIh1oPaxzZpKWOqBhCThPdagLi7XAX9NLKI1TSuVf8Qf1?=
+ =?windows-1255?Q?MgJmm49WfDil9piV0WxWn+2qLFJ5LyHZNnvR/n8yqJIH8kNmkNspEsBP?=
+ =?windows-1255?Q?6eZBVDinzfOOZ0qj35uhgpDsGPp7HLPAl9dJwff4dyb+ed1d2bJ7Uuh2?=
+ =?windows-1255?Q?vtWItfKA6bElN77yumCfMwqYfN3j0+rfhxHt8xD0dhZRLI/q9On71PZ1?=
+ =?windows-1255?Q?+OPOV58zWL3um7t9zEeR3MpOvRZRHARXCywknRaixC488KDPgxOl1Cyc?=
+ =?windows-1255?Q?WaNkaqZvPeNNHx+XIe+OLMHhWIUZPT/qcUuEVt01Gd6Tj0QB0FYUJjus?=
+ =?windows-1255?Q?efeRk2yrH1q5lq2llrLnIJ3+8W3oc7dPEZWFsZEYI6lkredjYVyd/d8c?=
+ =?windows-1255?Q?8TQs0pftZadHKkYv52VNJHWXs5XrqmCZRrpTOPSiFkA1av8EZiJY+fx8?=
+ =?windows-1255?Q?WYabryB2zcsZNYDdu3Lx5XwOyMyyCm1pGa3OrLSt6jflzcoOYq3IPgx0?=
+ =?windows-1255?Q?M5njMnIFQRdecliP9rCA8/DQmYQNfjRpk+OK6EEyFMGOOZ3WFdo5zcuv?=
+ =?windows-1255?Q?u9RPdrYS040nv1AjbBKOdEKZd26y1ZogP7HkK+e/IRxwc6Ahd5FgHiWx?=
+ =?windows-1255?Q?D6POPFfRqEszYVWW1pjdulTF+Z1Qe43CM3tdF8eCuxU119XC03dJKvbP?=
+ =?windows-1255?Q?Jc5ZW6NJX42Of9TweD69yL+hy4iO2J4nB9zMBfbRYjrO/q6RIBfAWFiV?=
+ =?windows-1255?Q?4FBIgD+blptSAvRf8FyKIT7lFjmN9OooYFbiqy4CjYT+uZOen3om3q4L?=
+ =?windows-1255?Q?B2/xliRiPtHPS+l9N6bf3iFjO/WDu5882/2iciG7QYcn4FrzgCfoNvs9?=
+ =?windows-1255?Q?XyUcgODWQjlgAjDJGFeesxuGwDtB88UMDTuu4vMZNd6HN4SjCiVedPpB?=
+ =?windows-1255?Q?BHk2idV15iT5Kg5fM0BOk2CX1U5Ft9Kv+drQBVmQebmCBvg/9qjEtxus?=
+ =?windows-1255?Q?vb9AsrKC+DP4UbpjLWIU8y0ZwJZMCs/9?=
+Content-Type: multipart/alternative;
+	boundary="_000_GV2PR03MB88283B181879A42C40E8D7C48D97AGV2PR03MB8828eurp_"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM7PR03MB6231
+Return-Path: O.Peleg@shibolet.com
+X-MS-Exchange-Organization-ExpirationStartTime: 12 May 2025 09:50:31.2179
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 4a420c7d-64d3-444c-5098-08dd913a6ef5
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: AMS0EPF000001B4.eurprd05.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: AMS0EPF000001B4.eurprd05.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: cd7100cc-b4e5-4685-755b-08dd913a6bc4
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|1032899013|35042699022|69100299015|8096899003|4076899003|2066899003|13003099007;
+X-Forefront-Antispam-Report: CIP:139.138.61.222;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:esa1.hc1630-26.c3s2.iphmx.com;PTR:esa1.hc1630-26.c3s2.iphmx.com;CAT:NONE;SFS:(13230040)(1032899013)(35042699022)(69100299015)(8096899003)(4076899003)(2066899003)(13003099007);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 May 2025 09:50:31.0579
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 4a420c7d-64d3-444c-5098-08dd913a6ef5
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: AMS0EPF000001B4.eurprd05.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI0PR01MB11416
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.9390303
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8722.027
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?B7ubV+R1Bc0QjoU7wLtWIATExoHagBt9gpaskvgcrQPaZjDbiEULIYzB?=
+ =?windows-1255?Q?0KO3smA2L8sLQtSVg3QB6K8jgsFINL2FLXIqutWogfZSNADVxjy/eUEH?=
+ =?windows-1255?Q?1n2CxKhNj5Oq68l/ShJ6FY0VjuEXguiv5jctZHF6uThsn4mO+B78dI2I?=
+ =?windows-1255?Q?F9JvHKHJ0zXyKRZqFpho/Oko5TLoBrPPckqFsTySCgZ+earOoyTCspCi?=
+ =?windows-1255?Q?BICcWeD5Ef5r1bGi9WML/B7ainlzgfrsB5zpRt51jxTmhfmUW0MWSEBf?=
+ =?windows-1255?Q?XmL+sGMuRXSm5FST1Zg5lHVojm3BnAfufauBjMzpw2tkbZ0y/xalK8Da?=
+ =?windows-1255?Q?3Me38VmfhSOrXra+Q8JTLNH9IGiqu0OTC7bRvDFpjo+o/cOHB5xyy/EI?=
+ =?windows-1255?Q?eQeUcl9jOdrDt6ET/i1PjS0ppTkmpCkmMMF1+VSROX7CtBGk3AtxJQNt?=
+ =?windows-1255?Q?TFYagfc2SIZg3IgxkNpPbDGULhpVgSTH0MUlM3x3ZDq8fjrnzxqV4B5v?=
+ =?windows-1255?Q?ZthRxDFnzcDlGTh9B5e+WkFsDSV7fHEX/eZ35q+kdS08RcrGXj8Z2yRN?=
+ =?windows-1255?Q?cJExGjUYKh7SXcnMISJej4jlL8wTc5Iwn79K79wXgS+FOodXNaxQFjQh?=
+ =?windows-1255?Q?XNWELs98PmiaCccsHXApo5qrWBHl5EwnmtjVOs7P9BY7eB+9Anf4sKQ4?=
+ =?windows-1255?Q?/MRliC0B3EJFnNdJeIKbddL37Zw0ManeuztVZEhqz8XA0vigY7jJsao6?=
+ =?windows-1255?Q?Q449oBrssY52ejjpg4YKel8ZP5D3//u282iS0tvZ3Y9nY30yyl5WxIh8?=
+ =?windows-1255?Q?ZfhTZfWR/cIm/wzID7qzDBA/yafZm9OHUD+2TIYeoEAJkcsa5pQfS06+?=
+ =?windows-1255?Q?fau4iwNb8HB9uCS0Tv1VvWK+6I5MiH+U+SAKO8PG1j1Su3H0zVsnZbZ6?=
+ =?windows-1255?Q?8I+vbIhq8wXWCpKECe8Bx+XLf3l60x9e/ZCnxNxm8IborsEiTQOYPzW6?=
+ =?windows-1255?Q?d4q9Ru3DC+FSIQUeYZtVONtJFwvepfGN9pTGzUSPbl79mQPIcqN5Tm4V?=
+ =?windows-1255?Q?9dEl346JpR5vvAaJ5E6SmaSSIlk5fMxIEuFk9TB9SGQ+1J+OeUpy+1EQ?=
+ =?windows-1255?Q?Sy1pwhFj+kvOniWajmhRXNIimoqRrr2p3AkKXYtTgDY3TICeoV3Jj8Jg?=
+ =?windows-1255?Q?VJwBwauY5cGFfKrIgS3xgT+VO2P8O9Ij7FXlvLmNVkvUpRV3BNgSi99j?=
+ =?windows-1255?Q?RcD4Tr++ecG42Q8b82qK1tN9hkqc9S50Nb8baFbnBR1+18XoK9hrYh1y?=
+ =?windows-1255?Q?mR1Ee77xn/w/5bfzc0iCWtUKVtCza3AWEMbh+17T/1cXOdRB3WqPkf5r?=
+ =?windows-1255?Q?5/gZS/Rq/22QCn96Im03cQ4oK2o/blv7bXRkgx2/ifsdQlHe7xphSVQd?=
+ =?windows-1255?Q?dATRmrpICcwns2R6QooKvQvgT2ia5m782OsaYgij7HTFHVkDg1mx7wa9?=
+ =?windows-1255?Q?RJUMQvTmHDCSgJVkiauusLAjWBpcRB2tQtFFnFkoaRmTD/EDQisN05At?=
+ =?windows-1255?Q?CZNWWUnU7qjpu2BHZwBtZ1Ncwx1ZNxWfGObTyTbVhithf2BqigIvGOU1?=
+ =?windows-1255?Q?tRr17G5venLQuSFtwfkWoIBoDKZ5FeLI/pcstm2apOeuJYrhAGsTJVW9?=
+ =?windows-1255?Q?0hOvRsrqrdCqwj2RHVZ1m3faq4qWxljOMCwdKe3qcVmgVp5NoxOnRNqA?=
+ =?windows-1255?Q?VG94gtz8HAKR3JMcZrSZJIBZ2X4iweVTzZbnl2V5RMPY9SXroMzRct0Z?=
+ =?windows-1255?Q?wR097nxs4xQMk3RKrAkNR65o4edkSKoUaOUoQ9KB9XV6T0e45qp4dMbR?=
+ =?windows-1255?Q?Hw2LBLNSWh9SKehnGdV4c8Lm1E2/1RooFh2FdPkPrcpThpl16Mp0Jvir?=
+ =?windows-1255?Q?yJLWlKzPru+LBZmrVsjOJOM+PXkHPePjDMgb5yNylbGVkEwrACM2aSq7?=
+ =?windows-1255?Q?iFUUJty4KdvmaivJX+Jsrh7diKY8k5Rr7lvYOZOiHsqxdxytdr1GDTKE?=
+ =?windows-1255?Q?GF8/zGdy5Wn8hrsDKWcY+W3zITX1bREuQboBcHyPcgxQI2g4b9vM4HP3?=
+ =?windows-1255?Q?XPFA9K5bDGKVjLt10sdGKxBV?=
+MIME-Version: 1.0
+
+--_000_GV2PR03MB88283B181879A42C40E8D7C48D97AGV2PR03MB8828eurp_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+
+[https://st2.zoom.us/static/6.3.35383/image/new/ZoomLogo_110_25.png]<https:=
+//zoom.com/>
+Hi there,
+Oshra Peleg is inviting you to a scheduled Zoom meeting.
+Join Zoom Meeting<https://shibolet.zoom.us/j/99880817884?pwd=3D6D04OTQO20aS=
+Z5mz8NtHzXQ4t9m0wx.1>
+One tap mobile:
+Israel: +97239786688,,99880817884#<tel:+97239786688,,99880817884> or +97223=
+764509,,99880817884#<tel:+97223764509,,99880817884>
+Meeting URL:
+https://shibolet.zoom.us/j/99880817884?pwd=3D6D04OTQO20aSZ5mz8NtHzXQ4t9m0wx=
+.1
+Meeting ID:
+998 8081 7884
+Passcode:
+081242
+Join by Telephone
+For higher quality, dial a number based on your current location.
+Dial:
++972 3 978 6688 Israel
++972 2 376 4509 Israel
++972 2 376 4510 Israel
+1801 227 228 Israel Toll-free
+1809 349 354 Israel Toll-free
+Meeting ID:
+998 8081 7884
+International numbers<https://shibolet.zoom.us/u/aD7BNtsA5>
+Join from an H.323/SIP room system
+H.323:
+144.195.19.161 (US West)
+206.247.11.121 (US East)
+221.122.88.195 (Mainland China)
+115.114.131.7 (India Mumbai)
+115.114.115.7 (India Hyderabad)
+159.124.15.191 (Amsterdam Netherlands)
+159.124.47.249 (Germany)
+159.124.104.213 (Australia Sydney)
+159.124.74.212 (Australia Melbourne)
+170.114.134.121 (Hong Kong SAR)
+170.114.180.219 (Singapore)
+64.211.144.160 (Brazil)
+159.124.132.243 (Mexico)
+159.124.168.213 (Canada Toronto)
+159.124.196.25 (Canada Vancouver)
+170.114.194.163 (Japan Tokyo)
+147.124.100.25 (Japan Osaka)
+Meeting ID:
+998 8081 7884
+Passcode:
+081242
+SIP:
+99880817884@zoomcrc.com
+Passcode:
+081242
+
+
+
+
+--_000_GV2PR03MB88283B181879A42C40E8D7C48D97AGV2PR03MB8828eurp_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" xmlns:o=3D"urn:schemas-micr=
+osoft-com:office:office" xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:m=3D"http://schemas.microsoft.com/office/2004/12/omml" xmlns=3D"http:=
+//www.w3.org/TR/REC-html40"><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+<meta name=3D"Generator" content=3D"Microsoft Word 15 (filtered medium)">
+<!--[if !mso]><style>v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style><![endif]--><style><!--
+/* Font Definitions */
+@font-face
+	{font-family:"Cambria Math";
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Aptos;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	text-align:right;
+	direction:rtl;
+	unicode-bidi:embed;
+	font-size:11.0pt;
+	font-family:"Aptos",sans-serif;
+	mso-ligatures:standardcontextual;}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:#467886;
+	text-decoration:underline;}
+span.EmailStyle18
+	{mso-style-type:personal-compose;
+	font-family:"Arial",sans-serif;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-size:10.0pt;
+	mso-ligatures:none;}
+@page WordSection1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.WordSection1
+	{page:WordSection1;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext=3D"edit" spidmax=3D"1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext=3D"edit">
+<o:idmap v:ext=3D"edit" data=3D"1" />
+</o:shapelayout></xml><![endif]-->
+</head>
+<body lang=3D"EN-US" link=3D"#467886" vlink=3D"#96607D" style=3D"word-wrap:=
+break-word">
+<div class=3D"WordSection1">
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif"><o:p>&nbsp;</o:p></span></p>
+<div align=3D"center">
+<table class=3D"MsoNormalTable" border=3D"0" cellspacing=3D"0" cellpadding=
+=3D"0" width=3D"100%" style=3D"width:100.0%;background:#F4F5F9">
+<tbody>
+<tr>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<div align=3D"center">
+<table class=3D"MsoNormalTable" border=3D"0" cellspacing=3D"0" cellpadding=
+=3D"0" width=3D"592" style=3D"width:444.0pt">
+<tbody>
+<tr>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<div align=3D"center">
+<table class=3D"MsoNormalTable" border=3D"0" cellspacing=3D"0" cellpadding=
+=3D"0" width=3D"100%" style=3D"width:100.0%;background:white">
+<tbody>
+<tr>
+<td style=3D"background:#F4F5F9;padding:22.5pt 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><a name=3D"WinZmBookmark_z7AAC7"></a><a href=3D"https://zoom.com/"><=
+span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"color:blue;=
+mso-ligatures:none;text-decoration:none"><img border=3D"0" width=3D"110" he=
+ight=3D"25" style=3D"width:1.15in;height:.2583in" id=3D"_x0000_i1025" src=
+=3D"https://st2.zoom.us/static/6.3.35383/image/new/ZoomLogo_110_25.png"></s=
+pan></span><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></a><sp=
+an style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span><span style=3D"mso-bo=
+okmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:12.0pt;font-family:&q=
+uot;Times New Roman&quot;,serif;mso-ligatures:none"><o:p></o:p></span></spa=
+n></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td style=3D"padding:0in 21.0pt 27.75pt 21.0pt">
+<div align=3D"center">
+<table class=3D"MsoNormalTable" border=3D"0" cellspacing=3D"0" cellpadding=
+=3D"0" width=3D"100%" style=3D"width:100.0%">
+<tbody>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:42.75pt 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"fon=
+t-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Hi th=
+ere,<span lang=3D"HE" dir=3D"RTL"><o:p></o:p></span></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Oshra Peleg =
+is inviting you to a scheduled Zoom meeting.
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" style=3D"background:white;padding:15.0pt 0in 6.0pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:25.5pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span><a href=3D"https:/=
+/shibolet.zoom.us/j/99880817884?pwd=3D6D04OTQO20aSZ5mz8NtHzXQ4t9m0wx.1" tar=
+get=3D"_blank"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span styl=
+e=3D"font-size:19.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#2D8CF=
+F">Join
+ Zoom Meeting</span></span><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7=
+"></span></a><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=
+=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D=
+">
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">One tap mobi=
+le:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Israel:
+</span></span><a href=3D"tel:+97239786688,,99880817884"><span style=3D"mso-=
+bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-family:=
+&quot;Arial&quot;,sans-serif">+97239786688,,99880817884#</span></span><span=
+ style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></a><span style=3D"mso-=
+bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-family:=
+&quot;Arial&quot;,sans-serif;color:#39394D">
+ or </span></span><a href=3D"tel:+97223764509,,99880817884"><span style=3D"=
+mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-fam=
+ily:&quot;Arial&quot;,sans-serif">+97223764509,,99880817884#</span></span><=
+span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></a><span style=3D"=
+mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-fam=
+ily:&quot;Arial&quot;,sans-serif;color:#39394D">
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Meeting URL:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span><a href=3D"https:/=
+/shibolet.zoom.us/j/99880817884?pwd=3D6D04OTQO20aSZ5mz8NtHzXQ4t9m0wx.1" tar=
+get=3D"_blank"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span styl=
+e=3D"font-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394=
+D">https://shibolet.zoom.us/j/99880817884?pwd=3D6D04OTQO20aSZ5mz8NtHzXQ4t9m=
+0wx.1</span></span><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span=
+></a><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-=
+size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"fon=
+t-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Meeti=
+ng ID:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"fon=
+t-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">998 8=
+081 7884<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr style=3D"height:13.5pt">
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"fon=
+t-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Passc=
+ode:<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 0in 0in;height:13.5pt">
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"fon=
+t-size:10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">08124=
+2<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" style=3D"padding:15.0pt 0in 6.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><b><span style=3D"font-fa=
+mily:&quot;Arial&quot;,sans-serif;color:#39394D">Join by Telephone
+</span></b></span><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><b><spa=
+n style=3D"font-size:12.0pt;font-family:&quot;Arial&quot;,sans-serif;color:=
+#39394D"><o:p></o:p></span></b></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">For higher q=
+uality, dial a number based on your current location.
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Dial:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">+972 3 978 6=
+688 Israel<br>
++972 2 376 4509 Israel<br>
++972 2 376 4510 Israel<br>
+1801 227 228 Israel Toll-free<br>
+1809 349 354 Israel Toll-free<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Meeting ID:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 7.5pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">998 8081 788=
+4<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" valign=3D"top" style=3D"padding:0in 0in 0in 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span><a href=3D"https:/=
+/shibolet.zoom.us/u/aD7BNtsA5" target=3D"_blank"><span style=3D"mso-bookmar=
+k:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-family:&quot;A=
+rial&quot;,sans-serif;color:#39394D">International numbers</span></span><sp=
+an style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></a><span style=3D"ms=
+o-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:10.0pt;font-famil=
+y:&quot;Arial&quot;,sans-serif;color:#39394D"><o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td colspan=3D"2" style=3D"padding:15.0pt 0in 6.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:18.75pt;directi=
+on:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><b><span style=3D"font-fa=
+mily:&quot;Arial&quot;,sans-serif;color:#39394D">Join from an H.323/SIP roo=
+m system
+</span></b></span><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><b><spa=
+n style=3D"font-size:12.0pt;font-family:&quot;Arial&quot;,sans-serif;color:=
+#39394D"><o:p></o:p></span></b></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">H.323:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">144.195.19.1=
+61 (US West)<br>
+206.247.11.121 (US East)<br>
+221.122.88.195 (Mainland China)<br>
+115.114.131.7 (India Mumbai)<br>
+115.114.115.7 (India Hyderabad)<br>
+159.124.15.191 (Amsterdam Netherlands)<br>
+159.124.47.249 (Germany)<br>
+159.124.104.213 (Australia Sydney)<br>
+159.124.74.212 (Australia Melbourne)<br>
+170.114.134.121 (Hong Kong SAR)<br>
+170.114.180.219 (Singapore)<br>
+64.211.144.160 (Brazil)<br>
+159.124.132.243 (Mexico)<br>
+159.124.168.213 (Canada Toronto)<br>
+159.124.196.25 (Canada Vancouver)<br>
+170.114.194.163 (Japan Tokyo)<br>
+147.124.100.25 (Japan Osaka)<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Meeting ID:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">998 8081 788=
+4<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Passcode:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">081242<o:p><=
+/o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">SIP:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">99880817884@=
+zoomcrc.com
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+<tr>
+<td width=3D"22%" valign=3D"top" style=3D"width:22.0%;padding:0in 0in 0in 0=
+in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">Passcode:
+<o:p></o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<td valign=3D"top" style=3D"padding:0in 0in 3.75pt 0in">
+<p class=3D"MsoNormal" style=3D"text-align:left;line-height:15.0pt;directio=
+n:ltr;unicode-bidi:embed">
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><span style=3D"font-size:=
+10.0pt;font-family:&quot;Arial&quot;,sans-serif;color:#39394D">081242<o:p><=
+/o:p></span></span></p>
+</td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+</tbody>
+</table>
+</div>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+</tbody>
+</table>
+</div>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+</tbody>
+</table>
+</div>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span></td>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+</tr>
+</tbody>
+</table>
+</div>
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"><o:p>&nbsp;</o:p><=
+/span></p>
+<span style=3D"mso-bookmark:WinZmBookmark_z7AAC7"></span>
+<p class=3D"MsoNormal" dir=3D"RTL"><a name=3D"WinZmBookmarkEnd"></a><span d=
+ir=3D"LTR" style=3D"font-family:&quot;Arial&quot;,sans-serif"><o:p>&nbsp;</=
+o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR" style=3D"font-family:&=
+quot;Times New Roman&quot;,serif"><o:p>&nbsp;</o:p></span></p>
+</div>
+</body>
+</html>
+
+--_000_GV2PR03MB88283B181879A42C40E8D7C48D97AGV2PR03MB8828eurp_
+Content-Type: text/calendar; charset="utf-8"; method=REQUEST
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpNRVRIT0Q6UkVRVUVTVA0KUFJPRElEOk1pY3Jvc29mdCBFeGNoYW5n
+ZSBTZXJ2ZXIgMjAxMA0KVkVSU0lPTjoyLjANCkJFR0lOOlZUSU1FWk9ORQ0KVFpJRDpJc3JhZWwg
+U3RhbmRhcmQgVGltZQ0KQkVHSU46U1RBTkRBUkQNCkRUU1RBUlQ6MTYwMTAxMDFUMDIwMDAwDQpU
+Wk9GRlNFVEZST006KzAzMDANClRaT0ZGU0VUVE86KzAyMDANClJSVUxFOkZSRVE9WUVBUkxZO0lO
+VEVSVkFMPTE7QllEQVk9LTFTVTtCWU1PTlRIPTEwDQpFTkQ6U1RBTkRBUkQNCkJFR0lOOkRBWUxJ
+R0hUDQpEVFNUQVJUOjE2MDEwMTAxVDAyMDAwMA0KVFpPRkZTRVRGUk9NOiswMjAwDQpUWk9GRlNF
+VFRPOiswMzAwDQpSUlVMRTpGUkVRPVlFQVJMWTtJTlRFUlZBTD0xO0JZREFZPS0xRlI7QllNT05U
+SD0zDQpFTkQ6REFZTElHSFQNCkVORDpWVElNRVpPTkUNCkJFR0lOOlZFVkVOVA0KT1JHQU5JWkVS
+O0NOPU9zaHJhIFBlbGVnOm1haWx0bzpPLlBlbGVnQFNoaWJvbGV0LmNvbQ0KQVRURU5ERUU7Uk9M
+RT1SRVEtUEFSVElDSVBBTlQ7UEFSVFNUQVQ9TkVFRFMtQUNUSU9OO1JTVlA9VFJVRTtDTj1Ecm9y
+IEhhcnBhDQogejptYWlsdG86RC5IYXJwYXpAU2hpYm9sZXQuY29tDQpBVFRFTkRFRTtST0xFPVJF
+US1QQVJUSUNJUEFOVDtQQVJUU1RBVD1ORUVEUy1BQ1RJT047UlNWUD1UUlVFO0NOPUluYmFyIE1h
+Y2sNCiBpbjptYWlsdG86SS5NYWNraW5AU2hpYm9sZXQuY29tDQpBVFRFTkRFRTtST0xFPVJFUS1Q
+QVJUSUNJUEFOVDtQQVJUU1RBVD1ORUVEUy1BQ1RJT047UlNWUD1UUlVFO0NOPUVpdGFuIFNoYW0N
+CiBpcjptYWlsdG86ZWl0YW5AZWlzbGF3LmNvLmlsDQpBVFRFTkRFRTtST0xFPVJFUS1QQVJUSUNJ
+UEFOVDtQQVJUU1RBVD1ORUVEUy1BQ1RJT047UlNWUD1UUlVFO0NOPVlhZWwgU2hhbWkNCiByOm1h
+aWx0bzp5YWVsQGVpc2xhdy5jby5pbA0KQVRURU5ERUU7Uk9MRT1SRVEtUEFSVElDSVBBTlQ7UEFS
+VFNUQVQ9TkVFRFMtQUNUSU9OO1JTVlA9VFJVRTtDTj1Zb3NzaSBTaWxhDQogbTptYWlsdG86eW9z
+c2lAc2NzLWxhdy5vcmcNCkRFU0NSSVBUSU9OO0xBTkdVQUdFPWVuLVVTOlxuW2h0dHBzOi8vc3Qy
+Lnpvb20udXMvc3RhdGljLzYuMy4zNTM4My9pbWFnZS9uZQ0KIHcvWm9vbUxvZ29fMTEwXzI1LnBu
+Z108aHR0cHM6Ly96b29tLmNvbS8+XG5IaSB0aGVyZVwsXG5Pc2hyYSBQZWxlZyBpcyBpbnZpDQog
+dGluZyB5b3UgdG8gYSBzY2hlZHVsZWQgWm9vbSBtZWV0aW5nLlxuSm9pbiBab29tIE1lZXRpbmc8
+aHR0cHM6Ly9zaGlib2xldC4NCiB6b29tLnVzL2ovOTk4ODA4MTc4ODQ/cHdkPTZEMDRPVFFPMjBh
+U1o1bXo4TnRIelhRNHQ5bTB3eC4xPlxuT25lIHRhcCBtb2JpbA0KIGU6XG5Jc3JhZWw6ICs5NzIz
+OTc4NjY4OFwsXCw5OTg4MDgxNzg4NCM8dGVsOis5NzIzOTc4NjY4OFwsXCw5OTg4MDgxNzg4ND4g
+DQogb3IgKzk3MjIzNzY0NTA5XCxcLDk5ODgwODE3ODg0Izx0ZWw6Kzk3MjIzNzY0NTA5XCxcLDk5
+ODgwODE3ODg0PlxuTWVldGluZyANCiBVUkw6XG5odHRwczovL3NoaWJvbGV0Lnpvb20udXMvai85
+OTg4MDgxNzg4ND9wd2Q9NkQwNE9UUU8yMGFTWjVtejhOdEh6WFE0dA0KIDltMHd4LjFcbk1lZXRp
+bmcgSUQ6XG45OTggODA4MSA3ODg0XG5QYXNzY29kZTpcbjA4MTI0MlxuSm9pbiBieSBUZWxlcGhv
+bmVcDQogbkZvciBoaWdoZXIgcXVhbGl0eVwsIGRpYWwgYSBudW1iZXIgYmFzZWQgb24geW91ciBj
+dXJyZW50IGxvY2F0aW9uLlxuRGlhbDoNCiBcbis5NzIgMyA5NzggNjY4OCBJc3JhZWxcbis5NzIg
+MiAzNzYgNDUwOSBJc3JhZWxcbis5NzIgMiAzNzYgNDUxMCBJc3JhZWxcbg0KIDE4MDEgMjI3IDIy
+OCBJc3JhZWwgVG9sbC1mcmVlXG4xODA5IDM0OSAzNTQgSXNyYWVsIFRvbGwtZnJlZVxuTWVldGlu
+ZyBJRDpcDQogbjk5OCA4MDgxIDc4ODRcbkludGVybmF0aW9uYWwgbnVtYmVyczxodHRwczovL3No
+aWJvbGV0Lnpvb20udXMvdS9hRDdCTnRzQTUNCiA+XG5Kb2luIGZyb20gYW4gSC4zMjMvU0lQIHJv
+b20gc3lzdGVtXG5ILjMyMzpcbjE0NC4xOTUuMTkuMTYxIChVUyBXZXN0KVxuMg0KIDA2LjI0Ny4x
+MS4xMjEgKFVTIEVhc3QpXG4yMjEuMTIyLjg4LjE5NSAoTWFpbmxhbmQgQ2hpbmEpXG4xMTUuMTE0
+LjEzMS43IChJDQogbmRpYSBNdW1iYWkpXG4xMTUuMTE0LjExNS43IChJbmRpYSBIeWRlcmFiYWQp
+XG4xNTkuMTI0LjE1LjE5MSAoQW1zdGVyZGFtIE4NCiBldGhlcmxhbmRzKVxuMTU5LjEyNC40Ny4y
+NDkgKEdlcm1hbnkpXG4xNTkuMTI0LjEwNC4yMTMgKEF1c3RyYWxpYSBTeWRuZXkpXA0KIG4xNTku
+MTI0Ljc0LjIxMiAoQXVzdHJhbGlhIE1lbGJvdXJuZSlcbjE3MC4xMTQuMTM0LjEyMSAoSG9uZyBL
+b25nIFNBUilcbjE3DQogMC4xMTQuMTgwLjIxOSAoU2luZ2Fwb3JlKVxuNjQuMjExLjE0NC4xNjAg
+KEJyYXppbClcbjE1OS4xMjQuMTMyLjI0MyAoTWV4aWMNCiBvKVxuMTU5LjEyNC4xNjguMjEzIChD
+YW5hZGEgVG9yb250bylcbjE1OS4xMjQuMTk2LjI1IChDYW5hZGEgVmFuY291dmVyKVxuMQ0KIDcw
+LjExNC4xOTQuMTYzIChKYXBhbiBUb2t5bylcbjE0Ny4xMjQuMTAwLjI1IChKYXBhbiBPc2FrYSlc
+bk1lZXRpbmcgSUQ6XG45DQogOTggODA4MSA3ODg0XG5QYXNzY29kZTpcbjA4MTI0MlxuU0lQOlxu
+OTk4ODA4MTc4ODRAem9vbWNyYy5jb21cblBhc3Njb2RlOlwNCiBuMDgxMjQyXG5cblxuXG4NClVJ
+RDowNDAwMDAwMDgyMDBFMDAwNzRDNUI3MTAxQTgyRTAwODAwMDAwMDAwNDA2RDZFM0UzQ0MzREIw
+MTAwMDAwMDAwMDAwMDAwMA0KIDAxMDAwMDAwMDM2NjMxMTkzODJCRTMwNDhBNUYyRTg3OUQ2RUJB
+OTE3DQpTVU1NQVJZO0xBTkdVQUdFPWVuLVVTOteR15DXqCDXmdei16fXkSAo157XqdekJyDXkNeU
+16jXldeg15kg15DXldeh15jXmdefIA0KINeW15XXnNeR16jXkikNCkRUU1RBUlQ7VFpJRD1Jc3Jh
+ZWwgU3RhbmRhcmQgVGltZToyMDI1MDUxNVQxNjAwMDANCkRURU5EO1RaSUQ9SXNyYWVsIFN0YW5k
+YXJkIFRpbWU6MjAyNTA1MTVUMTcwMDAwDQpDTEFTUzpQVUJMSUMNClBSSU9SSVRZOjUNCkRUU1RB
+TVA6MjAyNTA1MTJUMDk1MDIzWg0KVFJBTlNQOk9QQVFVRQ0KU1RBVFVTOkNPTkZJUk1FRA0KU0VR
+VUVOQ0U6MA0KTE9DQVRJT047TEFOR1VBR0U9ZW4tVVM6aHR0cHM6Ly9zaGlib2xldC56b29tLnVz
+L2ovOTk4ODA4MTc4ODQ/cHdkPTZEMDRPVFFPDQogMjBhU1o1bXo4TnRIelhRNHQ5bTB3eC4xDQpY
+LU1JQ1JPU09GVC1DRE8tQVBQVC1TRVFVRU5DRTowDQpYLU1JQ1JPU09GVC1DRE8tT1dORVJBUFBU
+SUQ6LTIwMDgyNjI2NzkNClgtTUlDUk9TT0ZULUNETy1CVVNZU1RBVFVTOlRFTlRBVElWRQ0KWC1N
+SUNST1NPRlQtQ0RPLUlOVEVOREVEU1RBVFVTOkJVU1kNClgtTUlDUk9TT0ZULUNETy1BTExEQVlF
+VkVOVDpGQUxTRQ0KWC1NSUNST1NPRlQtQ0RPLUlNUE9SVEFOQ0U6MQ0KWC1NSUNST1NPRlQtQ0RP
+LUlOU1RUWVBFOjANClgtTUlDUk9TT0ZULURPTk9URk9SV0FSRE1FRVRJTkc6RkFMU0UNClgtTUlD
+Uk9TT0ZULURJU0FMTE9XLUNPVU5URVI6RkFMU0UNClgtTUlDUk9TT0ZULVJFUVVFU1RFREFUVEVO
+REFOQ0VNT0RFOkRFRkFVTFQNClgtTUlDUk9TT0ZULUlTUkVTUE9OU0VSRVFVRVNURUQ6VFJVRQ0K
+WC1NSUNST1NPRlQtTE9DQVRJT05TOlsgeyAiRGlzcGxheU5hbWUiIDogImh0dHBzOi8vc2hpYm9s
+ZXQuem9vbS51cy9qLzk5ODgwDQogODE3ODg0P3B3ZD02RDA0T1RRTzIwYVNaNW16OE50SHpYUTR0
+OW0wd3guMSJcLCAiTG9jYXRpb25Bbm5vdGF0aW9uIiA6ICIiXCwNCiAgIkxvY2F0aW9uU291cmNl
+IiA6IDBcLCAiVW5yZXNvbHZlZCIgOiBmYWxzZVwsICJMb2NhdGlvblVyaSIgOiAiIiB9IF0NCkJF
+R0lOOlZBTEFSTQ0KREVTQ1JJUFRJT046UkVNSU5ERVINClRSSUdHRVI7UkVMQVRFRD1TVEFSVDot
+UFQxNU0NCkFDVElPTjpESVNQTEFZDQpFTkQ6VkFMQVJNDQpFTkQ6VkVWRU5UDQpFTkQ6VkNBTEVO
+REFSDQo=
+
+--_000_GV2PR03MB88283B181879A42C40E8D7C48D97AGV2PR03MB8828eurp_--

@@ -1,0 +1,93 @@
+name: Deploy Privacy Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Azure Resource Group
+        required: true
+        default: EISLAW-Dashboard
+      webapp_name:
+        description: Azure Web App name
+        required: true
+        default: eislaw-api-01
+      storage_account:
+        description: Azure Storage account (static website)
+        required: true
+        default: eislawstweb
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build backend zip
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File "EISLAW System/infra/package_backend.ps1"
+
+      - name: Deploy backend
+        run: |
+          az webapp deploy \
+            -g "${{ github.event.inputs.resource_group }}" \
+            -n "${{ github.event.inputs.webapp_name }}" \
+            --src-path "EISLAW System/build/webapp_package.zip" \
+            --type zip
+
+      - name: Apply app settings
+        run: |
+          az webapp config appsettings set \
+            -g "${{ github.event.inputs.resource_group }}" \
+            -n "${{ github.event.inputs.webapp_name }}" \
+            --settings \
+              FILLOUT_API_KEY='${{ secrets.FILLOUT_API_KEY }}' \
+              AIRTABLE_TOKEN='${{ secrets.AIRTABLE_TOKEN }}' \
+              AIRTABLE_BASE_ID='${{ secrets.AIRTABLE_BASE_ID }}' \
+              AIRTABLE_TABLE_ID='${{ secrets.AIRTABLE_TABLE_ID }}' \
+              AIRTABLE_VIEW='${{ secrets.AIRTABLE_VIEW }}' \
+              GRAPH_CLIENT_ID='${{ secrets.GRAPH_CLIENT_ID }}' \
+              GRAPH_CLIENT_SECRET='${{ secrets.GRAPH_CLIENT_SECRET }}' \
+              GRAPH_TENANT_ID='${{ secrets.GRAPH_TENANT_ID }}' \
+              GRAPH_MAILBOX='${{ secrets.GRAPH_MAILBOX }}' \
+              DEV_CORS_ORIGINS='https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net,http://localhost:5173,http://127.0.0.1:5173' \
+              REPORT_LINK_HOST='https://${{ github.event.inputs.webapp_name }}.azurewebsites.net'
+
+      - name: Build frontend
+        working-directory: "EISLAW System/frontend"
+        run: |
+          npm ci
+          npx vite build
+
+      - name: Upload frontend to static website
+        run: |
+          az storage blob upload-batch \
+            -s "EISLAW System/frontend/dist" \
+            -d '$web' \
+            --account-name "${{ github.event.inputs.storage_account }}" \
+            --auth-mode login \
+            --overwrite
+
+      - name: Output endpoints
+        run: |
+          echo "API: https://${{ github.event.inputs.webapp_name }}.azurewebsites.net/health"
+          echo "APP: https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net/#/privacy"

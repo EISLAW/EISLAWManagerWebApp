@@ -1,0 +1,509 @@
+Received: from GVX0PF3680CBF97.eurprd01.prod.exchangelabs.com
+ (2603:10a6:158:401::84a) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com
+ with HTTPS; Wed, 18 Jun 2025 10:22:59 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=LfxW8rT/zH9HPhHDIoJmXLVDm2rN5sXf6tsvUHpUW8+H7Qbigo+HlssH9yReHPOyJ/TgvVz2iezwyJwZi4OngkR/Cd0CsaYcL3mu1AENfBLl99CZZesVa67/O4STtSGRIsCK1OTzV3jWD6j/uIAp/KrhF+WNfnXlRnbCyIgOeRnOoeHgSSpDgoyYS8VlfuT9av7bZU/57r4W2D1Y7SgoJ5YUfZ4wW6zK0lK6/4fho+Yp4O5oGB+MoYZlcUPq0JL2pyn1GA1UL5sSfmTb888HRbR79Io/PaguEFKRD5GJnyuWGTI7qa1OPAaqQMuxuC8Q9hBTKpdyT9YLpGa+eCoJyg==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=pJxgAJxXENnGjgH4yJPpcH+3jJrb8hOZCMI9xaqZJBs=;
+ b=RXepmfUGtGPWrJDpH3xoQQ1C7riL7efLb3OxhJ+ofU6z2SizDWxwgAcGMx/67gEta+tF+NDmz17m1Kxb/jn3WySVdaWoyqwXVaSBw54Z4zYp3SMARtMZkHes5zfPlZ7o0FOxNcgZnzZSWJ2SjTHVNfElcsbBulJfiXdJ3HWEU4QNjZacShNWkOENUTR7wW1rmbO+xnPbN68X6q2j7IYs1TFOEtKdI9yhfEKCZAXnEYZpau7KDKjpfU2Na8sd3q5YypiAZuMx9zLQhFKcj/O7ib/ACe5la2EbsOFSWIPHYaOuKUw4qdL+F6vIzsZnT5yv1ZkhKdTHeVuSkE68WnwYxQ==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:2613::711) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=unicell.co.il; dmarc=pass (p=reject sp=reject pct=100)
+ action=none header.from=unicell.co.il; dkim=pass (signature was verified)
+ header.d=unicell.co.il; arc=pass (0 oda=1 ltdi=1
+ spf=[1,1,smtp.mailfrom=unicell.co.il] dkim=[1,1,header.d=unicell.co.il]
+ dmarc=[1,1,header.from=unicell.co.il])
+Received: from AS4P190CA0037.EURP190.PROD.OUTLOOK.COM (2603:10a6:20b:5d1::18)
+ by GVX0PF3680CBF97.eurprd01.prod.exchangelabs.com (2603:10a6:158:401::84a)
+ with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8857.19; Wed, 18 Jun
+ 2025 10:22:54 +0000
+Received: from AM4PEPF00027A62.eurprd04.prod.outlook.com
+ (2603:10a6:20b:5d1:cafe::4f) by AS4P190CA0037.outlook.office365.com
+ (2603:10a6:20b:5d1::18) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8835.34 via Frontend Transport; Wed,
+ 18 Jun 2025 10:22:54 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:2613::711)
+ smtp.mailfrom=unicell.co.il; dkim=pass (signature was verified)
+ header.d=unicell.co.il;dmarc=pass action=none
+ header.from=unicell.co.il;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of unicell.co.il designates
+ 2a01:111:f403:2613::711 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a01:111:f403:2613::711;
+ helo=EUR05-VI1-obe.outbound.protection.outlook.com; pr=C
+Received: from EUR05-VI1-obe.outbound.protection.outlook.com
+ (2a01:111:f403:2613::711) by AM4PEPF00027A62.mail.protection.outlook.com
+ (2603:10a6:20f:fff4:0:4:0:7) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8857.21 via Frontend Transport; Wed,
+ 18 Jun 2025 10:22:53 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=DoPumOrptXST8y2GhBO7xljlaUaszGah+h2JTnN0j7fFFfo30V1ePw/i1VmOndYFAw/jX0T05q8MLo9YzjwYJZuzs2yGibya3nzw1NVc7Up+p9azPKfv80BlPAQvhNi6qBjBl+vlNzmqaYXCz6OFbEBsS+LmpicmVUmsW8gFHbXaG/IUXbpV7JJeFGXrPlCuU4/Sz+9V8EJ95mTjuwYtVwfMQoju4mzDORh4I5zaLLBMURDIgwAL0neXiuxEbBB+fomIx29wOMOFon2gGKcmnAJvKObs+NLF7BWp4vfKDh63NVx3/LnAm2rD5hJshB899UaqS+7hSAdiSr2LP55UVA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=pJxgAJxXENnGjgH4yJPpcH+3jJrb8hOZCMI9xaqZJBs=;
+ b=VzgrEdGzUCQwFAGgcORUG1p6SbaN6osdxpbLTIvvtohhNnC5cYDIG95gsD06Xt4vEzJyyO7pz25RSE7YlL59y5S9ZLakaP7vXE+Ak22r9UE+okN14N7KVgp28kLa0e7TdJXXtfO85y84bXME+XC09FXfhG9ZWYXQcEWjBTGzc3Gcc6ZkvTpFakWpLGYfuPids0UZUT4fe5At1rJRUy78KC89YlqthI+T4/rbLdn3ID/ZOmzcfLBYGCde7u2TSDZ3QMln0r9z2JeuKI3xkkCCAULZJtw7xE5QvUGjjUv2lP43aB6HxTa9yOnqBAwxeJuq9tmmX4qB4P4V1xLlV04FDA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=unicell.co.il; dmarc=pass action=none
+ header.from=unicell.co.il; dkim=pass header.d=unicell.co.il; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=unicell.co.il;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=pJxgAJxXENnGjgH4yJPpcH+3jJrb8hOZCMI9xaqZJBs=;
+ b=qpnazu/mViE6iPAHW8VPAS6SF7YXfKI6wNlortblm36IdLVrTRJas9b2KDouYDljIHmvnpsbwRU0PzY23EBNdszroZEySUr2ovbsacCiqIKkzfLrcMLORM3TqBVVoVcOU84oOcplhPvwFfgzggeXNt9zBrg8OR1SWd5+zClbLlnj6KyIgBkDNLYdeTzy7R5cgQGLEqG9a5BFaBgHcv4H33LBHDl3IwOo7pq8KMaTH+6T3/Po9CPuOhzqj103k8SCCyzUyRgPZybK9JJHsyhxjBvHK+qZPrmT0lRNL7UmVWtK/RiM4c6nZ2z0Vbh5wHp5hvOwJl/Nedh6WwPsi9Z4rg==
+Received: from PAWP194MB2101.EURP194.PROD.OUTLOOK.COM (2603:10a6:102:339::13)
+ by PAXP194MB1232.EURP194.PROD.OUTLOOK.COM (2603:10a6:102:1a9::12) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8835.30; Wed, 18 Jun
+ 2025 10:22:51 +0000
+Received: from PAWP194MB2101.EURP194.PROD.OUTLOOK.COM
+ ([fe80::6dae:7fb1:333f:a36c]) by PAWP194MB2101.EURP194.PROD.OUTLOOK.COM
+ ([fe80::6dae:7fb1:333f:a36c%4]) with mapi id 15.20.8835.027; Wed, 18 Jun 2025
+ 10:22:51 +0000
+From: Amit Ben-Yehuda <amit@unicell.co.il>
+To: "liran.k@everestn.co.il" <liran.k@everestn.co.il>
+CC: "eitan@eislaw.co.il" <eitan@eislaw.co.il>
+Subject: =?windows-1255?B?7uvp+Pog4+n45CDu+fQg4e8g6eTl4+Qg4OX48OntIDUg6/Dp8eQg4CDj?=
+ =?windows-1255?B?6fjkIO7xIDEwIOLh8vog+e7l4OwgKPnr5fD6IPju+iDg6ezvKQ==?=
+Thread-Topic: =?windows-1255?B?7uvp+Pog4+n45CDu+fQg4e8g6eTl4+Qg4OX48OntIDUg6/Dp8eQg4CDj?=
+ =?windows-1255?B?6fjkIO7xIDEwIOLh8vog+e7l4OwgKPnr5fD6IPju+iDg6ezvKQ==?=
+Thread-Index: AdvgOojus4GAeCpoStufA8em1OgdJw==
+Date: Wed, 18 Jun 2025 10:22:50 +0000
+Message-ID: <PAWP194MB2101D640F87D97712E08EF4B9672A@PAWP194MB2101.EURP194.PROD.OUTLOOK.COM>
+Accept-Language: he-IL, en-US
+Content-Language: en-US
+X-MS-Has-Attach: yes
+X-MS-TNEF-Correlator:
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=unicell.co.il;
+x-ms-traffictypediagnostic: PAWP194MB2101:EE_|PAXP194MB1232:EE_|AM4PEPF00027A62:EE_|GVX0PF3680CBF97:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: eef8844a-3ddf-47d0-4e48-08ddae5215ec
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|376014|1800799024|366016|13003099007|4053099003|8096899003|38070700018;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?fB9zwthsFjB86ZWS6NfQ0adq43zbTmOGa9VBtN35faKR7wPjcTwl/f8MSGuR?=
+ =?us-ascii?Q?haxpXfOafsYboiKyx6PzdTWrp6vbaVQthA211khhFZerlm+5Nq4xnLnE2sWl?=
+ =?us-ascii?Q?U9jD3VjgGlyhCb/z5bqqUE2K1Ab7CP7v1PxjxdaHtoYKHVA6ZdLGU7q3FuNs?=
+ =?us-ascii?Q?6bIWk++K8nVeFS+NANhWBm7rmAuDMp4uTTQc8Uvv6Fjw1uPkoQDeq3zb/uIp?=
+ =?us-ascii?Q?JMOSHmHHbMj1VfIL+1GFl85D/99VjcMHLcM+D5n9G6foKPgSQ68BwAxwnbOw?=
+ =?us-ascii?Q?s/qzpmO4I+FDX+mFbO9tFmhKpabMfmL3gTRAwi6HPhikiHYRVMQ2KNRixVDM?=
+ =?us-ascii?Q?Ik48bj4BYPuBo5a4afmfCqt7SrTwZyBM/wk6K+DCZ222AjGk4wJmtbBmz4E2?=
+ =?us-ascii?Q?aBapJbWFYU+M+1vReaEX6c8KOCfILeV8vWr2yOiE8WH5DXe73tTuzyYxgtWn?=
+ =?us-ascii?Q?m0NvTDhdu8vxQOz+KsNq6/ICOIzMZqwHp1/Xq7KDpd/5pCCXoFl4PYZDNShj?=
+ =?us-ascii?Q?asfML6rd8g7jFZdVXcPwpt7xCAxwVOW/MxIvGeRUlbcYF8nBDwaVQOjaMu2l?=
+ =?us-ascii?Q?sZ8i06fPaxeFXeVhO104wK/w7n2CLj1iuukZAmWMVgOFvuMS/o4yRIOs+zPZ?=
+ =?us-ascii?Q?w7mq6KTxyjw7YRJQcxDep3YZq1X8hCFGDPB7UhTXsHYFzjeYHElPerNrmsfI?=
+ =?us-ascii?Q?AGNODxP6WJXrY9+onEAR7TOvrBQrTzvxOJgybgydL4l+NbwE0DTrSi6W8K41?=
+ =?us-ascii?Q?5kba7o00L4ja02dufVujtDvo9dMObfFVK/na2CzdiyMcbj6tb/eq8RqF4DE7?=
+ =?us-ascii?Q?0DOP8z5r3YasLWZCwTNWm9Et54DvMXLrTLjL+6bsn7YAlwSsE1vuOSGMeAPo?=
+ =?us-ascii?Q?Tj7dmAXvarI4ikafAtgHT5VEypSs+SKlKWaDCIfYrVLgZd3RTr5uhMO0lifx?=
+ =?us-ascii?Q?K3UiUvdRyZoIzdziJJoT1J6Dg10Y6pERMAOSz9uaNF7TF87LpTg87uCe/9ED?=
+ =?us-ascii?Q?jvicWPAThcPhuBCw6e65WkNOy022TWU8bs0mY9oktEGpHiZNwj6+jDYMxScT?=
+ =?us-ascii?Q?hNQteYK5bQHGDnVx6SrctB5wVRkBE3cZ+45BBj2RaF8/JZCkwPAcEBF2tL5i?=
+ =?us-ascii?Q?p3NZAO/ssmMkiGeXwWROr7Yn0pEYf+DJ8ldh40Dmqz5/lBMhs9JNvPfP2Yjh?=
+ =?us-ascii?Q?uC23ZgdoL+4BVreB2qQYXbtmia8o0Ts+IfSQIULKrRZs1atsPt6eHzJBO/G3?=
+ =?us-ascii?Q?o32VfCNKM8TrrcU2qlH29Kfmk05TcFX9NoSwVB5YjkYtzuronre6ie6WHXAS?=
+ =?us-ascii?Q?U1Eqn1uPhgq6vgb7DIXLRGEFdvZ0K2XYGlhDftMK2qUcksjINSn+hJmgoi1i?=
+ =?us-ascii?Q?5F7iT7WTbStrly8XSnHRiV/zT8p9gzsV3y88k+FpbCE6jcx49rbijmo/I2zu?=
+ =?us-ascii?Q?tTqqLgB/XPc=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:PAWP194MB2101.EURP194.PROD.OUTLOOK.COM;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(366016)(13003099007)(4053099003)(8096899003)(38070700018);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?windows-1255?Q?0luyQ23MwuNwHzYI2xe9Z6B1x/HnTDBkxVjWSJyNm08XsT0X+GDyD8VP?=
+ =?windows-1255?Q?QUTrg60l0yhL4gbu9Gm/pe4haSy4bs3OETsH/Yb9buvXHWcq/9JSlhfO?=
+ =?windows-1255?Q?NpzV7cKtpv/J1wFprHrpW+WNtnRASplpQKc6nUAK4pprQox9Ygex8795?=
+ =?windows-1255?Q?9dt5nj/1d1I4M0jF2AwDwuDBb6PojKQs/T6bAf4ZHtrz9lXw8DT01Vwa?=
+ =?windows-1255?Q?iWMMH4IX3rCF1vudJjQwpfxrp0+ncQHP1HxpxFfX8KrFA09iLCDDuRER?=
+ =?windows-1255?Q?9CyH+x0YeU8aAv38HDmfHunQlW2gerHGLy+c9g49xvubX+FmrNz1P8iv?=
+ =?windows-1255?Q?N1GoqCN9ajL1zQvXIbnKJKb6uo1ia85mC31mjY7+SKWMr0wd+zNucSmy?=
+ =?windows-1255?Q?jL6EAN1X+aKmeMkkI805zyRF9jdggGU0Ig0m6JMl148oaOvOpEzMexdV?=
+ =?windows-1255?Q?jm0Tx7Q5b6msZ/JDa7nY7EwPeKkjyPGxnfq8P3kGOua8TI6TeEkzdELy?=
+ =?windows-1255?Q?kYt3ZQbi+LnDL8PeDpGRvg3Mfj16XVme0AhO3q0L6rDcRZui5DJG4PfD?=
+ =?windows-1255?Q?0KsEk3/OYpSEtPOqb/EjaUZg/w70tmoJBQMEsyHXLjWuxws9NFrpz5yp?=
+ =?windows-1255?Q?k3ZH6fpkvlSUYzy3key102EE7OPtBVMLmBkjn69YQkHyMfFTTyLQMtum?=
+ =?windows-1255?Q?1HV6XMmtUmgPWlXVt/DTOcllnFtffvk8q47b9gbRnRR9wX2TQf187bL2?=
+ =?windows-1255?Q?TNIISiEvXvgTInAalcXJ3X57YZlDmdcSKoIHx/2pxMkfDBqe9cJiRzND?=
+ =?windows-1255?Q?s11a4KVz1uCuDc/Xbmvpd6tm0kkM/wmfG6I8Q+QEHrAkV2X19AmBuTBq?=
+ =?windows-1255?Q?F780lJW3tKMs1feI67P5Op+WNDs/em3FWDmrD+QlZ6o6xTAnGuZZH97g?=
+ =?windows-1255?Q?5zfeIUqO6giVEPslY4jsIdrzkD2FUrYvIWJ8ESe9/5um6njt0KOwXZOr?=
+ =?windows-1255?Q?Yn5P01JX1SZJqEs+tQ5mHecyXY9uT9s+5XoGJhECMnfxaUyo5fj2rbJN?=
+ =?windows-1255?Q?TvhxIds3284RQlmcnqTv10Hj2YFS+OmXixQ9zJeCyKO6xvm2rJtyFYaX?=
+ =?windows-1255?Q?nAQLlHhzZ1z53JpGdH6I4s4rhLYB4h8jlPf5IJApC+M8IBNVbKvDLP3a?=
+ =?windows-1255?Q?izzrYRMSVC8ffx05ZaAToij6fSS5YOnnpwsNosddBY3yar7NmwIqj1CS?=
+ =?windows-1255?Q?Ypvjl8Rg5fuduT5RELAdbereRsd8AjSZCrdeR7tXseFuhF9OdS+kSAVU?=
+ =?windows-1255?Q?VVOFKW9yPP8ssrX570g/BxSsVsdR0Lb8Cf6QHcrJScW0jWWdBHX9casU?=
+ =?windows-1255?Q?1qBn0ltXrPawS6vliHJxa+JqUls00U0M+M25nD3/BVXWx584iIvJpg1J?=
+ =?windows-1255?Q?vaU7wfARZIHoZGKToSYQVPiSFOph2q2HKQ6ERTh3DSIl1b0op2Nt2gf3?=
+ =?windows-1255?Q?iKIwJcG9e75psrjTmKlZ85HmxPKREkn/IJKbW11l5VvNO332UTBC9AT/?=
+ =?windows-1255?Q?o2W9TCo1JYOosCuzgxCSvcDL/3rZfWi9sZhx/QEnK8e36fAFP69OvQ84?=
+ =?windows-1255?Q?1XKudDUaAsWxbdcZgdqYuOdcMtvHusbVWedHMlpRePG7eeT91SmsF6nA?=
+ =?windows-1255?Q?U71DzNMUOP2U63oKd8A5ADWz+ytGp/3r?=
+Content-Type: multipart/related;
+	boundary="_004_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_";
+	type="multipart/alternative"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PAXP194MB1232
+Return-Path: amit@unicell.co.il
+X-MS-Exchange-Organization-ExpirationStartTime: 18 Jun 2025 10:22:53.4837
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: eef8844a-3ddf-47d0-4e48-08ddae5215ec
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: AM4PEPF00027A62.eurprd04.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: AM4PEPF00027A62.eurprd04.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: AM4PEPF00027A62.eurprd04.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: 57ec2684-ae08-4ca7-aabd-08ddae52146f
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|35042699022|13003099007|4053099003|4076899003|8096899003;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:2613::711;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:EUR05-VI1-obe.outbound.protection.outlook.com;PTR:mail-vi1eur05on20711.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(35042699022)(13003099007)(4053099003)(4076899003)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 18 Jun 2025 10:22:53.2957
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: eef8844a-3ddf-47d0-4e48-08ddae5215ec
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: AM4PEPF00027A62.eurprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: GVX0PF3680CBF97
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:06.1321864
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8857.014
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?21KTVSe1Nwo/f1WpBwm8mYYriK4Flk5ojfmZ2vVq27uEORTOpxS0Zog4?=
+ =?windows-1255?Q?HlDXnpipIknWbiVbl39nVsF19NJ/csIMhPn9YTIaIoggY+uDBK8G2Ncw?=
+ =?windows-1255?Q?4C2lkqoXo3+oaSZXzi1cTAWp+wDTIBAf4MmHDUJnM3LlXVhILp3wyIav?=
+ =?windows-1255?Q?POUXxBITUsMTMTnIr7zRb1U9DDr8QFEoA2sPqIum9RO5t8PbXRozw+1c?=
+ =?windows-1255?Q?N/K6gcU6og+edYK14NX5sstM+RI9Rf+1hOYbmQfKW067NfMjh5uyFoge?=
+ =?windows-1255?Q?SI3Hu3BVF+nYnXrOtwZSbEqCMmG6G5mQdL9TppOxr8yD8iaYPudCWB93?=
+ =?windows-1255?Q?rNsfinfd6/HCYd9laZgBA4sBXMi/uqX0d0pk6xZfUWpPsjB0W3XVWwUw?=
+ =?windows-1255?Q?WiGbtP+/GDebH4M5CUA0TGFUxJdfs+/q4FmRaEVw0GtiS0Pa9zFaLB0x?=
+ =?windows-1255?Q?XZ3owL7sQ2NXfJY6h0qw9Fchhra5u71FAa9Vz7XI80g3uN9lA/c+E0+w?=
+ =?windows-1255?Q?ycsbSX+2fEBMP3SP7H7wz0MLmpwKTqhWP/8lcGayakJVURh84wffDRXH?=
+ =?windows-1255?Q?PifGrKGcbCukxBY8EAWPVetzWn8K42FrmjgTL06Z9yqHFsbI4DAYNQuz?=
+ =?windows-1255?Q?0Uz4Pdn2uwq/qAZn+3oEa3QvYrZ5YjYGaA2rerDDPUJi+J3x9qgdwyZT?=
+ =?windows-1255?Q?YyglFjKCS1PchXFT53pYucDmymuVL/Pe9FEQFmOJAur3Nhzem84wCj3E?=
+ =?windows-1255?Q?6x8PjHoe4SoLMgKQQ10gDMuQGs8HLv4riRCJgSxF26dwWs/2f+jsG/rJ?=
+ =?windows-1255?Q?FVtfMj0obxAm2O+9bdSgQG6BJiEguIEviUti9lWO4pKQggHT7UNIlKxT?=
+ =?windows-1255?Q?tGTs15DjKJwT4HwE2NWdutpT9AHMlJeGiohKwRpu55WYYLHMZkJUkKin?=
+ =?windows-1255?Q?pyqEkI+QECvXmwBckF6EBvxs5A5qIGIIWkp+UxSOOebqdGuDG20GfYqH?=
+ =?windows-1255?Q?GAW8ey0VG42Ozp53USI61xphTyeqgrPDdkBf6kUJxhouMI2tz+Xh6xhl?=
+ =?windows-1255?Q?lgrv4tQel2gmdccBoJyaZdKWbKsEmeqtY3Owqmy8XtL4ergj8+yzzq52?=
+ =?windows-1255?Q?xuWTYqVATHduSk02piVlUM1a7ojedTVrY0/7abIpeUqcAElEF01lFWTL?=
+ =?windows-1255?Q?0/MvIndUZzA/iTkgr4pYWOB3W7WKPhCj93u1PfVvCYyDgyexx6MvFNVD?=
+ =?windows-1255?Q?0G1KbcM1St/nV42CFEvJIJk7afKyzjTTqCdpgsIHe8T42B/Ps5NlYLyT?=
+ =?windows-1255?Q?EJxPbN/3yEBcUO1RyP9RxeSoXlh7lZYgUBmVVcdUWsQY2bWL0tcQ09Xp?=
+ =?windows-1255?Q?Y9oozrvJpTvgRDLBa1yBexrSPKGvCqYDxyEaI5/fu0Ohw0ob2cl39XHl?=
+ =?windows-1255?Q?07QtxaCJoeTlWaFUzFMvSRjdWfyjBD+uSWHOiAA9nfVmOtYVWWLTgjg6?=
+ =?windows-1255?Q?mCkMuXG3JQtSpVsvYiyoWUuhYWH7gETFb2HIPthZBt8q6d7tAHAl6hrn?=
+ =?windows-1255?Q?EmFS7B/7ESuCbczCzGi23a88w13emxWNhjjDqW91A5DZSWQdcJs3x9o7?=
+ =?windows-1255?Q?aL9hIWcitxAzHxN5UZVU99h0YKMvH2evx4iz0KCeu5KtW0T2fazSSfK/?=
+ =?windows-1255?Q?jufm+EKWl4pLsrL4WtZidWHiYXddnuOd73wN3fmhssLBcUXCZkMwJaNZ?=
+ =?windows-1255?Q?00QDjuT55fAzFebMXOIWR1jykuyAKUpxL3l8ib0+Hxmh8a7NV8w2DO2d?=
+ =?windows-1255?Q?ZSJMMiaXmiF8zjMINoqyWA5L0wFzi4lCUEPw+OQD/CadPWDtRtHxoA8v?=
+ =?windows-1255?Q?8gnmtyB+0lWuS4lS3kgEPUCR0heUI/Eg5zNenQqLfcyKJJmkgSXBgMtg?=
+ =?windows-1255?Q?dMuns/WC2940azGmN/aoJ3cqJL3D2GR8vNNCLMcQKd/czsnyARjofvKK?=
+ =?windows-1255?Q?GtVKOpY8JBhUZ6+O9QOgZdCUF/uyCLbT4jdir6AC4Ps0nB6fYy1KuOqD?=
+ =?windows-1255?Q?VxN3MWRuvZMdGwBb?=
+MIME-Version: 1.0
+
+--_004_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_
+Content-Type: multipart/alternative;
+	boundary="_000_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_"
+
+--_000_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+=E4=E9 =EC=E9=F8=EF,
+=FA=EB=E9=F8 =E0=FA =F2=E5"=E3 =E0=E9=FA=EF =F9=EE=E9=F8 =F9=E9=EC=E5=E5=E4=
+ =EE=F6=E3=E9 =E0=FA =E4=F2=E9=F1=F7=E4.
+=E0=E1=F7=F9:
+
+  1.  =E0=F0=E0 =E4=F2=E1=F8 =E0=FA =E4=F4=F8=E8=E9=ED =E4=EE=F1=E7=F8=E9=
+=E9=ED =E0=E5 =E4=F1=EB=ED.
+  2.  =F2=ED =E4=FA=E9=E9=E7=F1=E5=FA =EC=F0=E5=F9=E0 =E9=F4=E5=E9 =E4=EB=
+=E5=E7 =E4=EE=FA=EE=F9=EA.
+  3.  =E0=F0=E0 =F6=F8=F3 =EB=EC =E3=E1=F8 =F9=EC=E3=F2=FA=EA =E0=E9=FA=EF =
+=F6=F8=E9=EA =EC=E4=EB=E9=F8.
+  4.  =E0=F0=E0 =EB=FA=E1 =E2=ED =E0=FA =F9=F8=E9=FA (=E0=E9=EF =EC=E9 =E0=
+=FA =E4=EE=E9=E9=EC =F9=EC=E4)
+
+=F2=EE=E9=FA =E1=EF =E9=E4=E5=E3=E4
+=EE=F0=EB"=EC
+=F0=E9=E9=E3: 054-4499985
+=EE=F9=F8=E3: 03-5181717
+www.unicell.co.il<http://www.unicell.co.il>
+
+[cid:image001.png@01DBE054.15F9D1D0]
+
+
+
+--_000_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" xmlns:o=3D"urn:schemas-micr=
+osoft-com:office:office" xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:m=3D"http://schemas.microsoft.com/office/2004/12/omml" xmlns=3D"http:=
+//www.w3.org/TR/REC-html40"><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+<meta name=3D"Generator" content=3D"Microsoft Word 15 (filtered medium)">
+<!--[if !mso]><style>v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style><![endif]--><style><!--
+/* Font Definitions */
+@font-face
+	{font-family:"Cambria Math";
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	text-align:right;
+	direction:rtl;
+	unicode-bidi:embed;
+	font-size:11.0pt;
+	font-family:"Calibri",sans-serif;
+	mso-ligatures:standardcontextual;}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{mso-style-priority:34;
+	margin-top:0cm;
+	margin-right:36.0pt;
+	margin-bottom:0cm;
+	margin-left:0cm;
+	text-align:right;
+	direction:rtl;
+	unicode-bidi:embed;
+	font-size:11.0pt;
+	font-family:"Calibri",sans-serif;
+	mso-ligatures:standardcontextual;}
+span.EmailStyle17
+	{mso-style-type:personal-compose;
+	font-family:"Calibri",sans-serif;
+	color:windowtext;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-size:11.0pt;}
+@page WordSection1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+/* List Definitions */
+@list l0
+	{mso-list-id:2141485510;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-319888448 67698703 67698713 67698715 67698703 67698=
+713 67698715 67698703 67698713 67698715;}
+@list l0:level1
+	{mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level2
+	{mso-level-number-format:alpha-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level3
+	{mso-level-number-format:roman-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:right;
+	text-indent:-9.0pt;}
+@list l0:level4
+	{mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level5
+	{mso-level-number-format:alpha-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level6
+	{mso-level-number-format:roman-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:right;
+	text-indent:-9.0pt;}
+@list l0:level7
+	{mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level8
+	{mso-level-number-format:alpha-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level9
+	{mso-level-number-format:roman-lower;
+	mso-level-tab-stop:none;
+	mso-level-number-position:right;
+	text-indent:-9.0pt;}
+ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext=3D"edit" spidmax=3D"1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext=3D"edit">
+<o:idmap v:ext=3D"edit" data=3D"1" />
+</o:shapelayout></xml><![endif]-->
+</head>
+<body lang=3D"EN-US" link=3D"#0563C1" vlink=3D"#954F72" style=3D"word-wrap:=
+break-word">
+<div class=3D"WordSection1">
+<p class=3D"MsoNormal" dir=3D"RTL"><span lang=3D"HE" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif">=E4=E9 =EC=E9=F8=EF,
+<o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL"><span lang=3D"HE" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif">=FA=EB=E9=F8 =E0=FA =F2=E5&quot;=E3 =E0=E9=FA=
+=EF =F9=EE=E9=F8 =F9=E9=EC=E5=E5=E4 =EE=F6=E3=E9 =E0=FA =E4=F2=E9=F1=F7=E4.=
+<o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL"><span lang=3D"HE" style=3D"font-family:&=
+quot;Arial&quot;,sans-serif">=E0=E1=F7=F9:<o:p></o:p></span></p>
+<ol style=3D"margin-top:0cm" start=3D"1" type=3D"1">
+<li class=3D"MsoListParagraph" dir=3D"RTL" style=3D"margin-right:0cm;mso-li=
+st:l0 level1 lfo1">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif">=E0=F0=
+=E0 =E4=F2=E1=F8 =E0=FA =E4=F4=F8=E8=E9=ED =E4=EE=F1=E7=F8=E9=E9=ED =E0=E5 =
+=E4=F1=EB=ED.</span><span dir=3D"LTR"><o:p></o:p></span></li><li class=3D"M=
+soListParagraph" dir=3D"RTL" style=3D"margin-right:0cm;mso-list:l0 level1 l=
+fo1">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif">=F2=ED=
+ =E4=FA=E9=E9=E7=F1=E5=FA =EC=F0=E5=F9=E0 =E9=F4=E5=E9 =E4=EB=E5=E7 =E4=EE=
+=FA=EE=F9=EA.</span><span dir=3D"LTR"><o:p></o:p></span></li><li class=3D"M=
+soListParagraph" dir=3D"RTL" style=3D"margin-right:0cm;mso-list:l0 level1 l=
+fo1">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif">=E0=F0=
+=E0 =F6=F8=F3 =EB=EC =E3=E1=F8 =F9=EC=E3=F2=FA=EA =E0=E9=FA=EF =F6=F8=E9=EA=
+ =EC=E4=EB=E9=F8.</span><span dir=3D"LTR"><o:p></o:p></span></li><li class=
+=3D"MsoListParagraph" dir=3D"RTL" style=3D"margin-right:0cm;mso-list:l0 lev=
+el1 lfo1">
+<span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif">=E0=F0=
+=E0 =EB=FA=E1 =E2=ED =E0=FA =F9=F8=E9=FA (=E0=E9=EF =EC=E9 =E0=FA =E4=EE=E9=
+=E9=EC =F9=EC=E4)</span><span dir=3D"LTR"><o:p></o:p></span></li></ol>
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR"><o:p>&nbsp;</o:p></spa=
+n></p>
+<div align=3D"right">
+<table class=3D"MsoTableGrid" dir=3D"rtl" border=3D"0" cellspacing=3D"0" ce=
+llpadding=3D"0" style=3D"margin-left:3.75pt;border-collapse:collapse;border=
+:none">
+<tbody>
+<tr>
+<td width=3D"431" valign=3D"top" style=3D"width:323.0pt;padding:0cm 5.4pt 0=
+cm 5.4pt">
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"line-height:130%"><b><span lang=
+=3D"HE" style=3D"font-size:12.0pt;line-height:130%;font-family:&quot;Arial&=
+quot;,sans-serif;color:#4A267B;mso-ligatures:none">=F2=EE=E9=FA =E1=EF =E9=
+=E4=E5=E3=E4</span></b><span lang=3D"HE" style=3D"font-family:&quot;Arial&q=
+uot;,sans-serif;color:#4A267B;mso-ligatures:none"><br>
+</span><span lang=3D"HE" style=3D"font-size:10.0pt;line-height:130%;font-fa=
+mily:&quot;Arial&quot;,sans-serif;color:#4A267B;mso-ligatures:none">=EE=F0=
+=EB&quot;=EC</span><span dir=3D"LTR" style=3D"font-size:10.0pt;line-height:=
+130%;color:#4A267B;mso-ligatures:none"><o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"line-height:130%"><span lang=3D=
+"HE" style=3D"font-size:10.0pt;line-height:130%;font-family:&quot;Arial&quo=
+t;,sans-serif;mso-ligatures:none">=F0=E9=E9=E3:
+</span><span lang=3D"HE" style=3D"font-size:8.0pt;line-height:130%;font-fam=
+ily:&quot;Arial&quot;,sans-serif;mso-ligatures:none">054-4499985</span><spa=
+n dir=3D"LTR" style=3D"font-size:8.0pt;line-height:130%;mso-ligatures:none"=
+><o:p></o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"line-height:130%"><span lang=3D=
+"HE" style=3D"font-size:10.0pt;line-height:130%;font-family:&quot;Arial&quo=
+t;,sans-serif;mso-ligatures:none">=EE=F9=F8=E3:
+</span><span lang=3D"HE" style=3D"font-size:8.0pt;line-height:130%;font-fam=
+ily:&quot;Arial&quot;,sans-serif;mso-ligatures:none">03-5181717<br>
+</span><span lang=3D"HE" style=3D"font-family:&quot;Arial&quot;,sans-serif;=
+mso-ligatures:none"><a href=3D"http://www.unicell.co.il"><span lang=3D"EN-U=
+S" dir=3D"LTR" style=3D"font-size:10.0pt;line-height:130%;color:#0563C1;let=
+ter-spacing:.1pt">www.unicell.co.il</span></a></span><u><span dir=3D"LTR" s=
+tyle=3D"font-size:10.0pt;line-height:130%;font-family:&quot;Arial&quot;,san=
+s-serif;color:#0563C1;letter-spacing:.1pt;mso-ligatures:none"><o:p></o:p></=
+span></u></p>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"line-height:130%"><span dir=3D"=
+LTR" style=3D"font-size:2.0pt;line-height:130%;mso-ligatures:none"><o:p>&nb=
+sp;</o:p></span></p>
+</td>
+</tr>
+<tr>
+<td width=3D"431" valign=3D"top" style=3D"width:323.0pt;padding:0cm 5.4pt 0=
+cm 5.4pt">
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"line-height:130%"><b><span lang=
+=3D"HE" dir=3D"LTR" style=3D"color:#4A267B"><img border=3D"0" width=3D"101"=
+ height=3D"14" style=3D"width:1.052in;height:.1458in" id=3D"Picture_x0020_1=
+" src=3D"cid:image001.png@01DBE054.15F9D1D0"></span></b><b><span lang=3D"HE=
+" style=3D"font-size:12.0pt;line-height:130%;font-family:&quot;Arial&quot;,=
+sans-serif;color:#4A267B;mso-ligatures:none"><o:p></o:p></span></b></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class=3D"MsoNormal" style=3D"text-align:left;direction:ltr;unicode-bidi:=
+embed"><span lang=3D"HE" dir=3D"RTL" style=3D"font-family:&quot;Arial&quot;=
+,sans-serif;mso-ligatures:none"><o:p>&nbsp;</o:p></span></p>
+<p class=3D"MsoNormal" dir=3D"RTL"><span dir=3D"LTR"><o:p>&nbsp;</o:p></spa=
+n></p>
+</div>
+</body>
+</html>
+
+--_000_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_--
+
+--_004_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_
+Content-Type: image/png; name="image001.png"
+Content-Description: image001.png
+Content-Disposition: inline; filename="image001.png"; size=2033;
+	creation-date="Wed, 18 Jun 2025 10:22:50 GMT";
+	modification-date="Wed, 18 Jun 2025 10:22:50 GMT"
+Content-ID: <image001.png@01DBE054.15F9D1D0>
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUgAAAGUAAAAOCAIAAAC5LUUBAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJ
+bWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdp
+bj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6
+eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDcuMS1jMDAwIDc5LmRh
+YmFjYmIsIDIwMjEvMDQvMTQtMDA6Mzk6NDQgICAgICAgICI+IDxyZGY6UkRGIHhtbG5zOnJkZj0i
+aHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+IDxyZGY6RGVzY3Jp
+cHRpb24gcmRmOmFib3V0PSIiIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4w
+LyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0
+UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bXA6
+Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCAyMi41IChXaW5kb3dzKSIgeG1wTU06SW5zdGFu
+Y2VJRD0ieG1wLmlpZDoyRjAyMTIzRTlFMEExMUVDODdDMkFCMjBEM0U1REU0NCIgeG1wTU06RG9j
+dW1lbnRJRD0ieG1wLmRpZDoyRjAyMTIzRjlFMEExMUVDODdDMkFCMjBEM0U1REU0NCI+IDx4bXBN
+TTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjJGMDIxMjNDOUUwQTExRUM4
+N0MyQUIyMEQzRTVERTQ0IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjJGMDIxMjNEOUUwQTEx
+RUM4N0MyQUIyMEQzRTVERTQ0Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4
+bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+apLALgAABGNJREFUeNpi/P//PwMYAOnvn74xoAIO
+Xk5GRiibkZHx76+////9B7JY2Jlhuv5DpBhwA5AWoBomRpDi/zDTmIjSAmEDAZANt+Xfv39YdTEy
+ElbDxMQEl0VWjwzwyDLCw2tb/66Ta06jSYsoC39UewNhu+i5/XsMDSYZE0k5c6nDi4/NSVsoIifc
+e7MNl88fXXpca94CUbO+ZfOG1i0Qce8i97DWIDxa5PRkmk/WArntbr03Dt9qPlkjpyd79uxZLy+v
+V69eYdXY399fUFAwffr0/Pz8379/Y1Vz/vx5AwMDAQGBjx8/1tfXNzQ0YKpxcHA4ePCgv7//hg0b
+0KRY4KzfP7BY8Pf3X0Sc/2dCxMCffwyUga19OxkYGcJagkjS1dzcDAwsLi4uVlZWTFl2dva/f/+W
+lpYCA4ufnx+rCczMzJQ4m4V4pYygLMvIQDGQ0ZEGmvTk6rOtvTu5+Dl9Sj2J1/vgwQMguXTp0oCA
+AKwKPnz48PXrVwiDgQaAiYD8PwZpaWlRMOCS4GBmY2JiY2RiZ+ST4SHbSh5B7oodRTLaUkD26roN
+W3p2MAwdQCB9/WX8e+LECQj75aNXfw9Aw/fLHyuXDEeybeUV4QUGWYdHHzCVra5dz8XH6ZRmT12P
+HThwAKu4iYkJDw8PrcLrHwOinPr79w8DAxtmuUZ5kC3MXwYUoW6QOTo64invaRVeTMgV6n+ksoyJ
+CgUZcpAtKljOycdhGWFOrfDS19fHKs7JyUmd/KjvoXPv7H2G/+DGFAs0REwCDD9eefvnDzBlMRgb
+Gt+58+j/3/+MzIxq1qpU8RVykM1Mng8UoVaQXbhwgbbl1+U91z48/whKU8xM2nmqDx8+BLK/Cnw2
+NTWFKBBmFv0o9gNall17rWAgB2F/evP528dvXPxcWC14fusl8UE2O3UBBw+HsJzQECjvEU2q//+B
+rRjMVvLvn7/RGmtS6hJA8te3X422HSrmSpim//jy88K2S0CGqpUKkUE2OWqmX4UXLpUcHBxAcvPm
+zZCGBRqwt7dXU1ODsCdMmIDVhOjoaGBdD2mFLViwAK1aCAkJycnJgTTujhw5Amy4IstGREQgwuvV
+/dckhDO4XFM2U9Jx0bqy59qL2y+BCJdafnG+sJZA4lPZ+ubNuJQ5OzufPHly3rx5uNr3hoaGwAxx
++vTpwsJCrGqAQQAML1tb240bNz4EA2RZSFXg5OS0Z8+et2/fAlv5yLJAk1n+/f23c8re28fvvHvy
+DhgIbFzszCzMcnJykJiUlJQEtpUhfSZeJr6X3G8hPU1ZfWmIEQWrs3ZN3Xf35L3/yNUBEpBQEfco
+cOUX4wOy5fRlbWIsJcGpEleQLSle+ev7LyBXVF4EIq5mpcIlwMnJByqnGxsbRURELl68iNUELS0t
+ILlp0yZgwL18iT3+hIRAmX3hwoW9vb2PHj1CkzUzMwOSZWVlwDbHuXPn4J1FeFsE1H/8/fPPtw/f
+/vz6wyPEzc7NzjAKcAOAAAMAyZTa0NaEZXYAAAAASUVORK5CYII=
+
+--_004_PAWP194MB2101D640F87D97712E08EF4B9672APAWP194MB2101EURP_--

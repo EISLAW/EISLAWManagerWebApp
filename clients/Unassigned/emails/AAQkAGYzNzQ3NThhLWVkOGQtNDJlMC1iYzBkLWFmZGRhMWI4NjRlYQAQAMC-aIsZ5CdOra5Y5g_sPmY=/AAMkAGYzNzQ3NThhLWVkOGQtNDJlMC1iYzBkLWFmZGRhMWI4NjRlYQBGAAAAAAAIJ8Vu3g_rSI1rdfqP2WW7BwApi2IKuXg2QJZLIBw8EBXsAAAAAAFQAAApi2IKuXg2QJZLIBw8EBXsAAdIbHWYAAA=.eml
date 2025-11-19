@@ -1,0 +1,414 @@
+Received: from PAXPR01MB8271.eurprd01.prod.exchangelabs.com
+ (2603:10a6:102:212::23) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Fri, 6 Jun 2025 13:59:48 +0000
+Received: from DB3PR08CA0029.eurprd08.prod.outlook.com (2603:10a6:8::42) by
+ PAXPR01MB8271.eurprd01.prod.exchangelabs.com (2603:10a6:102:212::23) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8813.22; Fri, 6 Jun
+ 2025 13:59:45 +0000
+Received: from DB5PEPF00014B9C.eurprd02.prod.outlook.com
+ (2603:10a6:8:0:cafe::2f) by DB3PR08CA0029.outlook.office365.com
+ (2603:10a6:8::42) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8792.23 via Frontend Transport; Fri,
+ 6 Jun 2025 13:59:45 +0000
+Authentication-Results: spf=pass (sender IP is 2607:f8b0:4864:20::e31)
+ smtp.mailfrom=gmail.com; dkim=pass (signature was verified)
+ header.d=gmail.com;dmarc=pass action=none header.from=gmail.com;compauth=pass
+ reason=100
+Received-SPF: Pass (protection.outlook.com: domain of gmail.com designates
+ 2607:f8b0:4864:20::e31 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2607:f8b0:4864:20::e31; helo=mail-vs1-xe31.google.com; pr=C
+Received: from mail-vs1-xe31.google.com (2607:f8b0:4864:20::e31) by
+ DB5PEPF00014B9C.mail.protection.outlook.com (2603:10a6:18:3::28a) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.8792.29 via Frontend Transport; Fri, 6 Jun 2025 13:59:45 +0000
+Received: by mail-vs1-xe31.google.com with SMTP id ada2fe7eead31-4e5a73028d2so637956137.0
+        for <eitan@eislaw.co.il>; Fri, 06 Jun 2025 06:59:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1749218383; x=1749823183; darn=eislaw.co.il;
+        h=to:in-reply-to:references:message-id:date:subject:mime-version:from
+         :content-transfer-encoding:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=Jor4qP5bXErJ6jYOXgE2AUT9XGN/PoGkdrF4nimzgq8=;
+        b=jOOVkquf9GT0T11eeAJYdm1EW2KcUWzJ6bimvChoW3WBObYRbcQz6iE13TgbzPRb6t
+         IEusa6q25q29rOcT+4NT7OxbSQXSzxWDTmqn9QUrxlxkdvhb4a29fi/hfm8L3Ns8BPnC
+         4U3DrcQFbK1U76tySrSJXFvwhiCu/HBRLBErmMcRht+OKcThyTQCQjf3orn5/nC+7C7o
+         9/n2ykik1EpKwQPmn+x0EK7Pq75C7SZtqlu0QQcVmLf9yxrIPUMvbqdXPWXuZmNGGEqs
+         jeTHv/nUV2wnnrk72DPiRjvgANUOyQDU9YbvxZYZF6MJmqlWz/qTOQhjkYUcLhe1qAbU
+         nqdA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1749218383; x=1749823183;
+        h=to:in-reply-to:references:message-id:date:subject:mime-version:from
+         :content-transfer-encoding:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=Jor4qP5bXErJ6jYOXgE2AUT9XGN/PoGkdrF4nimzgq8=;
+        b=ugFsXBTHi8gACYtqcLjbdykxz9mtkqOk1kFPFvLpgY4sbXEpJd+LsFR7Z3oovWT147
+         zYbCpMK4M8KuaXCVR9RJGHj0qhjGf+GLTK9AUh7z7AEwZIjTDYkpVNAFYFWh2H+EiNTD
+         ASD+DteHK1hFoPgPMA/Hh9i9SDZb+LepvIMjhhENGrV0aVa5C5aztI/7Zto/QdCqodd0
+         HKFUSLLZoMqklfEaGONovf0snt2m+5MLL6gAWs00jXC3VoR/Wnn9domoLLj7DT48IsFk
+         n+oZQshRYnhSdfJ2lm3U2j5z8APU5fxF/Wm/nzmjvyUPNWnac+fQ/dFtIvwE8aL8v/Zw
+         5ToA==
+X-Gm-Message-State: AOJu0YwLrBMj7TLGpJ/2nYdMYSaoh9Rk1O6snqwGeE7a8yKFecOubua2
+	UaUAyf03JCc1tL112qbnM45tCP8HL17uavPuFCAIj/X5gAr4xGTulRutXavdVA==
+X-Gm-Gg: ASbGncszkW2r+IhiKxq0Zbf73Xs25GVgJW3dqwmHXOYdRko7MnXbTt8VTqciNbaGgrG
+	XlCn+di/a54wAmkr5C4eJsUf0y1fd6b9j9BVd2Ba78jftOLqcrwjxfGDgkgVX4s9Z2JU1X5j/Vt
+	6QIh892rlxQzsUuPvGl4Op84OfpSzNuSdiLnjxsn0UXqWsVgW/N4HJrhsZ7YHV5NEeBOoSXcCam
+	IJhKieFC9cVRnM8+Rjl5EIgBbpEBbLRXJpFrBvOcR2okukXuDyt+Lm4zZeBhBcyjZP/m1zWlI6x
+	Jaf891uLaJyoSAJ0KOEipJqL712MP6Hk87ckflqMLCFm6gJiGqAA/SaQPWITun6LWnasH2jLO5N
+	P2UvbV1JbirRX5Q==
+X-Google-Smtp-Source: AGHT+IHPkghTBF6qLeIA3piILqPqHe0o+oM2bECj+3oQHhagTrmmOOMfo0BeYZUuqSMI2npRZNKfVg==
+X-Received: by 2002:a05:6102:418d:b0:4e6:e00e:f34b with SMTP id ada2fe7eead31-4e772a35e65mr2809636137.25.1749218383298;
+        Fri, 06 Jun 2025 06:59:43 -0700 (PDT)
+Return-Path: shhirushh@gmail.com
+Received: from smtpclient.apple ([129.222.201.71])
+        by smtp.gmail.com with ESMTPSA id a1e0cc1a2514c-87ebd2310a3sm1169331241.33.2025.06.06.06.59.42
+        for <eitan@eislaw.co.il>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 06 Jun 2025 06:59:42 -0700 (PDT)
+Content-Type: multipart/alternative;
+	boundary="Apple-Mail-801A2D5C-5C4D-45BC-BB6B-0779BC7D233C"
+Content-Transfer-Encoding: 7bit
+From: Shir Peretz <shhirushh@gmail.com>
+Subject: =?utf-8?Q?Re:_=D7=94=D7=97=D7=9C=D7=98=D7=94_-_=D7=A8=D7=95?=
+ =?utf-8?Q?=D7=99=D7=98=D7=9E=D7=9F_=D7=A0'_=D7=A9=D7=99=D7=A8_?=
+ =?utf-8?Q?=D7=90=D7=96=D7=95=D7=9C=D7=90=D7=99_-_=D7=AA=D7=99?=
+ =?utf-8?Q?=D7=A7_23640-11-24?=
+Date: Fri, 6 Jun 2025 08:59:31 -0500
+Message-Id: <EC4C4D74-DC7F-4EA2-9387-28534EB9F72E@gmail.com>
+References: <AS8PR01MB103192476876C1227141D65A0816EA@AS8PR01MB10319.eurprd01.prod.exchangelabs.com>
+In-Reply-To: <AS8PR01MB103192476876C1227141D65A0816EA@AS8PR01MB10319.eurprd01.prod.exchangelabs.com>
+To: Eitan Shamir <eitan@eislaw.co.il>
+X-Mailer: iPhone Mail (22F76)
+X-MS-Exchange-Organization-ExpirationStartTime: 06 Jun 2025 13:59:45.4543
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 5bc9110e-e95a-45be-7290-08dda50264b4
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DB5PEPF00014B9C:EE_|PAXPR01MB8271:EE_|AS8PR01MB10319:EE_
+X-MS-Exchange-Organization-AuthSource: DB5PEPF00014B9C.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: 5bc9110e-e95a-45be-7290-08dda50264b4
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|7093399015|8096899003|7053199007;
+X-Forefront-Antispam-Report: CIP:2607:f8b0:4864:20::e31;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-vs1-xe31.google.com;PTR:mail-vs1-xe31.google.com;CAT:NONE;SFS:(13230040)(7093399015)(8096899003)(7053199007);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Jun 2025 13:59:45.0393
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 5bc9110e-e95a-45be-7290-08dda50264b4
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DB5PEPF00014B9C.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PAXPR01MB8271
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:03.4331117
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.8813.020
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?SEtYVXB0Z3lldFNBNUx3NnpGYVlJZ0VUcW91djlGc0Q1ZGxQR0JEdGVIT0xJ?=
+ =?utf-8?B?SGpDY0FFZnAxdW1nUUJMaFdKU2Y3aU5QdjIzYnMycVdMVDJBRWs0OFZPaXJt?=
+ =?utf-8?B?TnBFcjUyWUh0dnpDTUxkb0ErTXhKT1BLK2xUV3FsdHZRa1F6MlBRR21NRXNm?=
+ =?utf-8?B?c3F4WERGek5YK0ZDK3hwT1NENFFpYU85d0xMVG0zWlo4cjlCUHRIYmVDVzQ1?=
+ =?utf-8?B?N3FWZW9zZmRrbmlOcTFlTmdsdGF5b3cwODJDaTAxcHZ3bDhVNUY2dU1JSklR?=
+ =?utf-8?B?MWxWc0hKUkZWWXpjTzNSUTZ0REdCL3M1OE5zU1BXczdGeVk5QWVkeldQbG9Y?=
+ =?utf-8?B?a3pNbFkzUkUwLzZhejdsQmhNdi9UMjFJV2MvTThUSDFWVlRtSXhjUVRDbDdT?=
+ =?utf-8?B?djg0ZTNYN0UxZXRFQWRCRlhYVzhXVlMvL1AwTjJpK1J3V0JrRzZZT1FYOG1L?=
+ =?utf-8?B?OHgxcGxQWHpuQnptNnIzdHhMcDZ4NXBQaW9QZExIQ0hpRVdiR2gwM0Zrcmts?=
+ =?utf-8?B?clppZ0tqTGljVE8rWGU1TmdsWkVtTEdBZWFQeWNUSXlpNmU2dmZJWDJ1cWVw?=
+ =?utf-8?B?YWw5eGtlYVUzSmVNRklacEJQRHhqMWsyZ0F0M2p2eHNMQlJPOE9NdFBtQzBx?=
+ =?utf-8?B?SkpodFpENmgxWU5MWkRRMWZwVlc0dlh5NjNOdVZOMHpwTUw2UXh3MGlKVFNE?=
+ =?utf-8?B?R0NoSGhtSDV2TnpyR1dicHhmL0dsaklyZFlOdG9ZcUJ1dWY2eTJuNnZnQ3pu?=
+ =?utf-8?B?dVdHTVRJWVVYaWRIa2FWUk81NlIzY0g1K2RySnlPTjdJVHVZYkhXeUM0Vjcv?=
+ =?utf-8?B?eGE2Ky9FTm1IeGxTMncvczF3ZHFLaEJ2blpMU2VPc3VPVlNhSEI1clBCbmxp?=
+ =?utf-8?B?d0JlTlVoMFJMV3F0VlJCenNCVm1yTzA5K1BuRWNXVS9DcSt4WkNkeGtDTks1?=
+ =?utf-8?B?RFBPbDl4QmxURjVaSWdPNFFZbmE1WEoyR1I2TjBvT0QyM3E0dlNlQTJ3TmZX?=
+ =?utf-8?B?ZXE4NXRpeE1RNmEwNnp2RDhuaEZIVzZBazhkUC9VVnVhODZVdFhRVzF0bnRi?=
+ =?utf-8?B?dnRtWVZWa1BXMkdUWkkwVEFJbnhCdktKcEVHWE1HSlJTbnNWTzB6NnlWOUJm?=
+ =?utf-8?B?d0FGYmJNK3dERldMVm5BdngzaXBBMzR5MmhFRGprMnIzdVg4Uy9KWURnWmo5?=
+ =?utf-8?B?MUVUQmVZYnlINGpvaUk2a1lrU08zazZjOFB0ZCtyVDdmSDZpWnNoZ1Fkdk5r?=
+ =?utf-8?B?cXZXa1VDWVhZeDlIV0pwazNlR3g1cm91QnJISXRVUmdUWVBsdmFieUpMTkY2?=
+ =?utf-8?B?dlRCanFPR3BQS2Uzb2R1NTEyRDFwemdUbkFHdXZZZ3dvSTl0UHk2UTl2WUhL?=
+ =?utf-8?B?K3pqN1ZqSXFGd21GUlU3VlExc3BFU0hQeW5lQ2dhWlZYM0hIVk0zQ1VzL3RH?=
+ =?utf-8?B?ZUM1RkhIOFFjaXRkRXI5UERPNjV4blVnbTBLR3pXcnExRHRJOFdBT2dlejVD?=
+ =?utf-8?B?TmRVdkdJY2RKRnVpWXJkZStUbFNkOThLTk8rQXVqZGpmUlgvUjgwNmVVbkR6?=
+ =?utf-8?B?OEczeHJwY0hrL2dvSjFxM0dFN1EwamhWQmhRZmJlM2k1dnlGSzhsVC83SDhM?=
+ =?utf-8?B?Si9uclJFOWZWUDZWRlB5ZFdBNVFoVTFXdytxSUJadXNucCtOQUZ0RUt6K0NT?=
+ =?utf-8?B?eVFwY2VwUmJUNTRsVjNnampDZWRTejRsQ0xVWWtIZjRacm5vMC9KdnBTOEJK?=
+ =?utf-8?B?QWxwUVFJQ2NPbkEzbjRHUXQzaWlOK25oTGtNcklDOEpiODVGbEVyQ3IyL1U1?=
+ =?utf-8?B?c3NLY2M3QmVqVW9pUjk0TEpMa3BFMFVrUWY5c1ZjT0FCOE11WFdteVBHd2Vv?=
+ =?utf-8?B?NzZQSkpXZWtlc05MMjBpK1c3QTB3ci9CVklxWWQ3SVJZNHR6MGVjK0FweVZR?=
+ =?utf-8?B?dTdtVXQ1MjFzd3RibFI5eXRXdmdqRWg3cmVUckpOMU9obEh3K0RLRjA0aXU5?=
+ =?utf-8?B?U00wUnRrNFUyVDFjK2Z3aDRxYUUzeS9ldDFwQkEvM0R6S1dOMldWMEFnT3dk?=
+ =?utf-8?B?RGg3cmU4a1BkSFdyZTB6bjBoRkt0eGt3Y0xUU3Y4V1RKRFRMUW5FRUdtaUNM?=
+ =?utf-8?B?eUpOQnpCeGprVHZaZUYrWlBGWGdqQkNXUU92YTRrQk9KOTVhNzBxcFZwTDZU?=
+ =?utf-8?B?a0U4aXJtUE5ycEFiWk90Tjc3S2F1SDlKS2NPY1ZyN01tRDF1Qi9iYnhVTytE?=
+ =?utf-8?B?SXNQUVNOZmxSWTdNSTc1WEdTMDhSemRHa1cyL2VYNjJaTThCak5iYzlxdWhX?=
+ =?utf-8?B?dnc5aFIyQ091RzRGc1lsTmNMa0c5R25kT2dIc3FTWDFRaHJUT3BXNWJzeFpI?=
+ =?utf-8?B?OWhBeURBNTVzcjUwT1pQbXR1VWpUZUNLQUt3ZlA2aHREbk5yMmRncENKSmJD?=
+ =?utf-8?B?Ynk4ZHgxQVhvWjM5dkhMNkpEeVRrU1JoajFIRDl5YzJVY21xZ1NxOG9GajZn?=
+ =?utf-8?B?S3BQTHQrVGh2eUlNRDczbk1UYWlEeWhQczNQdDdsM1k5L2krNWpaKytua0lv?=
+ =?utf-8?B?ZjlJL2VnM3VmOTE2dUdmRWtScExOODNPWUNNeVF6ZWNmdGNFTXVuWDVxa2NW?=
+ =?utf-8?B?eWllbmNOSXc5VXpQSnROdCttYTJFTXBqaE52Z3ZFVkIwbWo5ck91blhGd00z?=
+ =?utf-8?B?MldVYjl3QVlnMHFwdC9obG45NlFmR0xhaUE9PQ==?=
+MIME-Version: 1.0
+
+--Apple-Mail-801A2D5C-5C4D-45BC-BB6B-0779BC7D233C
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"></=
+head><body dir=3D"auto"><div style=3D"direction: rtl;">=D7=91=D7=94=D7=97=
+=D7=9C=D7=98 =D7=95=D7=90=D7=A0=D7=99 =D7=9E=D7=95=D7=93=D7=94 =D7=9C=D7=9A=
+ =D7=9E=D7=90=D7=95=D7=93 =D7=A0=D7=AA=D7=AA =D7=9C=D7=99 =D7=94=D7=A8=D7=
+=92=D7=A9=D7=94 =D7=9E=D7=9E=D7=A9 =D7=98=D7=95=D7=91=D7=94. =D7=92=D7=9C =
+=D7=A9=D7=9C=D7=97 =D7=9C=D7=9A =D7=AA=D7=A9=D7=95=D7=91=D7=94 =D7=9E=D7=90=
+=D7=99=D7=AA=D7=A0=D7=95 =D7=95=D7=90=D7=A0=D7=97=D7=A0=D7=95 =D7=91=D7=94=
+=D7=97=D7=9C=D7=98 =D7=A0=D7=A8=D7=A6=D7=94 =D7=9C=D7=94=D7=AA=D7=A7=D7=93=
+=D7=9D =D7=9B=D7=A4=D7=99 =D7=A9=D7=A6=D7=99=D7=99=D7=A0=D7=AA=F0=9F=99=8F=
+=F0=9F=8F=BB</div><div dir=3D"rtl"><div style=3D"text-align: right;directio=
+n: rtl; ">=D7=A0=D7=A9=D7=9C=D7=97 =D7=9E=D7=94-iPhone =D7=A9=D7=9C=D7=99</=
+div></div><div dir=3D"rtl"><br><blockquote type=3D"cite">=E2=80=AB=D7=91-6 =
+=D7=91=D7=99=D7=95=D7=A0=D7=99 2025, =D7=91=D7=A9=D7=A2=D7=94 2:11 =D7=9C=
+=D7=A4=D7=B3, =E2=80=8F=E2=80=8FEitan Shamir =E2=80=8F&lt;eitan@eislaw.co.i=
+l&gt; =D7=9B=D7=AA=D7=91/=D7=94:=E2=80=AC<br><br></blockquote></div><blockq=
+uote type=3D"cite"><div dir=3D"ltr">=EF=BB=BF
+
+
+<meta name=3D"Generator" content=3D"Microsoft Word 15 (filtered medium)">
+<style>@font-face { font-family: "Cambria Math"; }
+@font-face { font-family: Calibri; }
+@font-face { font-family: Aptos; }
+p.MsoNormal, li.MsoNormal, div.MsoNormal { margin: 0cm; font-size: 10pt; fo=
+nt-family: Aptos, sans-serif; }
+a:link, span.MsoHyperlink { color: blue; text-decoration: underline; }
+span.EmailStyle18 { font-family: Aptos, sans-serif; color: windowtext; }
+.MsoChpDefault { font-size: 10pt; }
+@page WordSection1 { size: 612pt 792pt; margin: 72pt; }
+div.WordSection1 { page: WordSection1; }</style>
+
+
+<div class=3D"WordSection1">
+<p class=3D"MsoNormal"><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:11.=
+0pt;font-family:&quot;Arial&quot;,sans-serif">=D7=94=D7=99 =D7=A9=D7=99=D7=
+=A8 =E2=80=93 =D7=A7=D7=99=D7=91=D7=9C=D7=AA=D7=99 =D7=95=D7=90=D7=A2=D7=99=
+=D7=99=D7=9F. =D7=94=D7=90=D7=9D =D7=90=D7=99=D7=A9=D7=A8=D7=AA=D7=9D =D7=
+=9B=D7=91=D7=A8 =D7=90=D7=AA =D7=94=D7=A6=D7=A2=D7=AA =D7=94=D7=9E=D7=97=D7=
+=99=D7=A8?
+<o:p></o:p></span></p>
+<p class=3D"MsoNormal"><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:11.=
+0pt;font-family:&quot;Arial&quot;,sans-serif"><o:p>&nbsp;</o:p></span></p>
+<p class=3D"MsoNormal"><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:11.=
+0pt;font-family:&quot;Arial&quot;,sans-serif">=D7=90=D7=A0=D7=90 =D7=A9=D7=
+=9C=D7=97=D7=95 &quot;=D7=9E=D7=90=D7=95=D7=A9=D7=A8&quot; =D7=91=D7=9E=D7=
+=99=D7=99=D7=9C =D7=97=D7=95=D7=96=D7=A8 =D7=9C=D7=94=D7=A6=D7=A2=D7=AA =D7=
+=94=D7=9E=D7=97=D7=99=D7=A8 =D7=9B=D7=93=D7=99 =D7=A0=D7=95=D7=9B=D7=9C =D7=
+=9C=D7=94=D7=AA=D7=97=D7=99=D7=9C =D7=9C=D7=A2=D7=91=D7=95=D7=93.
+<o:p></o:p></span></p>
+<p class=3D"MsoNormal"><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:11.=
+0pt;font-family:&quot;Arial&quot;,sans-serif"><o:p>&nbsp;</o:p></span></p>
+<p class=3D"MsoNormal"><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:11.=
+0pt;font-family:&quot;Arial&quot;,sans-serif">=D7=90=D7=99=D7=AA=D7=9F
+</span><span style=3D"font-size:11.0pt"><o:p></o:p></span></p>
+<p class=3D"MsoNormal"><span style=3D"font-size:11.0pt"><o:p>&nbsp;</o:p></=
+span></p>
+<div id=3D"mail-editor-reference-message-container">
+<div>
+<div>
+<div style=3D"border:none;border-top:solid #B5C4DF 1.0pt;padding:3.0pt 0cm =
+0cm 0cm">
+<p class=3D"MsoNormal" style=3D"margin-bottom:12.0pt"><b><span style=3D"fon=
+t-size:12.0pt;color:black">From:
+</span></b><span style=3D"font-size:12.0pt;color:black">Shir Peretz &lt;shh=
+irushh@gmail.com&gt;<br>
+<b>Date: </b>Friday, 6 June 2025 at 2:54<br>
+<b>To: </b>Eitan Shamir &lt;eitan@eislaw.co.il&gt;<br>
+<b>Subject: </b>Fwd: </span><span lang=3D"HE" dir=3D"RTL" style=3D"font-siz=
+e:12.0pt;font-family:&quot;Times New Roman&quot;,serif;color:black">=D7=94=
+=D7=97=D7=9C=D7=98=D7=94 - =D7=A8=D7=95=D7=99=D7=98=D7=9E=D7=9F =D7=A0</spa=
+n><span dir=3D"LTR"></span><span dir=3D"LTR"></span><span style=3D"font-siz=
+e:12.0pt;color:black"><span dir=3D"LTR"></span><span dir=3D"LTR"></span>'
+</span><span lang=3D"HE" dir=3D"RTL" style=3D"font-size:12.0pt;font-family:=
+&quot;Times New Roman&quot;,serif;color:black">=D7=A9=D7=99=D7=A8 =D7=90=D7=
+=96=D7=95=D7=9C=D7=90=D7=99 - =D7=AA=D7=99=D7=A7 23640-11-24</span><span st=
+yle=3D"font-size:12.0pt;color:black"><o:p></o:p></span></p>
+</div>
+<p class=3D"MsoNormal"><span style=3D"font-size:12.0pt"><o:p>&nbsp;</o:p></=
+span></p>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Rom=
+an&quot;,serif">=D7=A0=D7=A9=D7=9C=D7=97 =D7=9E=D7=94-</span><span dir=3D"L=
+TR" style=3D"font-size:12.0pt">iPhone</span><span dir=3D"RTL"></span><span =
+dir=3D"RTL"></span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:=
+&quot;Times New Roman&quot;,serif"><span dir=3D"RTL"></span><span dir=3D"RT=
+L"></span>
+ =D7=A9=D7=9C=D7=99</span><span dir=3D"LTR" style=3D"font-size:12.0pt"><o:p=
+></o:p></span></p>
+</div>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"margin-bottom:12.0pt;text-align=
+:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times =
+New Roman&quot;,serif">=D7=94=D7=AA=D7=97=D7=9C=D7=AA =D7=94=D7=94=D7=95=D7=
+=93=D7=A2=D7=94 =D7=94=D7=9E=D7=95=D7=A2=D7=91=D7=A8=D7=AA:</span><span lan=
+g=3D"HE" style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+</div>
+<blockquote style=3D"margin-top:5.0pt;margin-bottom:5.0pt">
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"margin-bottom:12.0pt;text-align=
+:right;direction:rtl;unicode-bidi:embed">
+<b><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New =
+Roman&quot;,serif">=D7=9E=D7=90=D7=AA:</span></b><span lang=3D"HE" style=3D=
+"font-size:12.0pt;font-family:&quot;Times New Roman&quot;,serif">
+</span><span dir=3D"LTR" style=3D"font-size:12.0pt">Shir Peretz</span><span=
+ dir=3D"RTL"></span><span dir=3D"RTL"></span><span lang=3D"HE" style=3D"fon=
+t-size:12.0pt;font-family:&quot;Times New Roman&quot;,serif"><span dir=3D"R=
+TL"></span><span dir=3D"RTL"></span> &lt;</span><span dir=3D"LTR" style=3D"=
+font-size:12.0pt">Shhirushh@gmail.com</span><span dir=3D"RTL"></span><span =
+dir=3D"RTL"></span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:=
+&quot;Times New Roman&quot;,serif"><span dir=3D"RTL"></span><span dir=3D"RT=
+L"></span>&gt;</span><span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><b><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Tim=
+es New Roman&quot;,serif">=D7=AA=D7=90=D7=A8=D7=99=D7=9A:</span></b><span l=
+ang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Roman&quot=
+;,serif"> 23 =D7=91=D7=90=D7=A4=D7=A8=D7=99=D7=9C 2025 =D7=91=D7=A9=D7=A2=
+=D7=94 1:11:06 =D7=90=D7=97=D7=B3
+</span><span dir=3D"LTR" style=3D"font-size:12.0pt">GMT-5<span lang=3D"HE">=
+=E2=80=8E</span></span><span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><b><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Tim=
+es New Roman&quot;,serif">=D7=90=D7=9C:</span></b><span lang=3D"HE" style=
+=3D"font-size:12.0pt;font-family:&quot;Times New Roman&quot;,serif">
+</span><span dir=3D"LTR" style=3D"font-size:12.0pt">Net_hamishpat@court.gov=
+.il</span><span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><b><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Tim=
+es New Roman&quot;,serif">=D7=A0=D7=95=D7=A9=D7=90:</span></b><span lang=3D=
+"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Roman&quot;,seri=
+f">
+<b>=D7=AA=D7=A9=D7=95=D7=91=D7=94: =D7=94=D7=97=D7=9C=D7=98=D7=94 - =D7=A8=
+=D7=95=D7=99=D7=98=D7=9E=D7=9F =D7=A0' =D7=A9=D7=99=D7=A8 =D7=90=D7=96=D7=
+=95=D7=9C=D7=90=D7=99 - =D7=AA=D7=99=D7=A7 23640-11-24</b></span><span lang=
+=3D"HE" style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+</div>
+</blockquote>
+<blockquote style=3D"margin-top:5.0pt;margin-bottom:5.0pt">
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span dir=3D"LTR"></span><span dir=3D"LTR"></span><span dir=3D"LTR" style=
+=3D"font-size:12.0pt;font-family:&quot;Calibri&quot;,sans-serif"><span dir=
+=3D"LTR"></span><span dir=3D"LTR"></span>=EF=BB=BF</span><span lang=3D"HE" =
+style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Rom=
+an&quot;,serif">=D7=94=D7=99=D7=99 =D7=90=D7=A0=D7=99 =D7=9C=D7=90 =D7=92=
+=D7=A8=D7=94 =D7=91=D7=90=D7=A8=D7=A5 =D7=95=D7=94=D7=A7=D7=99=D7=A9=D7=95=
+=D7=A8 =D7=9C=D7=90 =D7=A0=D7=A4=D7=AA=D7=97 =D7=9C=D7=99 =D7=AA=D7=95=D7=
+=9B=D7=9C=D7=95 =D7=9C=D7=A9=D7=9C=D7=95=D7=97 =D7=9C=D7=99 =D7=91=D7=93=D7=
+=95=D7=90=D7=A8 =D7=9C=D7=9E=D7=A7=D7=A1=D7=99=D7=A7=D7=95?</span><span lan=
+g=3D"HE" style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+</div>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Rom=
+an&quot;,serif">=D7=A0=D7=A9=D7=9C=D7=97 =D7=9E=D7=94-</span><span dir=3D"L=
+TR" style=3D"font-size:12.0pt">iPhone</span><span dir=3D"RTL"></span><span =
+dir=3D"RTL"></span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:=
+&quot;Times New Roman&quot;,serif"><span dir=3D"RTL"></span><span dir=3D"RT=
+L"></span>
+ =D7=A9=D7=9C=D7=99</span><span lang=3D"HE" style=3D"font-size:12.0pt"><o:p=
+></o:p></span></p>
+</div>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+<br>
+<o:p></o:p></span></p>
+<blockquote style=3D"margin-top:5.0pt;margin-bottom:5.0pt">
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"margin-bottom:12.0pt;text-align=
+:right;direction:rtl;unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Rom=
+an&quot;,serif">=E2=80=AB=D7=91-20 =D7=91=D7=90=D7=A4=D7=A8=D7=B3 2025, =D7=
+=91=D7=A9=D7=A2=D7=94 12:54 =D7=9C=D7=A4=D7=B3, =E2=80=8F</span><span dir=
+=3D"LTR" style=3D"font-size:12.0pt">Net_hamishpat@court.gov.il</span><span =
+dir=3D"RTL"></span><span dir=3D"RTL"></span><span lang=3D"HE" style=3D"font=
+-size:12.0pt;font-family:&quot;Times New Roman&quot;,serif"><span dir=3D"RT=
+L"></span><span dir=3D"RTL"></span>
+ =D7=9B=D7=AA=D7=91/=D7=94:</span><span lang=3D"HE" style=3D"font-size:12.0=
+pt"><o:p></o:p></span></p>
+</blockquote>
+</div>
+<blockquote style=3D"margin-top:5.0pt;margin-bottom:5.0pt">
+<div>
+<p class=3D"MsoNormal"><span dir=3D"LTR"></span><span dir=3D"LTR"></span><s=
+pan style=3D"font-size:12.0pt;font-family:&quot;Calibri&quot;,sans-serif"><=
+span dir=3D"LTR"></span><span dir=3D"LTR"></span>=EF=BB=BF</span><span lang=
+=3D"HE" dir=3D"RTL" style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+<div>
+<p class=3D"MsoNormal" dir=3D"RTL" style=3D"text-align:right;direction:rtl;=
+unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times New Rom=
+an&quot;,serif">=D7=A9=D7=9C=D7=95=D7=9D =D7=A8=D7=91 =D7=91=D7=A8=D7=95=D7=
+=93=D7=95=D7=92 =D7=A9=D7=99=D7=A8 =D7=90=D7=96=D7=95=D7=9C=D7=90=D7=99
+</span><span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times =
+New Roman&quot;,serif">=D7=9E=D7=9E=D7=AA=D7=99=D7=A0=D7=94 =D7=9C=D7=9A =
+=D7=94=D7=95=D7=93=D7=A2=D7=94 =D7=97=D7=93=D7=A9=D7=94 =D7=91=D7=AA=D7=99=
+=D7=A7 =D7=91=D7=99=D7=AA =D7=9E=D7=A9=D7=A4=D7=98 23640-11-24 =D7=A8=D7=95=
+=D7=99=D7=98=D7=9E=D7=9F =D7=A0' =D7=A9=D7=99=D7=A8 =D7=90=D7=96=D7=95=D7=
+=9C=D7=90=D7=99.
+</span><span lang=3D"HE" style=3D"font-size:12.0pt"><br>
+</span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;Times =
+New Roman&quot;,serif">=D7=94=D7=AA=D7=A8=D7=A2=D7=94: =D7=94=D7=A7=D7=99=
+=D7=A9=D7=95=D7=A8=D7=99=D7=9D =D7=9C=D7=94=D7=9C=D7=9F =D7=9E=D7=AA=D7=90=
+=D7=99=D7=9E=D7=99=D7=9D =D7=9C=D7=94=D7=A4=D7=A2=D7=9C=D7=94 =D7=91=D7=9E=
+=D7=97=D7=A9=D7=91 =D7=91=D7=9C=D7=91=D7=93 (=D7=9C=D7=90 =D7=91=D7=98=D7=
+=9C=D7=A4=D7=95=D7=9F). =D7=9C=D7=A6=D7=A4=D7=99=D7=99=D7=94 =D7=91=D7=94=
+=D7=95=D7=93=D7=A2=D7=94 =D7=9C=D7=91=D7=A2=D7=9C=D7=99 =D7=9B=D7=A8=D7=98=
+=D7=99=D7=A1 =D7=97=D7=9B=D7=9D =D7=99=D7=A9 =D7=9C=D7=9C=D7=97=D7=95=D7=A5
+</span><span lang=3D"HE" style=3D"font-size:12.0pt"><a href=3D"https://secu=
+re.court.gov.il/NGCS.Web.Secured/homepage.aspx?mID=3D258250217"><span style=
+=3D"font-family:&quot;Times New Roman&quot;,serif">=D7=9B=D7=90=D7=9F</span=
+></a></span><span lang=3D"HE" style=3D"font-size:12.0pt;font-family:&quot;T=
+imes New Roman&quot;,serif">
+ . =D7=91=D7=9E=D7=99=D7=93=D7=94 =D7=95=D7=90=D7=99=D7=9F =D7=9C=D7=9A =D7=
+=9B=D7=A8=D7=98=D7=99=D7=A1 =D7=97=D7=9B=D7=9D =D7=99=D7=A9 =D7=9C=D7=9C=D7=
+=97=D7=95=D7=A5 </span><span lang=3D"HE" style=3D"font-size:12.0pt"><a href=
+=3D"https://securesso.court.gov.il/NGCS.Web.Secured/homepage.aspx?mID=3D258=
+250217"><span style=3D"font-family:&quot;Times New Roman&quot;,serif">=D7=
+=9B=D7=90=D7=9F</span></a></span><span lang=3D"HE" style=3D"font-size:12.0p=
+t;font-family:&quot;Times New Roman&quot;,serif">
+ . =D7=90=D7=9D =D7=90=D7=99=D7=9F =D7=91=D7=A8=D7=A9=D7=95=D7=AA=D7=9A =D7=
+=A1=D7=99=D7=A1=D7=9E=D7=AA =D7=94=D7=96=D7=93=D7=94=D7=95=D7=AA =D7=9C=D7=
+=90=D7=95=D7=9E=D7=99=D7=AA =D7=90=D7=95 =D7=9B=D7=A8=D7=98=D7=99=D7=A1 =D7=
+=97=D7=9B=D7=9D =D7=90=D7=95 =D7=A9=D7=9C=D7=90 =D7=94=D7=A6=D7=9C=D7=97=D7=
+=AA =D7=9C=D7=A6=D7=A4=D7=95=D7=AA =D7=91=D7=94=D7=95=D7=93=D7=A2=D7=94 =D7=
+=9E=D7=A1=D7=99=D7=91=D7=94 =D7=90=D7=97=D7=A8=D7=AA, =D7=AA=D7=99=D7=A9=D7=
+=9C=D7=97 =D7=90=D7=9C=D7=99=D7=9A =D7=94=D7=94=D7=95=D7=93=D7=A2=D7=94 =D7=
+=91=D7=90=D7=95=D7=A4=D7=9F =D7=90=D7=95=D7=98=D7=95=D7=9E=D7=98=D7=99 =D7=
+=91=D7=90=D7=9E=D7=A6=D7=A2=D7=95=D7=AA =D7=94=D7=93=D7=95=D7=90=D7=A8.</sp=
+an><span dir=3D"LTR" style=3D"font-size:12.0pt"><o:p></o:p></span></p>
+</div>
+</div>
+</blockquote>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+
+
+</div></blockquote></body></html>=
+
+--Apple-Mail-801A2D5C-5C4D-45BC-BB6B-0779BC7D233C--

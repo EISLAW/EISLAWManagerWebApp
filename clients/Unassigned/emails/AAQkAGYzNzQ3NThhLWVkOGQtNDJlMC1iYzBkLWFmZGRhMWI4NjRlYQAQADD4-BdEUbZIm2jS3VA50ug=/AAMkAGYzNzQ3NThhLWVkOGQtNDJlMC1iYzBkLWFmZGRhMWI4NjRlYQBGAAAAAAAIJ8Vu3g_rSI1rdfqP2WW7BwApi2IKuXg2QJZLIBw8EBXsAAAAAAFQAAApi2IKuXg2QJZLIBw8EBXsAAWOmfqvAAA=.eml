@@ -1,0 +1,759 @@
+Received: from VI0PR01MB11041.eurprd01.prod.exchangelabs.com
+ (2603:10a6:800:26a::17) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Wed, 6 Aug 2025 12:53:05 +0000
+Received: from DB9PR06CA0027.eurprd06.prod.outlook.com (2603:10a6:10:1db::32)
+ by VI0PR01MB11041.eurprd01.prod.exchangelabs.com (2603:10a6:800:26a::17) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9009.10; Wed, 6 Aug
+ 2025 12:53:01 +0000
+Received: from DB5PEPF00014B9A.eurprd02.prod.outlook.com
+ (2603:10a6:10:1db:cafe::a) by DB9PR06CA0027.outlook.office365.com
+ (2603:10a6:10:1db::32) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8989.21 via Frontend Transport; Wed,
+ 6 Aug 2025 12:52:59 +0000
+Authentication-Results: spf=pass (sender IP is 2607:f8b0:4864:20::148)
+ smtp.mailfrom=docos.bounces.google.com; dkim=pass (signature was verified)
+ header.d=docs.google.com;dmarc=pass action=none
+ header.from=docs.google.com;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of docos.bounces.google.com
+ designates 2607:f8b0:4864:20::148 as permitted sender)
+ receiver=protection.outlook.com; client-ip=2607:f8b0:4864:20::148;
+ helo=mail-il1-x148.google.com; pr=C
+Received: from mail-il1-x148.google.com (2607:f8b0:4864:20::148) by
+ DB5PEPF00014B9A.mail.protection.outlook.com (2603:10a6:18:3::287) with
+ Microsoft SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id
+ 15.20.9009.8 via Frontend Transport; Wed, 6 Aug 2025 12:52:59 +0000
+Received: by mail-il1-x148.google.com with SMTP id e9e14a558f8ab-3e51497be0fso16518505ab.0
+        for <eitan@eislaw.co.il>; Wed, 06 Aug 2025 05:52:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=docs.google.com; s=20230601; t=1754484778; x=1755089578; darn=eislaw.co.il;
+        h=to:from:subject:message-id:reply-to:feedback-id:references:date
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=2eXdgeszF+81N/RtyEmHmRNlISQJm27wl1ouDyeHviI=;
+        b=Gfww+Ra4sbPpMkqhEWXTF0lmUt1rAycvC5jQYyQYUKPVgn8XxoC3IavXZPv4NUN8nd
+         XrIsXPpEXq5V3+Kl3rdMP48zOnDhX5BYqmbSWkjMNRJ4deaIlUVyp2OhyYCWAv6d7+3P
+         FyyeQU3xED1qFDPOeTZIHpCCH1stxQfqjVp4fEhei46Vt8KolX6yKgjnOE5HGoUu7LA6
+         AFX88ODunz7IbukPhP+2itcmHgIycQx86ydO+edaLwupMlAwr0+WGTRVu2oIMDmY/kVh
+         4rRz14k5MiaJxsfbVwHL9b62mktYU6D1Fkr06CQhs6L0KATDzCv1QV+knN3UIDuzKs5p
+         caVw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1754484778; x=1755089578;
+        h=to:from:subject:message-id:reply-to:feedback-id:references:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=2eXdgeszF+81N/RtyEmHmRNlISQJm27wl1ouDyeHviI=;
+        b=oIU2vmbMovN+rfEEetFlw4PQMXPe8urYPdw6tHHOdod7whKt1E7VFVkj15tuuhD5GU
+         e+OvpOLBpmF4cM5kAy+xtghkVOEuPEPVYLOB9vZ4tRfuywicROFLHc19LI/O9+OziyJe
+         RtwhgY7z+lXAlSNCL5tvRI+56GniLkVO08D9nj9znC4M5hEx6AJl/a5SecPpk+IsBDKV
+         1Bo6/ydg8hIc63T6POh5mzc2WXrpJ7PkDXqEMBYe3ZdABZDuZzpBwW6sO+OWq4kkofXu
+         gIfkqDx06bhhNvd4gwhJS/ol229Z8r/Tu4Lvw01kUHq4Xny0MsxIJjhqTVu2DKDquTpR
+         R/NA==
+X-Gm-Message-State: AOJu0YzV9fp9c7sw2p7Yg1p/cWNuq/K+GOYo/mOGE+8zdrL8rFs3SF+/
+	AS3GidOlbkhxjinxFHFf9SaMviApaPX/rB5OSIjy49Cs
+X-Google-Smtp-Source: AGHT+IEba20Y6NYaubliwktZPPAcWNnnSReIpXTyTSE+Lrq2rKigjkPaFnnRi1L3rkVVcqb7Sg==
+X-Received: by 2002:a05:6e02:2686:b0:3e5:176d:768a with SMTP id
+ e9e14a558f8ab-3e51b8f65a2mr36133705ab.10.1754484777810; Wed, 06 Aug 2025
+ 05:52:57 -0700 (PDT)
+Date: Wed, 06 Aug 2025 05:52:57 -0700
+X-Document-ID: 1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq
+References: <d+MUp6OHZMMGxYWkk2cWhnNUJsVDUtbFY0YlJqdmpfd29xOg@docs.google.com>
+X-No-Auto-Attachment: 1
+Feedback-ID: MailTypeComment:EditorsNotification
+Reply-to: No Reply <d+noreply@docs.google.com>
+X-Notifications: 000001debd9f92e4
+X-Notifications-Bounce-Info: AWoTSIESnBn693F3KfiQCBcpsJiUgfnJwEZO6GXA77Eh7GKOhyWO0n6QJDOFn5W3wGivzZJwaqr7fXoMzVMhkYNKw7-lvL53X512D2ghIcmh4gK2Wpdm4LbAFS9m1gWB6MS7YVBxxJqbrpaPB742w-r74Lw6QgFKRAsDbEuxeOQsdQ-fWoxoZ3XL9E_RZ6Vjtbo9aWgwSzw0AdSu3Dnl9nxmnaRFHaLTF5pbzaBuv_XxbbqmMpegIccLdcykkck6ihMOY7cNjAwNjA0MDQxNTM1NTk2OTMzMg
+Message-ID: <Okio8w7YjccAGq5vYsx-EQ@notifications.google.com>
+Subject: =?UTF-8?B?16TXqteV15cg15zXoteo15nXm9eUOiDXlNeh15vXnSDXmdeZ16bXldeSICDXldeU16TXpg==?=
+	=?UTF-8?B?15Qg15PXmdeS15nXmNec15nXqiDXkdeQ157Xptei15XXqiDXlNek15nXnCAoMjEuLi4u?=
+From: "Shimi Ben ezra (Google Docs)" <comments-noreply@docs.google.com>
+To: eitan@eislaw.co.il
+Content-Type: multipart/alternative; boundary="000000000000f1fe04063bb1d179"
+Return-Path: 3KVCTaBAPBWICOMMENTS-NOREPLYDOCS.GOOGLE.COMEITANEISLAW.CO.IL@docos.bounces.google.com
+X-MS-Exchange-Organization-ExpirationStartTime: 06 Aug 2025 12:52:59.6246
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: ce1d242b-995d-4661-1914-08ddd4e82c3e
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DB5PEPF00014B9A:EE_|VI0PR01MB11041:EE_|AS8PR01MB10319:EE_
+X-MS-Exchange-Organization-AuthSource: DB5PEPF00014B9A.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: ce1d242b-995d-4661-1914-08ddd4e82c3e
+X-MS-Exchange-Organization-SCL: -1
+X-Microsoft-Antispam: BCL:3;ARA:13230040|1032899013|4092899012|69100299015|43022699015|3092899012|2092899012|3072899012|5062899012|12012899012|13012899012|7093399015|13102899012|13003099007|2066899003|8096899003;
+X-Forefront-Antispam-Report: CIP:2607:f8b0:4864:20::148;CTRY:;LANG:en;SCL:-1;SRV:;IPV:NLI;SFV:SFE;H:mail-il1-x148.google.com;PTR:mail-il1-x148.google.com;CAT:NONE;SFS:(13230040)(1032899013)(4092899012)(69100299015)(43022699015)(3092899012)(2092899012)(3072899012)(5062899012)(12012899012)(13012899012)(7093399015)(13102899012)(13003099007)(2066899003)(8096899003);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Aug 2025 12:52:59.0663
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: ce1d242b-995d-4661-1914-08ddd4e82c3e
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DB5PEPF00014B9A.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI0PR01MB11041
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:06.4393270
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9009.009
+X-Microsoft-Antispam-Mailbox-Delivery:
+	wl:1;pcwl:1;ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(811242)(255002)(410001)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?dklQMHpWbmNLSjhWTFk3emh6TVV3eDc4RjFnSDBzTm5jQURkcmFmb0RRMzJ2?=
+ =?utf-8?B?d0VkV3l5VDhSdzE1REUycUFYUEt3bjM1N3RzbEs2K0hyeWYrcExxMEZjSTVS?=
+ =?utf-8?B?SnZHSWY4VEQ5ZHV2UVRKSHI1dWY3M0cxSU1CY3dZTmlnQzFnMTNFeDJzN2c4?=
+ =?utf-8?B?ZloydlQvRHJ6MTNrVTBoZTVrdlFxeTM3NGluOU8zOENnc1FuTWtibWpudDJT?=
+ =?utf-8?B?RmJZcSsrWFBKeTVJUlkyMVBQNTQ1R0QwbjdiVHNTWUlKdEE1bXdpbnRzWllz?=
+ =?utf-8?B?TFlYWUFOT0llMndWbWlyc0JrQVZiL0VDRVBUcVFQcElsVFVqaUpjVmxKWHkz?=
+ =?utf-8?B?c3lXc0oxWld4elpBcVYxV3Q2QTVLZkxFZ0VrY1REU0hpOFRESU5nbHdOZ1Nv?=
+ =?utf-8?B?QStsVk1LUnEzMkcwWTVvaFE3L1J1UzJ5UDQyNTlZdjM0NklOWTIwS2h1U09u?=
+ =?utf-8?B?RWkxV1NOTzh5dUN3NE1QdHNLQ0ljaWx2NHF1czFnOGl2ZVNVaHlyWkpVdnB3?=
+ =?utf-8?B?bm4veFFoY3dtLzd4RjRSQkd2Q3FYTzY0M2NvZXJlMGRzeWxRQzVzdkVOc3BN?=
+ =?utf-8?B?YXNHTklTMENjeklHTTduSTgzWFU4L3VrcTQrZHg5ZkswNnQvZS92WXFob3BD?=
+ =?utf-8?B?d3VMRkdtMDVSai9lbXVtYllQQkhWYXFmZ08vTE5MUUZWYmVOdkpXZ1ZlWUVP?=
+ =?utf-8?B?eGtEdlJFdWRuMGkxcGZlbzlScWhKNi9kMm9ONm12M1RzNS9TUDhkRnpNOVhP?=
+ =?utf-8?B?cXFyYUhzeldnb1gzenBPblViSnZ4OFVTdjdFRTJmVUNyeTJ2MU9KODZIUnFS?=
+ =?utf-8?B?cytZNjNEam5XLzdvaGc3TEtpYUl2VlhxcGdoTFozbG1oOUh3cTF4Y1pRVmw1?=
+ =?utf-8?B?cDBSR09sNFo5U2piSG9qbGd6QlVBSnR5c1lJUUVxeWtrT1pNSUdiblp3VnJW?=
+ =?utf-8?B?UU1HazBkcUNRR3BtazNMYU15SDdJQ0hBL05YNHYxd01BZzkzMlRoRWRYL3V5?=
+ =?utf-8?B?SWZJR3htRDFkblFxK0VUWDl3eStOdDVUd0RQeENTYktDM0d5NjhUd1Qxd2ZQ?=
+ =?utf-8?B?QUxiWGZJcTIwenA5Qm1aeWsyY1pIdDJMN0xWQjNhTWU2SFEyNXVxUldzZ1pI?=
+ =?utf-8?B?RHBjd01UcFZnNmFIZzhTQlhndXNDM251QkJvQlBZaE84RnBuYUJxeHNINDhW?=
+ =?utf-8?B?TXdGS1NUdFozak9JWWJrY1paOW4zdU9QbHFGMFI2LzVKdWNRNVMyM21ORkdt?=
+ =?utf-8?B?akxPemI5WkJ5VHY2R0tkR0ZoYTE2eFc4MTlxVU42WGJ0ajQwUDkzL3c4Uitk?=
+ =?utf-8?B?Zm5tU1NhZDlKUlF4TFRVMUpDMGNPTnlTamdLTTRDQ2ZSK3AvNlh3T3ZxaWJj?=
+ =?utf-8?B?QUpKZGp4M2R3RGlFeGNLazJ1dlBXbHl6bGRueHJFaUJabXhDRHlmRUE0eTdX?=
+ =?utf-8?B?S1JsZHR4cGFxZjczWjQ2MFJzZ1V4bDBERENZOXpwM2RXYzJGQTRDWjlnUkVR?=
+ =?utf-8?B?anYvdzZKNDdjdWFtamE3dndYTXl0QXZGUWZmdTI2Nm83QTFvbHdZdDdVTUQz?=
+ =?utf-8?B?R3pQcVdlT1hCbFJEdnYrNWt3VkhtUXUvOUFzU3YxNzlEbHRJdmdnZEhtTnE3?=
+ =?utf-8?B?b2Fqd1VrbkVSNy9QRU1HVnR3VVJOSmRIN2hrY2V3QWE3UUZOWEJpWG1yK1R4?=
+ =?utf-8?B?eTF1SGZIbW05VklsKzZ0dURiZWxBdkVPU1VJRzVBQnhnWkhIcWFQemJScTZz?=
+ =?utf-8?B?cW9sR0VJVkI0M2tiQU80aWU4ZGZXOUZIOElrcG1yVU9WNEpRaFE0VHlQN2Z4?=
+ =?utf-8?B?L0JDR1JzMHJSWGZBNGNQTTR4a1BHdWRFb1o2Y1JTbTlvTnpoelB5eFBYdjN6?=
+ =?utf-8?B?a0Fhd2pDTzl3RlBPbFNmT1pqdkMxVDN0QUEyc2p2TXlzRlQvM2oxbUI1QVQ0?=
+ =?utf-8?B?cDNYQy9nYU9seURFb0krKzBXVUh4bm9PZFlRRy82MFcwL1hQU0d2RVd2VW81?=
+ =?utf-8?B?ejkyYzF1VUhlY0YvSFNWQ3dab1NJKzhsZFlNK1NaeXBrclBYdDZYell1VTRW?=
+ =?utf-8?B?MGxoZHJLUksva2JKcUkwWUtKVmZPRHUzMmxaOER3eERxeW50RGIvREdUUnhV?=
+ =?utf-8?B?ell6WjJ1c2hrSjZvNkRJSTkrMTVHbW1KOUEvODdNZW1qY25xMFJoZXg3NHVr?=
+ =?utf-8?B?TnU5ZVQ1N0w0YmllKzVtNWZzcDA5WFcrYVRaSUpqUUd0SWlWSC81RWVsOWV0?=
+ =?utf-8?B?VWFJU2tLVzhzWUtsZUJnZjVXNVY0bnJhdXJKMGVLU1hTNlF2UDQ4Z01LSUpa?=
+ =?utf-8?B?bjV5MmNBQnNWVDh5TW9JeFpSZFNHdFVWT2libDU0RmdvWmVjQ051cjR3YnQ1?=
+ =?utf-8?B?cWprNGh2U1d3THppVzJxczh2bHNWbW5ma1ZycStFbGkrL1dERTBNemZzWk9S?=
+ =?utf-8?B?R2hDa1Jib2czWUNIMnpNYWtvQTZoRnpYQWlnNGllQUlzNDE5dnBONEF5SHhF?=
+ =?utf-8?B?eVNnN240dEVlNmM0bW5hbW90bHRUeXVEUnhCdXdjT24rdUlvMUdWMmdNN0xH?=
+ =?utf-8?B?K09qU213RnoyYjExdTg0TjZIeVdkME1JVGI4NUVFdDMwczBlUjgzR1NTSzlI?=
+ =?utf-8?B?aUFwRUFoaS95ZGFtYnNNUVkxTnhSQUxhZzJyMEJkK1FQUVgyUHkzamNXbHh1?=
+ =?utf-8?B?Q0pZaUNDOC8vNlJ1ZXo0VnZXVDdxUHJWTmxkVGh0aWhKRUpsNEdwZVpNUXV2?=
+ =?utf-8?B?UzVnaWNsQk9vZUF5bEhqN3BQblQrejMxTURxeUQyNlRzVCtSYjFBVjd2ekxt?=
+ =?utf-8?B?YmtIZUY4MW5xc0orSWsyUU1JWVRqVzhGM1RUWGxGWFVIcHM0RFV2ZlhyZFR1?=
+ =?utf-8?B?bGd5U0U3UXRwMWhqSVBlbkxRcGN4OXZmbWt5QnBsK1pZeTlZekVkVzY3Tmdu?=
+ =?utf-8?B?WU4xVW9kMUgyZFJIT2p4NFo5SmVLNFp3M2ZQQ2hDaU9tUUxZTXJhTldqaDVm?=
+ =?utf-8?B?NXdYNFF4bFQ4NWh5N1NIMHZJa01iWEdhZGRuSWtHcnRlTUxNUXlPd0E0VmlC?=
+ =?utf-8?Q?zS+MxEC6oiL0npJqAJOkF4xKUswJ+xqTo=3D?=
+MIME-Version: 1.0
+
+--000000000000f1fe04063bb1d179
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Transfer-Encoding: base64
+
+TmV3IGFjdGl2aXR5IGluIHRoZSBmb2xsb3dpbmcgZG9jdW1lbnQNCtek16rXldeXINec16LXqNeZ
+15vXlDog15TXodeb150g15nXmdem15XXkiAg15XXlNek16bXlCDXk9eZ15LXmdeY15zXmdeqINeR
+15DXntem16LXldeqINeU16TXmdecICgyMS43LjIwMjUpLmRvY3ggIA0KKGh0dHBzOi8vZG9jcy5n
+b29nbGUuY29tL2RvY3VtZW50L2QvMUp6OHZMMGxYWkk2cWhnNUJsVDUtbFY0YlJqdmpfd29xL2Vk
+aXQ/dXNwPWNvbW1lbnRfZW1haWxfZG9jdW1lbnQmdHM9Njg5MzUwMjkmdXNwX2RtPWZhbHNlKQ0K
+DQo4IHJlc29sdmVkDQoNClN1Z2dlc3Rpb25zDQouDQpFaXRhbiBTaGFtaXINClJlcGxhY2U6IOKA
+nNeb15vXnCDXqdeU16HXk9eo16og15TXkteR15nXmdeUINeb15DXnteV16gg15zXkCDXkdeV16bX
+oteUINei15Mg15zXqteV150g157Xldei15Mg15bXlCDXnteh15nXkdeV16og16nXkNeZ16DXnyAg
+DQrXqtec15XXmdeV16og15HXnteZ15nXpteSLCDXmdeU15Ag16jXqdeQ15kg15zXoNeb15XXqiDX
+ldec15LXkdeV16og157igKbigJ0gd2l0aCDigJzXm9eb15wg16nXlNeQ157XnyDXnNeQINeZ16HX
+k9eZ16gg15DXqiDXntep15nXm9eqICANCteU16rXntec15XXkteZ150g15zXmdeT15nXlSDXoteT
+INec15fXnNeV16Mg15TXnteV16LXkyDXlNeQ157XldeoINee16HXmdeR15Qg16nXkNeZ16DXlCDX
+kdeQ15fXqNeZ15XXqiDXlNee15nXmdem15IsINeZ15nXkteR15Qg15TXnuKApuKAnQ0KQWRkOiDi
+gJzXk9ee15kg15jXmdek15XXnCDXl9eV15PXqdeZ15nXnSwg15HigJ0NCg0KU2hpbWkgQmVuIGV6
+cmENCl9BY2NlcHRlZCBzdWdnZXN0aW9uXw0KDQpPcGVuICANCihodHRwczovL2RvY3MuZ29vZ2xl
+LmNvbS9kb2N1bWVudC9kLzFKejh2TDBsWFpJNnFoZzVCbFQ1LWxWNGJSanZqX3dvcS9lZGl0P2Rp
+c2NvPUFBQUJveG1uNXE4JnVzcD1zdWdnZXN0aW9uX2VtYWlsX2Rpc2N1c3Npb24mdHM9Njg5MzUw
+MjkmdXNwX2RtPWZhbHNlKQ0KDQouDQpFaXRhbiBTaGFtaXINClJlcGxhY2U6IOKAnNee16rXldea
+IDYwINeZ15XXneKAnSB3aXRoIOKAnDEwINeZ157XmSDXoteh16fXmded4oCdDQoNClNoaW1pIEJl
+biBlenJhDQpfQWNjZXB0ZWQgc3VnZ2VzdGlvbl8NCg0KT3BlbiAgDQooaHR0cHM6Ly9kb2NzLmdv
+b2dsZS5jb20vZG9jdW1lbnQvZC8xSno4dkwwbFhaSTZxaGc1QmxUNS1sVjRiUmp2al93b3EvZWRp
+dD9kaXNjbz1BQUFCb3htbjVxYyZ1c3A9c3VnZ2VzdGlvbl9lbWFpbF9kaXNjdXNzaW9uJnRzPTY4
+OTM1MDI5JnVzcF9kbT1mYWxzZSkNCg0KLg0KRWl0YW4gU2hhbWlyDQpSZXBsYWNlOiDigJxfX1/i
+gJ0gd2l0aCDigJw1JeKAnQ0KDQpTaGltaSBCZW4gZXpyYQ0KX0FjY2VwdGVkIHN1Z2dlc3Rpb25f
+DQoNCk9wZW4gIA0KKGh0dHBzOi8vZG9jcy5nb29nbGUuY29tL2RvY3VtZW50L2QvMUp6OHZMMGxY
+Wkk2cWhnNUJsVDUtbFY0YlJqdmpfd29xL2VkaXQ/ZGlzY289QUFBQm94bW41cWcmdXNwPXN1Z2dl
+c3Rpb25fZW1haWxfZGlzY3Vzc2lvbiZ0cz02ODkzNTAyOSZ1c3BfZG09ZmFsc2UpDQoNCi4NCkVp
+dGFuIFNoYW1pcg0KUmVwbGFjZTog4oCcLCDXm9eT157XmSDXmNeZ16TXldecINee15XXodeb157X
+mdedINee16jXkNepICgi15PXnteZINeY15nXpNeV15wiKS7igJ0gd2l0aCDigJw7INeV15vXn+KA
+nQ0KQWRkOiDigJzXk9ee15kg15jXmdek15XXnCDXkdeS15nXnyDXlNeV16bXkNeV16og15TXnteh
+LCDXkdeh15og16nXnCBfXyDXnteb15zXnCDXlNeh15vXldedINeU157XldeX15bXpyDXm9eb15wg
+16nXlteUINec15AgIA0K16DXntep15og16LXkyDXlC0zMS4xMiDXkdeb15wg16nXoNeUINen15zX
+oNeT16jXmdeqLuKAnQ0KDQpTaGltaSBCZW4gZXpyYQ0KX0FjY2VwdGVkIHN1Z2dlc3Rpb25fDQoN
+Ck9wZW4gIA0KKGh0dHBzOi8vZG9jcy5nb29nbGUuY29tL2RvY3VtZW50L2QvMUp6OHZMMGxYWkk2
+cWhnNUJsVDUtbFY0YlJqdmpfd29xL2VkaXQ/ZGlzY289QUFBQm94bW41cWsmdXNwPXN1Z2dlc3Rp
+b25fZW1haWxfZGlzY3Vzc2lvbiZ0cz02ODkzNTAyOSZ1c3BfZG09ZmFsc2UpDQoNCi4NCkVpdGFu
+IFNoYW1pcg0KQWRkOiDigJzXldeb158g15nXl9eV15nXmdeRINeU157XmdeZ16bXkiDXkdee16Eg
+15HXkteZ158g15TXm9eg16HXlCDXm9eb15wg16nXlNeq157XnNeV15LXmdedINec15Ag16DXntep
+15vXlSDXkdee15zXldeQ150g16LXkyAgDQrXnNeZ15XXnSAzMS4xMiDXkdep16DXlCDXp9ec16DX
+k9eo15nXquKAnQ0KDQpTaGltaSBCZW4gZXpyYQ0KX0FjY2VwdGVkIHN1Z2dlc3Rpb25fDQoNCk9w
+ZW4gIA0KKGh0dHBzOi8vZG9jcy5nb29nbGUuY29tL2RvY3VtZW50L2QvMUp6OHZMMGxYWkk2cWhn
+NUJsVDUtbFY0YlJqdmpfd29xL2VkaXQ/ZGlzY289QUFBQm94bW41ckkmdXNwPXN1Z2dlc3Rpb25f
+ZW1haWxfZGlzY3Vzc2lvbiZ0cz02ODkzNTAyOSZ1c3BfZG09ZmFsc2UpDQoNCi4NCkVpdGFuIFNo
+YW1pcg0KUmVwbGFjZTog4oCc15vXntek15XXqNeYINec16LXmdec4oCdIHdpdGgg4oCc15HXk9eV
+15Ai15zigJ0NCg0KU2hpbWkgQmVuIGV6cmENCl9BY2NlcHRlZCBzdWdnZXN0aW9uXw0KDQpPcGVu
+ICANCihodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFKejh2TDBsWFpJNnFoZzVC
+bFQ1LWxWNGJSanZqX3dvcS9lZGl0P2Rpc2NvPUFBQUJveG1uNXJRJnVzcD1zdWdnZXN0aW9uX2Vt
+YWlsX2Rpc2N1c3Npb24mdHM9Njg5MzUwMjkmdXNwX2RtPWZhbHNlKQ0KDQouDQpFaXRhbiBTaGFt
+aXINCkRlbGV0ZSBwYXJhZ3JhcGgNCg0KU2hpbWkgQmVuIGV6cmENCl9BY2NlcHRlZCBzdWdnZXN0
+aW9uXw0KDQpPcGVuICANCihodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFKejh2
+TDBsWFpJNnFoZzVCbFQ1LWxWNGJSanZqX3dvcS9lZGl0P2Rpc2NvPUFBQUJveG1uNXJrJnVzcD1z
+dWdnZXN0aW9uX2VtYWlsX2Rpc2N1c3Npb24mdHM9Njg5MzUwMjkmdXNwX2RtPWZhbHNlKQ0KDQou
+DQpFaXRhbiBTaGFtaXINCkFkZDog4oCc15PXnteZINeU15jXmdek15XXnCDXm9ee16TXldeo15gg
+15zXoteZ15wg15TXmdeg150g157XpteY15HXqNeZ150uINeZ15PXldeiINec15DXntefINeb15kg
+15TXnteZ15nXpteSINee16nXqNeqINeQ15zXpNeZICANCtec16fXldeX15XXqi4g15zXm9efLCDX
+l9eV15HXqteVINep15wg15TXnteZ15nXpteSINeb15zXpNeZ4oCm4oCdDQoNClNoaW1pIEJlbiBl
+enJhDQpfQWNjZXB0ZWQgc3VnZ2VzdGlvbl8NCg0KT3BlbiAgDQooaHR0cHM6Ly9kb2NzLmdvb2ds
+ZS5jb20vZG9jdW1lbnQvZC8xSno4dkwwbFhaSTZxaGc1QmxUNS1sVjRiUmp2al93b3EvZWRpdD9k
+aXNjbz1BQUFCb3htbjVybyZ1c3A9c3VnZ2VzdGlvbl9lbWFpbF9kaXNjdXNzaW9uJnRzPTY4OTM1
+MDI5JnVzcF9kbT1mYWxzZSkNCg0KR29vZ2xlIExMQywgMTYwMCBBbXBoaXRoZWF0cmUgUGFya3dh
+eSwgTW91bnRhaW4gVmlldywgQ0EgOTQwNDMsIFVTQQ0KDQpZb3UgaGF2ZSByZWNlaXZlZCB0aGlz
+IGVtYWlsIGJlY2F1c2UgeW91IGFyZSBhIHBhcnRpY2lwYW50IGluIHRoZSB1cGRhdGVkICANCml0
+ZW1zIG9yIGhhdmUgc3Vic2NyaWJlZCB0byBub3RpZmljYXRpb25zIG9uINek16rXldeXINec16LX
+qNeZ15vXlDog15TXodeb150g15nXmdem15XXkiDXldeU16TXpteUICANCteT15nXkteZ15jXnNeZ
+16og15HXkNee16bXoteV16og15TXpNeZ15wgKDIxLjcuMjAyNSkuZG9jeCAgDQooaHR0cHM6Ly9k
+b2NzLmdvb2dsZS5jb20vZG9jdW1lbnQvZC8xSno4dkwwbFhaSTZxaGc1QmxUNS1sVjRiUmp2al93
+b3EvZWRpdD91c3A9Y29tbWVudF9lbWFpbF9kb2N1bWVudCZ0cz02ODkzNTAyOSZ1c3BfZG09ZmFs
+c2UpLiAgDQpDaGFuZ2Ugd2hhdCBHb29nbGUgc2VuZHMgeW91ICANCihodHRwczovL2RvY3MuZ29v
+Z2xlLmNvbS9kb2N1bWVudC91LzExMjI4NTk0MjQ0Nzg1MTM4MzcyNC9kb2Nvcy9ub3RpZnk/b3Vp
+ZD0xMTIyODU5NDI0NDc4NTEzODM3MjQmaWQ9MUp6OHZMMGxYWkk2cWhnNUJsVDUtbFY0YlJqdmpf
+d29xJnRpdGxlPSVENyVBNCVENyVBQSVENyU5NSVENyU5NyslRDclOUMlRDclQTIlRDclQTglRDcl
+OTklRDclOUIlRDclOTQ6KyVENyU5NCVENyVBMSVENyU5QiVENyU5RCslRDclOTklRDclOTklRDcl
+QTYlRDclOTUlRDclOTIrKyVENyU5NSVENyU5NCVENyVBNCVENyVBNiVENyU5NCslRDclOTMlRDcl
+OTklRDclOTIlRDclOTklRDclOTglRDclOUMlRDclOTklRDclQUErJUQ3JTkxJUQ3JTkwJUQ3JTlF
+JUQ3JUE2JUQ3JUEyJUQ3JTk1JUQ3JUFBKyVENyU5NCVENyVBNCVENyU5OSVENyU5QysoMjEuNy4y
+MDI1KS5kb2N4JnJlc291cmNla2V5KS4gIA0KWW91IGNhbm5vdCByZXBseSB0byB0aGlzIGVtYWls
+Lg0K
+--000000000000f1fe04063bb1d179
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><d=
+iv itemscope=3D"" itemtype=3D"http://schema.org/EmailMessage" style=3D"font=
+: 14px Roboto, Arial, Helvetica, sans-serif;"><div itemprop=3D"about" items=
+cope=3D"" itemtype=3D"http://schema.org/CreativeWork"><meta itemprop=3D"nam=
+e" content=3D"=D7=A4=D7=AA=D7=95=D7=97 =D7=9C=D7=A2=D7=A8=D7=99=D7=9B=D7=94=
+: =D7=94=D7=A1=D7=9B=D7=9D =D7=99=D7=99=D7=A6=D7=95=D7=92  =D7=95=D7=94=D7=
+=A4=D7=A6=D7=94 =D7=93=D7=99=D7=92=D7=99=D7=98=D7=9C=D7=99=D7=AA =D7=91=D7=
+=90=D7=9E=D7=A6=D7=A2=D7=95=D7=AA =D7=94=D7=A4=D7=99=D7=9C (21.7.2025).docx=
+"><meta itemprop=3D"url" content=3D"https://docs.google.com/document/d/1Jz8=
+vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?usp=3Dcomment_email_document&amp;ts=3D68=
+935029"><table style=3D"border-collapse: collapse; width: 100%; background-=
+color: white; text-align: center;" role=3D"presentation"><tr><td style=3D"p=
+adding: 24px 0 16px 0;"><table style=3D"border-collapse: collapse;font-fami=
+ly: Roboto, Arial, Helvetica, sans-serif;hyphens: auto; overflow-wrap: brea=
+k-word; word-wrap: break-word; word-break: break-word;width: 90%; margin: a=
+uto;max-width: 700px;min-width: 280px; text-align: left;" role=3D"presentat=
+ion"><tr><td style=3D"padding: 0;"><div><div><table style=3D"width:100%; ta=
+ble-layout:fixed;" role=3D"presentation"><tr><td style=3D"padding: 0;" dir=
+=3D"ltr"><div id=3D"overview-card-contents"><div><div><h1 style=3D"color: #=
+3c4043; font: 400 18px Google Sans, Roboto, Arial, Helvetica, sans-serif; m=
+argin: 0;">New activity in the following document</h1></div><div style=3D"m=
+argin-top: 12px;"><div><div><div id=3D"document-chip-section"><div id=3D"do=
+cument-chip"><a href=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5=
+BlT5-lV4bRjvj_woq/edit?usp=3Dcomment_email_document&amp;ts=3D68935029&amp;u=
+sp_dm=3Dfalse" target=3D"_blank" style=3D"color: #3c4043; display: inline-b=
+lock; max-width: 100%; text-decoration: none; vertical-align: top;border: 1=
+px solid #DADCE0; border-radius: 16px; white-space: nowrap;min-width: 0;"><=
+div style=3D"line-height: 18px; overflow: hidden; text-overflow: ellipsis;p=
+adding: 6px 12px;"><span style=3D"display: inline-block; vertical-align: to=
+p; min-width: 26px; width: 26px;"><img src=3D"https://ssl.gstatic.com/docs/=
+doclist/images/mediatype/icon_1_document_x64.png" width=3D"18" height=3D"18=
+" style=3D"vertical-align: top;" role=3D"presentation"></span><span style=
+=3D"font: 500 14px/18px Google Sans, Roboto, Arial, Helvetica, sans-serif; =
+display: inline; letter-spacing: 0.2px;">=D7=A4=D7=AA=D7=95=D7=97 =D7=9C=D7=
+=A2=D7=A8=D7=99=D7=9B=D7=94: =D7=94=D7=A1=D7=9B=D7=9D =D7=99=D7=99=D7=A6=D7=
+=95=D7=92  =D7=95=D7=94=D7=A4=D7=A6=D7=94 =D7=93=D7=99=D7=92=D7=99=D7=98=D7=
+=9C=D7=99=D7=AA =D7=91=D7=90=D7=9E=D7=A6=D7=A2=D7=95=D7=AA =D7=94=D7=A4=D7=
+=99=D7=9C (21.7.2025).docx</span></div></a></div></div></div></div></div></=
+div></div></td></tr></table></div><div style=3D"margin-top: 16px;"><table s=
+tyle=3D"width:100%; border: 1px solid #dadce0; border-radius: 8px; border-s=
+pacing: 0; table-layout:fixed; border-collapse: separate;" role=3D"presenta=
+tion"><tr><td style=3D"padding: 4.5%;" dir=3D"ltr"><div><div><div><table ro=
+le=3D"presentation" cellpadding=3D"0" cellspacing=3D"0" style=3D"width: 100=
+%"><tr><td style=3D"vertical-align: top; width: 32px;"><div style=3D"backgr=
+ound: #F1F3F4; border-radius: 50%; display: inline-block; height: 18px; pad=
+ding: 7px; width: 18px;"><img src=3D"https://fonts.gstatic.com/s/i/googlema=
+terialicons/done/v18/gm_grey-48dp/1x/gm_done_gm_grey_48dp.png" height=3D"18=
+px" width=3D"18px" aria-hidden=3D"true" style=3D"flex-shrink: 0;"></div></t=
+d><td style=3D"vertical-align: top;"><h2 style=3D"color: #3c4043; display: =
+inline-block; font: 400 16px/32px Google Sans, Roboto, Arial, Helvetica, sa=
+ns-serif; letter-spacing: .1px; margin: 0 0 0 10px;">8 resolved</h2></td></=
+tr></table><div style=3D"margin: 18px 0;height: 1px; background-color: #eee=
+;"></div><h2 style=3D"color: #3c4043; font: 400 14px/20px Google Sans, Robo=
+to, Arial, Helvetica, sans-serif; margin: 0;">Suggestions</h2><div itemprop=
+=3D"action" itemscope=3D"" itemtype=3D"http://schema.org/ViewAction"><meta =
+itemprop=3D"url" content=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6=
+qhg5BlT5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5q8&amp;usp=3Dsuggestion_email_d=
+iscussion&amp;ts=3D68935029"><meta itemprop=3D"name" content=3D"Open Discus=
+sion"></div><div><div style=3D"margin-top: 20px;overflow: visible; line-hei=
+ght: 20px;"><div style=3D"margin-top: 0px; word-break: break-word; word-wra=
+p: break-word;"><table role=3D"presentation" cellpadding=3D"0" cellspacing=
+=3D"0" style=3D"color: #777777; width: 100%;"><tr><td style=3D"vertical-ali=
+gn: top; width: 44px;"><img src=3D"https://lh3.googleusercontent.com/a/ACg8=
+ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMnpPoVKA=3Ds50-c-k-no" alt=3D=
+"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-sizing: borde=
+r-box; display: block;"></td><td><h3 style=3D"display: inline-block; font: =
+500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; letter-spacing:=
+ .25px; line-height: 20px; margin: 6px 0 2px 0;">Eitan Shamir</h3> <span st=
+yle=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Helvetica, sans-s=
+erif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 15:28, 6 Aug (=
+IDT)</span><div style=3D"font: 400 14px Roboto, Arial, Helvetica, sans-seri=
+f; line-height: 20px; letter-spacing: .2px;"><div style=3D"margin-top: 6px;=
+" class=3D"notranslate"><div style=3D"font-size:13px;color:#333"><span styl=
+e=3D"font-weight:bold">Replace:</span> <span style=3D"white-space:pre-line;=
+color:#777;font-style:italic">=E2=80=9C=D7=9B=D7=9B=D7=9C =D7=A9=D7=94=D7=
+=A1=D7=93=D7=A8=D7=AA =D7=94=D7=92=D7=91=D7=99=D7=99=D7=94 =D7=9B=D7=90=D7=
+=9E=D7=95=D7=A8 =D7=9C=D7=90 =D7=91=D7=95=D7=A6=D7=A2=D7=94 =D7=A2=D7=93 =
+=D7=9C=D7=AA=D7=95=D7=9D =D7=9E=D7=95=D7=A2=D7=93 =D7=96=D7=94 =D7=9E=D7=A1=
+=D7=99=D7=91=D7=95=D7=AA =D7=A9=D7=90=D7=99=D7=A0=D7=9F =D7=AA=D7=9C=D7=95=
+=D7=99=D7=95=D7=AA =D7=91=D7=9E=D7=99=D7=99=D7=A6=D7=92, =D7=99=D7=94=D7=90=
+ =D7=A8=D7=A9=D7=90=D7=99 =D7=9C=D7=A0=D7=9B=D7=95=D7=AA =D7=95=D7=9C=D7=92=
+=D7=91=D7=95=D7=AA =D7=9E=E2=80=A6=E2=80=9D</span> with <span style=3D"whit=
+e-space:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=9B=D7=9B=D7=9C =
+=D7=A9=D7=94=D7=90=D7=9E=D7=9F =D7=9C=D7=90 =D7=99=D7=A1=D7=93=D7=99=D7=A8 =
+=D7=90=D7=AA =D7=9E=D7=A9=D7=99=D7=9B=D7=AA =D7=94=D7=AA=D7=9E=D7=9C=D7=95=
+=D7=92=D7=99=D7=9D =D7=9C=D7=99=D7=93=D7=99=D7=95 =D7=A2=D7=93 =D7=9C=D7=97=
+=D7=9C=D7=95=D7=A3 =D7=94=D7=9E=D7=95=D7=A2=D7=93 =D7=94=D7=90=D7=9E=D7=95=
+=D7=A8 =D7=9E=D7=A1=D7=99=D7=91=D7=94 =D7=A9=D7=90=D7=99=D7=A0=D7=94 =D7=91=
+=D7=90=D7=97=D7=A8=D7=99=D7=95=D7=AA =D7=94=D7=9E=D7=99=D7=99=D7=A6=D7=92, =
+=D7=99=D7=99=D7=92=D7=91=D7=94 =D7=94=D7=9E=E2=80=A6=E2=80=9D</span></div><=
+div style=3D"padding-bottom:8px"></div><div style=3D"font-size:13px;color:#=
+333"><span style=3D"font-weight:bold">Add:</span> <span style=3D"white-spac=
+e:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=93=D7=9E=D7=99 =D7=98=
+=D7=99=D7=A4=D7=95=D7=9C =D7=97=D7=95=D7=93=D7=A9=D7=99=D7=99=D7=9D, =D7=91=
+=E2=80=9D</span></div></div></div></td></tr></table></div><div style=3D"mar=
+gin-top: 12px; word-break: break-word; word-wrap: break-word;"><table role=
+=3D"presentation" cellpadding=3D"0" cellspacing=3D"0" style=3D"color: #3c40=
+43; width: 100%;"><tr><td style=3D"vertical-align: top; width: 44px;"><img =
+src=3D"https://lh3.googleusercontent.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx=
+_wJImuuGAg4DAl1kdE5rr_uhP=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32"=
+ style=3D"border-radius: 50%;box-sizing: border-box; display: block;"></td>=
+<td><h3 style=3D"display: inline-block; font: 500 14px Google Sans, Roboto,=
+ Arial, Helvetica, sans-serif; letter-spacing: .25px; line-height: 20px; ma=
+rgin: 6px 0 2px 0;">Shimi Ben ezra</h3> <span style=3D"color: #5F6368; font=
+: 400 12px/16px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0.2px=
+; white-space: nowrap;">=E2=80=A2 15:45, 6 Aug (IDT)</span><h4 style=3D"bac=
+kground: #1a73e8; border-radius: 8px; color: #fff; display: inline-block; f=
+ont: 700 12px/16px Roboto, Arial, Helvetica, sans-serif; margin-bottom: 0; =
+margin-top: 0; margin-left: 10px; padding: 0 6px;">New</h4><div style=3D"fo=
+nt: 400 14px Roboto, Arial, Helvetica, sans-serif; line-height: 20px; lette=
+r-spacing: .2px;"><div style=3D"margin-top: 6px;"><i>Accepted suggestion</i=
+></div></div></td></tr></table></div><div style=3D"margin: 10px 0 0 42px; o=
+verflow: auto; padding: 2px;"><a href=3D"https://docs.google.com/document/d=
+/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5q8&amp;usp=3Dsugge=
+stion_email_discussion&amp;ts=3D68935029&amp;usp_dm=3Dfalse" class=3D"mater=
+ial-button material-button-transparent" target=3D"_blank" tabindex=3D"0" ro=
+le=3D"button" style=3D"padding: 0 8px;font: 500 14px/36px Google Sans, Robo=
+to, Arial, Helvetica, sans-serif; border: none; border-radius: 18px; box-si=
+zing: border-box; display: inline-block; letter-spacing: .25px; min-height:=
+ 36px; text-align: center; text-decoration: none;background-color: transpar=
+ent; color: #1a73e8; cursor: pointer;float: right;">Open</a></div></div></d=
+iv><div itemprop=3D"action" itemscope=3D"" itemtype=3D"http://schema.org/Vi=
+ewAction"><meta itemprop=3D"url" content=3D"https://docs.google.com/documen=
+t/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5qc&amp;usp=3Dsu=
+ggestion_email_discussion&amp;ts=3D68935029"><meta itemprop=3D"name" conten=
+t=3D"Open Discussion"></div><div style=3D"height: 20px;"></div><div><div st=
+yle=3D"margin-top: 20px;overflow: visible; line-height: 20px;"><div style=
+=3D"margin-top: 0px; word-break: break-word; word-wrap: break-word;"><table=
+ role=3D"presentation" cellpadding=3D"0" cellspacing=3D"0" style=3D"color: =
+#777777; width: 100%;"><tr><td style=3D"vertical-align: top; width: 44px;">=
+<img src=3D"https://lh3.googleusercontent.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-p=
+P0_kzFFp5dKqqs7O4Lm8kIPMnpPoVKA=3Ds50-c-k-no" alt=3D"" height=3D"32" width=
+=3D"32" style=3D"border-radius: 50%;box-sizing: border-box; display: block;=
+"></td><td><h3 style=3D"display: inline-block; font: 500 14px Google Sans, =
+Roboto, Arial, Helvetica, sans-serif; letter-spacing: .25px; line-height: 2=
+0px; margin: 6px 0 2px 0;">Eitan Shamir</h3> <span style=3D"color: #5F6368;=
+ font: 400 12px/16px Roboto, Arial, Helvetica, sans-serif; letter-spacing: =
+0.2px; white-space: nowrap;">=E2=80=A2 15:25, 6 Aug (IDT)</span><div style=
+=3D"font: 400 14px Roboto, Arial, Helvetica, sans-serif; line-height: 20px;=
+ letter-spacing: .2px;"><div style=3D"margin-top: 6px;" class=3D"notranslat=
+e"><div style=3D"font-size:13px;color:#333"><span style=3D"font-weight:bold=
+">Replace:</span> <span style=3D"white-space:pre-line;color:#777;font-style=
+:italic">=E2=80=9C=D7=9E=D7=AA=D7=95=D7=9A 60 =D7=99=D7=95=D7=9D=E2=80=9D</=
+span> with <span style=3D"white-space:pre-line;color:#777;font-style:italic=
+">=E2=80=9C10 =D7=99=D7=9E=D7=99 =D7=A2=D7=A1=D7=A7=D7=99=D7=9D=E2=80=9D</s=
+pan></div></div></div></td></tr></table></div><div style=3D"margin-top: 12p=
+x; word-break: break-word; word-wrap: break-word;"><table role=3D"presentat=
+ion" cellpadding=3D"0" cellspacing=3D"0" style=3D"color: #3c4043; width: 10=
+0%;"><tr><td style=3D"vertical-align: top; width: 44px;"><img src=3D"https:=
+//lh3.googleusercontent.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DA=
+l1kdE5rr_uhP=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"bor=
+der-radius: 50%;box-sizing: border-box; display: block;"></td><td><h3 style=
+=3D"display: inline-block; font: 500 14px Google Sans, Roboto, Arial, Helve=
+tica, sans-serif; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2=
+px 0;">Shimi Ben ezra</h3> <span style=3D"color: #5F6368; font: 400 12px/16=
+px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-space=
+: nowrap;">=E2=80=A2 15:44, 6 Aug (IDT)</span><h4 style=3D"background: #1a7=
+3e8; border-radius: 8px; color: #fff; display: inline-block; font: 700 12px=
+/16px Roboto, Arial, Helvetica, sans-serif; margin-bottom: 0; margin-top: 0=
+; margin-left: 10px; padding: 0 6px;">New</h4><div style=3D"font: 400 14px =
+Roboto, Arial, Helvetica, sans-serif; line-height: 20px; letter-spacing: .2=
+px;"><div style=3D"margin-top: 6px;"><i>Accepted suggestion</i></div></div>=
+</td></tr></table></div><div style=3D"margin: 10px 0 0 42px; overflow: auto=
+; padding: 2px;"><a href=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6=
+qhg5BlT5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5qc&amp;usp=3Dsuggestion_email_d=
+iscussion&amp;ts=3D68935029&amp;usp_dm=3Dfalse" class=3D"material-button ma=
+terial-button-transparent" target=3D"_blank" tabindex=3D"0" role=3D"button"=
+ style=3D"padding: 0 8px;font: 500 14px/36px Google Sans, Roboto, Arial, He=
+lvetica, sans-serif; border: none; border-radius: 18px; box-sizing: border-=
+box; display: inline-block; letter-spacing: .25px; min-height: 36px; text-a=
+lign: center; text-decoration: none;background-color: transparent; color: #=
+1a73e8; cursor: pointer;float: right;">Open</a></div></div></div><div itemp=
+rop=3D"action" itemscope=3D"" itemtype=3D"http://schema.org/ViewAction"><me=
+ta itemprop=3D"url" content=3D"https://docs.google.com/document/d/1Jz8vL0lX=
+ZI6qhg5BlT5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5qg&amp;usp=3Dsuggestion_emai=
+l_discussion&amp;ts=3D68935029"><meta itemprop=3D"name" content=3D"Open Dis=
+cussion"></div><div style=3D"height: 20px;"></div><div><div style=3D"margin=
+-top: 20px;overflow: visible; line-height: 20px;"><div style=3D"margin-top:=
+ 0px; word-break: break-word; word-wrap: break-word;"><table role=3D"presen=
+tation" cellpadding=3D"0" cellspacing=3D"0" style=3D"color: #777777; width:=
+ 100%;"><tr><td style=3D"vertical-align: top; width: 44px;"><img src=3D"htt=
+ps://lh3.googleusercontent.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7=
+O4Lm8kIPMnpPoVKA=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D=
+"border-radius: 50%;box-sizing: border-box; display: block;"></td><td><h3 s=
+tyle=3D"display: inline-block; font: 500 14px Google Sans, Roboto, Arial, H=
+elvetica, sans-serif; letter-spacing: .25px; line-height: 20px; margin: 6px=
+ 0 2px 0;">Eitan Shamir</h3> <span style=3D"color: #5F6368; font: 400 12px/=
+16px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-spa=
+ce: nowrap;">=E2=80=A2 15:25, 6 Aug (IDT)</span><div style=3D"font: 400 14p=
+x Roboto, Arial, Helvetica, sans-serif; line-height: 20px; letter-spacing: =
+.2px;"><div style=3D"margin-top: 6px;" class=3D"notranslate"><div style=3D"=
+font-size:13px;color:#333"><span style=3D"font-weight:bold">Replace:</span>=
+ <span style=3D"white-space:pre-line;color:#777;font-style:italic">=E2=80=
+=9C___=E2=80=9D</span> with <span style=3D"white-space:pre-line;color:#777;=
+font-style:italic">=E2=80=9C5%=E2=80=9D</span></div></div></div></td></tr><=
+/table></div><div style=3D"margin-top: 12px; word-break: break-word; word-w=
+rap: break-word;"><table role=3D"presentation" cellpadding=3D"0" cellspacin=
+g=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><td style=3D"vertical-al=
+ign: top; width: 44px;"><img src=3D"https://lh3.googleusercontent.com/a-/AL=
+V-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_uhP=3Ds50-c-k-no" alt=3D=
+"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-sizing: borde=
+r-box; display: block;"></td><td><h3 style=3D"display: inline-block; font: =
+500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; letter-spacing:=
+ .25px; line-height: 20px; margin: 6px 0 2px 0;">Shimi Ben ezra</h3> <span =
+style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Helvetica, sans=
+-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 15:45, 6 Aug=
+ (IDT)</span><h4 style=3D"background: #1a73e8; border-radius: 8px; color: #=
+fff; display: inline-block; font: 700 12px/16px Roboto, Arial, Helvetica, s=
+ans-serif; margin-bottom: 0; margin-top: 0; margin-left: 10px; padding: 0 6=
+px;">New</h4><div style=3D"font: 400 14px Roboto, Arial, Helvetica, sans-se=
+rif; line-height: 20px; letter-spacing: .2px;"><div style=3D"margin-top: 6p=
+x;"><i>Accepted suggestion</i></div></div></td></tr></table></div><div styl=
+e=3D"margin: 10px 0 0 42px; overflow: auto; padding: 2px;"><a href=3D"https=
+://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?disco=
+=3DAAABoxmn5qg&amp;usp=3Dsuggestion_email_discussion&amp;ts=3D68935029&amp;=
+usp_dm=3Dfalse" class=3D"material-button material-button-transparent" targe=
+t=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"padding: 0 8px;font: 5=
+00 14px/36px Google Sans, Roboto, Arial, Helvetica, sans-serif; border: non=
+e; border-radius: 18px; box-sizing: border-box; display: inline-block; lett=
+er-spacing: .25px; min-height: 36px; text-align: center; text-decoration: n=
+one;background-color: transparent; color: #1a73e8; cursor: pointer;float: r=
+ight;">Open</a></div></div></div><div itemprop=3D"action" itemscope=3D"" it=
+emtype=3D"http://schema.org/ViewAction"><meta itemprop=3D"url" content=3D"h=
+ttps://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?di=
+sco=3DAAABoxmn5qk&amp;usp=3Dsuggestion_email_discussion&amp;ts=3D68935029">=
+<meta itemprop=3D"name" content=3D"Open Discussion"></div><div style=3D"hei=
+ght: 20px;"></div><div><div style=3D"margin-top: 20px;overflow: visible; li=
+ne-height: 20px;"><div style=3D"margin-top: 0px; word-break: break-word; wo=
+rd-wrap: break-word;"><table role=3D"presentation" cellpadding=3D"0" cellsp=
+acing=3D"0" style=3D"color: #777777; width: 100%;"><tr><td style=3D"vertica=
+l-align: top; width: 44px;"><img src=3D"https://lh3.googleusercontent.com/a=
+/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMnpPoVKA=3Ds50-c-k-no" a=
+lt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-sizing: =
+border-box; display: block;"></td><td><h3 style=3D"display: inline-block; f=
+ont: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; letter-spa=
+cing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Eitan Shamir</h3> <sp=
+an style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Helvetica, s=
+ans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 15:25, 6 =
+Aug (IDT)</span><div style=3D"font: 400 14px Roboto, Arial, Helvetica, sans=
+-serif; line-height: 20px; letter-spacing: .2px;"><div style=3D"margin-top:=
+ 6px;" class=3D"notranslate"><div style=3D"font-size:13px;color:#333"><span=
+ style=3D"font-weight:bold">Replace:</span> <span style=3D"white-space:pre-=
+line;color:#777;font-style:italic">=E2=80=9C, =D7=9B=D7=93=D7=9E=D7=99 =D7=
+=98=D7=99=D7=A4=D7=95=D7=9C =D7=9E=D7=95=D7=A1=D7=9B=D7=9E=D7=99=D7=9D =D7=
+=9E=D7=A8=D7=90=D7=A9 (&quot;=D7=93=D7=9E=D7=99 =D7=98=D7=99=D7=A4=D7=95=D7=
+=9C&quot;).=E2=80=9D</span> with <span style=3D"white-space:pre-line;color:=
+#777;font-style:italic">=E2=80=9C; =D7=95=D7=9B=D7=9F=E2=80=9D</span></div>=
+<div style=3D"padding-bottom:8px"></div><div style=3D"font-size:13px;color:=
+#333"><span style=3D"font-weight:bold">Add:</span> <span style=3D"white-spa=
+ce:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=93=D7=9E=D7=99 =D7=
+=98=D7=99=D7=A4=D7=95=D7=9C =D7=91=D7=92=D7=99=D7=9F =D7=94=D7=95=D7=A6=D7=
+=90=D7=95=D7=AA =D7=94=D7=9E=D7=A1, =D7=91=D7=A1=D7=9A =D7=A9=D7=9C __ =D7=
+=9E=D7=9B=D7=9C=D7=9C =D7=94=D7=A1=D7=9B=D7=95=D7=9D =D7=94=D7=9E=D7=95=D7=
+=97=D7=96=D7=A7 =D7=9B=D7=9B=D7=9C =D7=A9=D7=96=D7=94 =D7=9C=D7=90 =D7=A0=
+=D7=9E=D7=A9=D7=9A =D7=A2=D7=93 =D7=94-31.12 =D7=91=D7=9B=D7=9C =D7=A9=D7=
+=A0=D7=94 =D7=A7=D7=9C=D7=A0=D7=93=D7=A8=D7=99=D7=AA.=E2=80=9D</span></div>=
+</div></div></td></tr></table></div><div style=3D"margin-top: 12px; word-br=
+eak: break-word; word-wrap: break-word;"><table role=3D"presentation" cellp=
+adding=3D"0" cellspacing=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><=
+td style=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.goog=
+leusercontent.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_u=
+hP=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius=
+: 50%;box-sizing: border-box; display: block;"></td><td><h3 style=3D"displa=
+y: inline-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans=
+-serif; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Shi=
+mi Ben ezra</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto,=
+ Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;"=
+>=E2=80=A2 15:46, 6 Aug (IDT)</span><h4 style=3D"background: #1a73e8; borde=
+r-radius: 8px; color: #fff; display: inline-block; font: 700 12px/16px Robo=
+to, Arial, Helvetica, sans-serif; margin-bottom: 0; margin-top: 0; margin-l=
+eft: 10px; padding: 0 6px;">New</h4><div style=3D"font: 400 14px Roboto, Ar=
+ial, Helvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div =
+style=3D"margin-top: 6px;"><i>Accepted suggestion</i></div></div></td></tr>=
+</table></div><div style=3D"margin: 10px 0 0 42px; overflow: auto; padding:=
+ 2px;"><a href=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-l=
+V4bRjvj_woq/edit?disco=3DAAABoxmn5qk&amp;usp=3Dsuggestion_email_discussion&=
+amp;ts=3D68935029&amp;usp_dm=3Dfalse" class=3D"material-button material-but=
+ton-transparent" target=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"=
+padding: 0 8px;font: 500 14px/36px Google Sans, Roboto, Arial, Helvetica, s=
+ans-serif; border: none; border-radius: 18px; box-sizing: border-box; displ=
+ay: inline-block; letter-spacing: .25px; min-height: 36px; text-align: cent=
+er; text-decoration: none;background-color: transparent; color: #1a73e8; cu=
+rsor: pointer;float: right;">Open</a></div></div></div><div itemprop=3D"act=
+ion" itemscope=3D"" itemtype=3D"http://schema.org/ViewAction"><meta itempro=
+p=3D"url" content=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT=
+5-lV4bRjvj_woq/edit?disco=3DAAABoxmn5rI&amp;usp=3Dsuggestion_email_discussi=
+on&amp;ts=3D68935029"><meta itemprop=3D"name" content=3D"Open Discussion"><=
+/div><div style=3D"height: 20px;"></div><div><div style=3D"margin-top: 20px=
+;overflow: visible; line-height: 20px;"><div style=3D"margin-top: 0px; word=
+-break: break-word; word-wrap: break-word;"><table role=3D"presentation" ce=
+llpadding=3D"0" cellspacing=3D"0" style=3D"color: #777777; width: 100%;"><t=
+r><td style=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.g=
+oogleusercontent.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMn=
+pPoVKA=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-ra=
+dius: 50%;box-sizing: border-box; display: block;"></td><td><h3 style=3D"di=
+splay: inline-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, =
+sans-serif; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;"=
+>Eitan Shamir</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Robot=
+o, Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap=
+;">=E2=80=A2 15:30, 6 Aug (IDT)</span><div style=3D"font: 400 14px Roboto, =
+Arial, Helvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><di=
+v style=3D"margin-top: 6px;" class=3D"notranslate"><div style=3D"font-size:=
+13px;color:#333"><span style=3D"font-weight:bold">Add:</span> <span style=
+=3D"white-space:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=95=D7=
+=9B=D7=9F =D7=99=D7=97=D7=95=D7=99=D7=99=D7=91 =D7=94=D7=9E=D7=99=D7=99=D7=
+=A6=D7=92 =D7=91=D7=9E=D7=A1 =D7=91=D7=92=D7=99=D7=9F =D7=94=D7=9B=D7=A0=D7=
+=A1=D7=94 =D7=9B=D7=9B=D7=9C =D7=A9=D7=94=D7=AA=D7=9E=D7=9C=D7=95=D7=92=D7=
+=99=D7=9D =D7=9C=D7=90 =D7=A0=D7=9E=D7=A9=D7=9B=D7=95 =D7=91=D7=9E=D7=9C=D7=
+=95=D7=90=D7=9D =D7=A2=D7=93 =D7=9C=D7=99=D7=95=D7=9D 31.12 =D7=91=D7=A9=D7=
+=A0=D7=94 =D7=A7=D7=9C=D7=A0=D7=93=D7=A8=D7=99=D7=AA=E2=80=9D</span></div><=
+/div></div></td></tr></table></div><div style=3D"margin-top: 12px; word-bre=
+ak: break-word; word-wrap: break-word;"><table role=3D"presentation" cellpa=
+dding=3D"0" cellspacing=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><t=
+d style=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.googl=
+eusercontent.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_uh=
+P=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius:=
+ 50%;box-sizing: border-box; display: block;"></td><td><h3 style=3D"display=
+: inline-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-=
+serif; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Shim=
+i Ben ezra</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto, =
+Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=
+=E2=80=A2 15:44, 6 Aug (IDT)</span><h4 style=3D"background: #1a73e8; border=
+-radius: 8px; color: #fff; display: inline-block; font: 700 12px/16px Robot=
+o, Arial, Helvetica, sans-serif; margin-bottom: 0; margin-top: 0; margin-le=
+ft: 10px; padding: 0 6px;">New</h4><div style=3D"font: 400 14px Roboto, Ari=
+al, Helvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div s=
+tyle=3D"margin-top: 6px;"><i>Accepted suggestion</i></div></div></td></tr><=
+/table></div><div style=3D"margin: 10px 0 0 42px; overflow: auto; padding: =
+2px;"><a href=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV=
+4bRjvj_woq/edit?disco=3DAAABoxmn5rI&amp;usp=3Dsuggestion_email_discussion&a=
+mp;ts=3D68935029&amp;usp_dm=3Dfalse" class=3D"material-button material-butt=
+on-transparent" target=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"p=
+adding: 0 8px;font: 500 14px/36px Google Sans, Roboto, Arial, Helvetica, sa=
+ns-serif; border: none; border-radius: 18px; box-sizing: border-box; displa=
+y: inline-block; letter-spacing: .25px; min-height: 36px; text-align: cente=
+r; text-decoration: none;background-color: transparent; color: #1a73e8; cur=
+sor: pointer;float: right;">Open</a></div></div></div><div itemprop=3D"acti=
+on" itemscope=3D"" itemtype=3D"http://schema.org/ViewAction"><meta itemprop=
+=3D"url" content=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5=
+-lV4bRjvj_woq/edit?disco=3DAAABoxmn5rQ&amp;usp=3Dsuggestion_email_discussio=
+n&amp;ts=3D68935029"><meta itemprop=3D"name" content=3D"Open Discussion"></=
+div><div style=3D"height: 20px;"></div><div><div style=3D"margin-top: 20px;=
+overflow: visible; line-height: 20px;"><div style=3D"margin-top: 0px; word-=
+break: break-word; word-wrap: break-word;"><table role=3D"presentation" cel=
+lpadding=3D"0" cellspacing=3D"0" style=3D"color: #777777; width: 100%;"><tr=
+><td style=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.go=
+ogleusercontent.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMnp=
+PoVKA=3Ds50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-rad=
+ius: 50%;box-sizing: border-box; display: block;"></td><td><h3 style=3D"dis=
+play: inline-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, s=
+ans-serif; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">=
+Eitan Shamir</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto=
+, Arial, Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;=
+">=E2=80=A2 15:31, 6 Aug (IDT)</span><div style=3D"font: 400 14px Roboto, A=
+rial, Helvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div=
+ style=3D"margin-top: 6px;" class=3D"notranslate"><div style=3D"font-size:1=
+3px;color:#333"><span style=3D"font-weight:bold">Replace:</span> <span styl=
+e=3D"white-space:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=9B=D7=
+=9E=D7=A4=D7=95=D7=A8=D7=98 =D7=9C=D7=A2=D7=99=D7=9C=E2=80=9D</span> with <=
+span style=3D"white-space:pre-line;color:#777;font-style:italic">=E2=80=9C=
+=D7=91=D7=93=D7=95=D7=90&quot;=D7=9C=E2=80=9D</span></div></div></div></td>=
+</tr></table></div><div style=3D"margin-top: 12px; word-break: break-word; =
+word-wrap: break-word;"><table role=3D"presentation" cellpadding=3D"0" cell=
+spacing=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><td style=3D"verti=
+cal-align: top; width: 44px;"><img src=3D"https://lh3.googleusercontent.com=
+/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_uhP=3Ds50-c-k-no" =
+alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-sizing:=
+ border-box; display: block;"></td><td><h3 style=3D"display: inline-block; =
+font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; letter-sp=
+acing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Shimi Ben ezra</h3> =
+<span style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Helvetica=
+, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 15:47,=
+ 6 Aug (IDT)</span><h4 style=3D"background: #1a73e8; border-radius: 8px; co=
+lor: #fff; display: inline-block; font: 700 12px/16px Roboto, Arial, Helvet=
+ica, sans-serif; margin-bottom: 0; margin-top: 0; margin-left: 10px; paddin=
+g: 0 6px;">New</h4><div style=3D"font: 400 14px Roboto, Arial, Helvetica, s=
+ans-serif; line-height: 20px; letter-spacing: .2px;"><div style=3D"margin-t=
+op: 6px;"><i>Accepted suggestion</i></div></div></td></tr></table></div><di=
+v style=3D"margin: 10px 0 0 42px; overflow: auto; padding: 2px;"><a href=3D=
+"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?=
+disco=3DAAABoxmn5rQ&amp;usp=3Dsuggestion_email_discussion&amp;ts=3D68935029=
+&amp;usp_dm=3Dfalse" class=3D"material-button material-button-transparent" =
+target=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"padding: 0 8px;fo=
+nt: 500 14px/36px Google Sans, Roboto, Arial, Helvetica, sans-serif; border=
+: none; border-radius: 18px; box-sizing: border-box; display: inline-block;=
+ letter-spacing: .25px; min-height: 36px; text-align: center; text-decorati=
+on: none;background-color: transparent; color: #1a73e8; cursor: pointer;flo=
+at: right;">Open</a></div></div></div><div itemprop=3D"action" itemscope=3D=
+"" itemtype=3D"http://schema.org/ViewAction"><meta itemprop=3D"url" content=
+=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/ed=
+it?disco=3DAAABoxmn5rk&amp;usp=3Dsuggestion_email_discussion&amp;ts=3D68935=
+029"><meta itemprop=3D"name" content=3D"Open Discussion"></div><div style=
+=3D"height: 20px;"></div><div><div style=3D"margin-top: 20px;overflow: visi=
+ble; line-height: 20px;"><div style=3D"margin-top: 0px; word-break: break-w=
+ord; word-wrap: break-word;"><table role=3D"presentation" cellpadding=3D"0"=
+ cellspacing=3D"0" style=3D"color: #777777; width: 100%;"><tr><td style=3D"=
+vertical-align: top; width: 44px;"><img src=3D"https://lh3.googleuserconten=
+t.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMnpPoVKA=3Ds50-c-=
+k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-s=
+izing: border-box; display: block;"></td><td><h3 style=3D"display: inline-b=
+lock; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; let=
+ter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Eitan Shamir</=
+h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Helve=
+tica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 15=
+:32, 6 Aug (IDT)</span><div style=3D"font: 400 14px Roboto, Arial, Helvetic=
+a, sans-serif; line-height: 20px; letter-spacing: .2px;"><div style=3D"marg=
+in-top: 6px;" class=3D"notranslate"><div style=3D"font-size:13px;color:#333=
+"><span style=3D"font-weight:bold">Delete paragraph</span></div></div></div=
+></td></tr></table></div><div style=3D"margin-top: 12px; word-break: break-=
+word; word-wrap: break-word;"><table role=3D"presentation" cellpadding=3D"0=
+" cellspacing=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><td style=3D=
+"vertical-align: top; width: 44px;"><img src=3D"https://lh3.googleuserconte=
+nt.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_uhP=3Ds50-c-=
+k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;box-s=
+izing: border-box; display: block;"></td><td><h3 style=3D"display: inline-b=
+lock; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif; let=
+ter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Shimi Ben ezra=
+</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial, Hel=
+vetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=A2 =
+15:46, 6 Aug (IDT)</span><h4 style=3D"background: #1a73e8; border-radius: 8=
+px; color: #fff; display: inline-block; font: 700 12px/16px Roboto, Arial, =
+Helvetica, sans-serif; margin-bottom: 0; margin-top: 0; margin-left: 10px; =
+padding: 0 6px;">New</h4><div style=3D"font: 400 14px Roboto, Arial, Helvet=
+ica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div style=3D"ma=
+rgin-top: 6px;"><i>Accepted suggestion</i></div></div></td></tr></table></d=
+iv><div style=3D"margin: 10px 0 0 42px; overflow: auto; padding: 2px;"><a h=
+ref=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq=
+/edit?disco=3DAAABoxmn5rk&amp;usp=3Dsuggestion_email_discussion&amp;ts=3D68=
+935029&amp;usp_dm=3Dfalse" class=3D"material-button material-button-transpa=
+rent" target=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"padding: 0 =
+8px;font: 500 14px/36px Google Sans, Roboto, Arial, Helvetica, sans-serif; =
+border: none; border-radius: 18px; box-sizing: border-box; display: inline-=
+block; letter-spacing: .25px; min-height: 36px; text-align: center; text-de=
+coration: none;background-color: transparent; color: #1a73e8; cursor: point=
+er;float: right;">Open</a></div></div></div><div itemprop=3D"action" itemsc=
+ope=3D"" itemtype=3D"http://schema.org/ViewAction"><meta itemprop=3D"url" c=
+ontent=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_=
+woq/edit?disco=3DAAABoxmn5ro&amp;usp=3Dsuggestion_email_discussion&amp;ts=
+=3D68935029"><meta itemprop=3D"name" content=3D"Open Discussion"></div><div=
+ style=3D"height: 20px;"></div><div><div style=3D"margin-top: 20px;overflow=
+: visible; line-height: 20px;"><div style=3D"margin-top: 0px; word-break: b=
+reak-word; word-wrap: break-word;"><table role=3D"presentation" cellpadding=
+=3D"0" cellspacing=3D"0" style=3D"color: #777777; width: 100%;"><tr><td sty=
+le=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.googleuser=
+content.com/a/ACg8ocIaF53yWtCSEMXZhW4ZE-pP0_kzFFp5dKqqs7O4Lm8kIPMnpPoVKA=3D=
+s50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%=
+;box-sizing: border-box; display: block;"></td><td><h3 style=3D"display: in=
+line-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-seri=
+f; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Eitan Sh=
+amir</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial,=
+ Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=80=
+=A2 15:32, 6 Aug (IDT)</span><div style=3D"font: 400 14px Roboto, Arial, He=
+lvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div style=
+=3D"margin-top: 6px;" class=3D"notranslate"><div style=3D"font-size:13px;co=
+lor:#333"><span style=3D"font-weight:bold">Add:</span> <span style=3D"white=
+-space:pre-line;color:#777;font-style:italic">=E2=80=9C=D7=93=D7=9E=D7=99 =
+=D7=94=D7=98=D7=99=D7=A4=D7=95=D7=9C =D7=9B=D7=9E=D7=A4=D7=95=D7=A8=D7=98 =
+=D7=9C=D7=A2=D7=99=D7=9C =D7=94=D7=99=D7=A0=D7=9D =D7=9E=D7=A6=D7=98=D7=91=
+=D7=A8=D7=99=D7=9D. =D7=99=D7=93=D7=95=D7=A2 =D7=9C=D7=90=D7=9E=D7=9F =D7=
+=9B=D7=99 =D7=94=D7=9E=D7=99=D7=99=D7=A6=D7=92 =D7=9E=D7=A9=D7=A8=D7=AA =D7=
+=90=D7=9C=D7=A4=D7=99 =D7=9C=D7=A7=D7=95=D7=97=D7=95=D7=AA. =D7=9C=D7=9B=D7=
+=9F, =D7=97=D7=95=D7=91=D7=AA=D7=95 =D7=A9=D7=9C =D7=94=D7=9E=D7=99=D7=99=
+=D7=A6=D7=92 =D7=9B=D7=9C=D7=A4=D7=99=E2=80=A6=E2=80=9D</span></div></div><=
+/div></td></tr></table></div><div style=3D"margin-top: 12px; word-break: br=
+eak-word; word-wrap: break-word;"><table role=3D"presentation" cellpadding=
+=3D"0" cellspacing=3D"0" style=3D"color: #3c4043; width: 100%;"><tr><td sty=
+le=3D"vertical-align: top; width: 44px;"><img src=3D"https://lh3.googleuser=
+content.com/a-/ALV-UjWSkVQdvrzYweB-UecyOekdVTx_wJImuuGAg4DAl1kdE5rr_uhP=3Ds=
+50-c-k-no" alt=3D"" height=3D"32" width=3D"32" style=3D"border-radius: 50%;=
+box-sizing: border-box; display: block;"></td><td><h3 style=3D"display: inl=
+ine-block; font: 500 14px Google Sans, Roboto, Arial, Helvetica, sans-serif=
+; letter-spacing: .25px; line-height: 20px; margin: 6px 0 2px 0;">Shimi Ben=
+ ezra</h3> <span style=3D"color: #5F6368; font: 400 12px/16px Roboto, Arial=
+, Helvetica, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">=E2=
+=80=A2 15:46, 6 Aug (IDT)</span><h4 style=3D"background: #1a73e8; border-ra=
+dius: 8px; color: #fff; display: inline-block; font: 700 12px/16px Roboto, =
+Arial, Helvetica, sans-serif; margin-bottom: 0; margin-top: 0; margin-left:=
+ 10px; padding: 0 6px;">New</h4><div style=3D"font: 400 14px Roboto, Arial,=
+ Helvetica, sans-serif; line-height: 20px; letter-spacing: .2px;"><div styl=
+e=3D"margin-top: 6px;"><i>Accepted suggestion</i></div></div></td></tr></ta=
+ble></div><div style=3D"margin: 10px 0 0 42px; overflow: auto; padding: 2px=
+;"><a href=3D"https://docs.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bR=
+jvj_woq/edit?disco=3DAAABoxmn5ro&amp;usp=3Dsuggestion_email_discussion&amp;=
+ts=3D68935029&amp;usp_dm=3Dfalse" class=3D"material-button material-button-=
+transparent" target=3D"_blank" tabindex=3D"0" role=3D"button" style=3D"padd=
+ing: 0 8px;font: 500 14px/36px Google Sans, Roboto, Arial, Helvetica, sans-=
+serif; border: none; border-radius: 18px; box-sizing: border-box; display: =
+inline-block; letter-spacing: .25px; min-height: 36px; text-align: center; =
+text-decoration: none;background-color: transparent; color: #1a73e8; cursor=
+: pointer;float: right;">Open</a></div></div></div></div></div></div></td><=
+/tr></table></div></div><table style=3D"border-collapse: collapse; width: 1=
+00%;" role=3D"presentation"><tr><td style=3D"padding: 24px 4.5%"><table sty=
+le=3D"border-collapse: collapse; width: 100%;" dir=3D"ltr"><tr><td style=3D=
+"padding: 0;font-family: Roboto, Arial, Helvetica, sans-serif; color: #5F63=
+68; width: 100%; font-size: 12px; line-height: 16px; min-height: 40px; lett=
+er-spacing: .3px;"><p style=3D"margin: 0; padding: 0;">Google LLC, 1600 Amp=
+hitheatre Parkway, Mountain View, CA 94043, USA<br><br>You have received th=
+is email because you are a participant in the updated items or have subscri=
+bed to notifications on <span class=3D"notranslate"><a href=3D"https://docs=
+.google.com/document/d/1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq/edit?usp=3Dcomment=
+_email_document&amp;ts=3D68935029&amp;usp_dm=3Dfalse" target=3D"_blank" sty=
+le=3D"color: #1a73e8; text-decoration: none;">=D7=A4=D7=AA=D7=95=D7=97 =D7=
+=9C=D7=A2=D7=A8=D7=99=D7=9B=D7=94: =D7=94=D7=A1=D7=9B=D7=9D =D7=99=D7=99=D7=
+=A6=D7=95=D7=92  =D7=95=D7=94=D7=A4=D7=A6=D7=94 =D7=93=D7=99=D7=92=D7=99=D7=
+=98=D7=9C=D7=99=D7=AA =D7=91=D7=90=D7=9E=D7=A6=D7=A2=D7=95=D7=AA =D7=94=D7=
+=A4=D7=99=D7=9C (21.7.2025).docx</a></span>. <a target=3D"_blank" style=3D"=
+color: #1a73e8; text-decoration: none;" href=3D"https://docs.google.com/doc=
+ument/u/112285942447851383724/docos/notify?ouid=3D112285942447851383724&amp=
+;id=3D1Jz8vL0lXZI6qhg5BlT5-lV4bRjvj_woq&amp;title=3D%D7%A4%D7%AA%D7%95%D7%9=
+7+%D7%9C%D7%A2%D7%A8%D7%99%D7%9B%D7%94:+%D7%94%D7%A1%D7%9B%D7%9D+%D7%99%D7%=
+99%D7%A6%D7%95%D7%92++%D7%95%D7%94%D7%A4%D7%A6%D7%94+%D7%93%D7%99%D7%92%D7%=
+99%D7%98%D7%9C%D7%99%D7%AA+%D7%91%D7%90%D7%9E%D7%A6%D7%A2%D7%95%D7%AA+%D7%9=
+4%D7%A4%D7%99%D7%9C+%2821.7.2025%29.docx&amp;resourcekey">Change what Googl=
+e sends you</a>. You cannot reply to this email.</p></td><td style=3D"paddi=
+ng: 0;padding-left: 20px; min-width: 96px"><img src=3D"https://www.gstatic.=
+com/images/branding/googlelogo/2x/googlelogo_tm_black54_color_96x40dp.png" =
+width=3D"96px" height=3D"40px"></td></tr></table></td></tr></table></td></t=
+r></table></td></tr></table></div></div>=
+
+--000000000000f1fe04063bb1d179--

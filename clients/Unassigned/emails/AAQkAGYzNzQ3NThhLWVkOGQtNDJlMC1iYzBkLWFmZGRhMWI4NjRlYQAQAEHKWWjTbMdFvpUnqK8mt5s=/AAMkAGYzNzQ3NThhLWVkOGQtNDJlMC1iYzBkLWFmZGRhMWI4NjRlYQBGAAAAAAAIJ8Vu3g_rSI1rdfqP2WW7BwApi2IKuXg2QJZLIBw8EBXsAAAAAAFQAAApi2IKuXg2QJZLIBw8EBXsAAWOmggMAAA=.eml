@@ -1,0 +1,475 @@
+Received: from PA1PR01MB11222.eurprd01.prod.exchangelabs.com
+ (2603:10a6:102:48c::8) by AS8PR01MB10319.eurprd01.prod.exchangelabs.com with
+ HTTPS; Tue, 9 Sep 2025 17:17:17 +0000
+ARC-Seal: i=2; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=pass;
+ b=eDdq6rJjwG+m/tzktk31gf9xNFJr1p8HpHt0IoaXx1Z8NY1j0IB7NS637oUZC3wYoZEtBhIzdn6uDJGTOCgzQPwm14l2bGIkhv26JhTsVndWThDtUn65uFdc/DVbsAi9N3jDE0u3jnv35hpPe1+tK1k0CV1O9+Cq20aQuxExNBepc84VeZ760wNKYFts+9xiu8yp2617G6ovurr23s2I/47OkU/M2MKehxDpoPxyNZbXykGUYfglAeqB5kKhDEBG55tV9GaJrrHwLSuoY79RkQ7bMgEBqRi+tpxuaBKbjJp5SDpCma6RyEtVTJ6WxhichHAZyAnYUPDXKnlhsQAgQw==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=jTN5aQQYLBaVfXdiqCbHXrs8BjOYlfJhaJOhLqK/5t4=;
+ b=exNiuYwqlsW7wflzEbY7zrZYsR9yEL/IgOeaUJoE0n2RLwln6JnS+2Y+gIzfLJDPF4hDzp0QDrEs1fMINLUwDsa9T4fZio3IuST4lFnqZ8xT+1AvaSN6tVUdkmTFyNoT30qT7eig7fVWlrXDm5hTE9p+k6ZEyghTKxs+20oxjgZmcAA0r3P7UMLiegQvRTyP0vpg6Qy8gBJKxhkuDm1WcMrsCulWGNfzhQM0UjbHztbAw9F6xOKtZS4evTJXJwthoXE//29I1Be7fRc08peXUUu/7aJ3o0ojytPSUYGtLQQtKTjzWxjIg4A6UBF4jTJaCORDnXs0BV2R3kDve/fPpQ==
+ARC-Authentication-Results: i=2; mx.microsoft.com 1; spf=pass (sender ip is
+ 2a01:111:f403:c20f::7) smtp.rcpttodomain=eislaw.co.il
+ smtp.mailfrom=smoove.io; dmarc=pass (p=quarantine sp=quarantine pct=100)
+ action=none header.from=smoove.io; dkim=pass (signature was verified)
+ header.d=joeatpco.onmicrosoft.com; arc=pass (0 oda=1 ltdi=1
+ spf=[1,1,smtp.mailfrom=smoove.io] dkim=[1,1,header.d=smoove.io]
+ dmarc=[1,1,header.from=smoove.io])
+Received: from DB9PR02CA0023.eurprd02.prod.outlook.com (2603:10a6:10:1d9::28)
+ by PA1PR01MB11222.eurprd01.prod.exchangelabs.com (2603:10a6:102:48c::8) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9094.22; Tue, 9 Sep
+ 2025 17:17:15 +0000
+Received: from DB1PEPF000509F5.eurprd02.prod.outlook.com
+ (2603:10a6:10:1d9:cafe::8) by DB9PR02CA0023.outlook.office365.com
+ (2603:10a6:10:1d9::28) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9115.15 via Frontend Transport; Tue,
+ 9 Sep 2025 17:17:15 +0000
+Authentication-Results: spf=pass (sender IP is 2a01:111:f403:c20f::7)
+ smtp.mailfrom=smoove.io; dkim=pass (signature was verified)
+ header.d=joeatpco.onmicrosoft.com;dmarc=pass action=none
+ header.from=smoove.io;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of smoove.io designates
+ 2a01:111:f403:c20f::7 as permitted sender) receiver=protection.outlook.com;
+ client-ip=2a01:111:f403:c20f::7;
+ helo=OSPPR02CU001.outbound.protection.outlook.com; pr=C
+Received: from OSPPR02CU001.outbound.protection.outlook.com
+ (2a01:111:f403:c20f::7) by DB1PEPF000509F5.mail.protection.outlook.com
+ (2603:10a6:18:3::697) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9115.13 via Frontend Transport; Tue,
+ 9 Sep 2025 17:17:15 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=rqv6YiFhuqLZDkoZLGtDrkeKVEGskmAFiIVWv2sZWI5rknJBrMaIS3cGY0rLsV4TbvL2iM5fICnT6kJhwzjn9FLd1iecjz+FuSoRoy0qsCVaCHtCMTYZLyLrvAHy8OPePi0Zj6YxrFwMaYMSh3LtBbX/cNXbOMgbwWivzVewDVRCQwh/BKVSKBdXPXtsax5OQchYeHqp4HYxGgZMcAKd8LgWxx8npoJYNX+llLejnL/8PYC0PJv3U61Oy7sOZlzoBaMsuZp/e6F0mhAfYdsYNYZRAEqIwBrzxhkqdqtUPZ6jZeiTWLp6xIs9T+WBIc6XXMncgAySh2CbrLW3dHVYyA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=jTN5aQQYLBaVfXdiqCbHXrs8BjOYlfJhaJOhLqK/5t4=;
+ b=uVtBggj4I7a1L6vFz9FLj/p9vDM3uUgo0BW/az9AlWbLV6oNX5WrQ+S0n+iZQ9n4G4i5s35oohT6TX3SD0s7AR/jlN/ow47UUZ06NgN6GcOZwF/kx6OIr9SxSF0E9f0HH+1JMsggRfsNO4sOtLmdfSlq8VVfVGQxbUoRF3frmsEpvgpkbj6iZI6hMl1DO+JW9SUyETcFfP2a8vJK3ac1br6ZLRXc7rmms8hfNQf/wCC8ZQW4T/EhL8whFY8/vKEq53yoH9SIOR9/zrOUa8dX7vfb/LyDqHZBGpfCE0s/Q7cmUejWSrMhu3rfCkwpNRF68euRH7IRoTm97Uut5W9W7g==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=smoove.io; dmarc=pass action=none header.from=smoove.io;
+ dkim=pass header.d=smoove.io; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=joeatpco.onmicrosoft.com; s=selector2-joeatpco-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=jTN5aQQYLBaVfXdiqCbHXrs8BjOYlfJhaJOhLqK/5t4=;
+ b=LKPPAQXRwC3nMloIiidvIzUgbw1RQ0Bsu6z3ULHsLYM8LR5K3U520UqieDGFRQh4PSIMGiVvK0IdOOa6A0UwWHRGdhn74ArWtveBIgv4yN8moRYC/XQx+lE40yBGwud2g6eg3Yg+5hl1sSxHwZxy1VChVBOCtHiDvxLpSt9PpRc=
+Received: from GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ (2603:10a6:150:15e::15) by DB8PR01MB6229.eurprd01.prod.exchangelabs.com
+ (2603:10a6:10:153::17) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9094.22; Tue, 9 Sep
+ 2025 17:17:08 +0000
+Received: from GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ ([fe80::2896:33e8:e9:fe50]) by GV1PR01MB10640.eurprd01.prod.exchangelabs.com
+ ([fe80::2896:33e8:e9:fe50%6]) with mapi id 15.20.9094.021; Tue, 9 Sep 2025
+ 17:17:08 +0000
+From: Assaf Lessner <assaf@smoove.io>
+To: Eitan Shamir <eitan@eislaw.co.il>
+CC: Ohad Afgin <ohad@unicell.co.il>, alon harel <alon@eislaw.co.il>
+Subject: =?windows-1255?B?UmU6IOTx6+0g7uzgIC0g8e7l4Q==?=
+Thread-Topic: =?windows-1255?B?5PHr7SDu7OAgLSDx7uXh?=
+Thread-Index: AQHcIO8QQcpZaNNsx0W+lSeorya3m7SLGSVu
+Date: Tue, 9 Sep 2025 17:17:08 +0000
+Message-ID: <GV1PR01MB106402D48B57AFF0651A7DFA9B90FA@GV1PR01MB10640.eurprd01.prod.exchangelabs.com>
+References: <BB23FAFE-A9F8-4206-942F-4D145C20409E@eislaw.co.il>
+In-Reply-To: <BB23FAFE-A9F8-4206-942F-4D145C20409E@eislaw.co.il>
+Accept-Language: en-IL, he-IL, en-US
+Content-Language: aa
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+x-ms-reactions: allow
+Authentication-Results-Original: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=smoove.io;
+x-ms-traffictypediagnostic: GV1PR01MB10640:EE_|DB8PR01MB6229:EE_|DB1PEPF000509F5:EE_|PA1PR01MB11222:EE_|AS8PR01MB10319:EE_
+X-MS-Office365-Filtering-Correlation-Id: 88669dea-9546-4517-73a7-08ddefc4b910
+x-ld-processed: 85c63daf-f9d8-44c4-95cd-5c3b23593322,ExtAddr
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+X-Microsoft-Antispam-Untrusted: BCL:0;ARA:13230040|366016|376014|1800799024|7053199007|38070700021|8096899003;
+X-Microsoft-Antispam-Message-Info-Original: =?us-ascii?Q?x9QRVpnxTZgNfWK1YIMcIRxGh/R1b8DzyoUkr1fMW+nw1deKZAv4h7JtqH5L?=
+ =?us-ascii?Q?sBt+20QyZezg7siyhzi+c6EW6iC/MZaSBeCRHr6UvNQcPkitSQm1R1WtpF0z?=
+ =?us-ascii?Q?zidTlDKLCSwGiuZTYVprbVOkogUw2zoBm+HmWMjvvXCMRfnROP1XQ1vWQSYC?=
+ =?us-ascii?Q?4eLfwJySlq7Cr6RYdPG/R6NiFJTBwf8ScrAQCZJr0KWYYsiwfNf6DkcAOhTz?=
+ =?us-ascii?Q?RM3l5ERCFdArId5SYqOjtu8tShdzfVhmwJhQmemKu5VeqLaih+d57AjMPPRT?=
+ =?us-ascii?Q?ZSwcpsaFj1Cw2KNzSwhRJwwQeftjRDtXBAFo7k7sn/m4beS/s6QwW2VKFPgS?=
+ =?us-ascii?Q?5db9Xfv+VrcX7wjdfcjGtcnUtzzE8Vr2pl1fOKs8p3CSYdyOMIFhwcAilNgK?=
+ =?us-ascii?Q?swOeAPDiOHyCabb9AlfYFhPbMmsi8R2bMVFYxn6YE8iV2CjCKEHOqQfkXZf0?=
+ =?us-ascii?Q?NYeX2iBRHCx3qv634/QDRHYILR3/r8WpJcuIBcSffZbuNQ8eCtTe+zzw46FC?=
+ =?us-ascii?Q?rS2YHTVdwVf7qFP4uSh0AuAku8h2l/dDRnOe9XrYjpDpIeD5l3KJ3ebic9c3?=
+ =?us-ascii?Q?CqQDAt7w4lQD5GH8Qi8CWqiqQCd46SAnXg6DOk3qMGpFFqUwmpWBPsZFO2hs?=
+ =?us-ascii?Q?jzjspg2s9qzjiymJKHdohrvC9e4eU70pwp6d5k2S1ax8M7dzQTO8vem+7+Ib?=
+ =?us-ascii?Q?DPJH1uzOVyf4vMmK5/vewBeWbgnNhQg2bb+GAoR5Hfc/BIosKmOlX9KS28aR?=
+ =?us-ascii?Q?INcgluF+oGakSewZUHIERWvQXSHQZgsrx7QL+eDerp3dJX2vzWr+4Q6KMvqA?=
+ =?us-ascii?Q?DZXIBDaSULQiPdVYih136d4QUiToyePuplCcjz9v5zBB1PhKc0HLr9ftKk7z?=
+ =?us-ascii?Q?nu0dYwnqOKjZXUBpBf2AEvAVtWbYB2VvS8K2mYhxpVCvK6wLM5TH08q+rzSj?=
+ =?us-ascii?Q?5EZw/K3vytK3zE+i3J7jkobOXcE4Ovj+swnsncLINST1jQhb5EiCbtG6Pjrb?=
+ =?us-ascii?Q?eqXpG6CY8Jnpo1Sk7FICDin82xUx3B7ooFio9TgAHpPBMOt/giG81eg7v+3E?=
+ =?us-ascii?Q?0D5utHLJfXCSuSslfbw3gtGmP/7BQIpfXnnm64M+1jJ3tzkOY/LMJE8NaICF?=
+ =?us-ascii?Q?QBQy5lUYCrx/7va+heGmyGOjqhcDriJj5abXbLKTQdCYBUhgCxjb5IfP2B5A?=
+ =?us-ascii?Q?/VmnugpKQAASTDRLHTbkUuJQShYPpVDmEIvt9/KLTbiUP436PoCdciPDBJn1?=
+ =?us-ascii?Q?8T4cinpWynXRqQg2iHS3tLc9RdRWPyE3bOvKfQUUCUgAejpY+VAE30oisy26?=
+ =?us-ascii?Q?QyM2P1fy9y4lH6CM87c3yiKkDbu4BCLP3O4XgDcM7CN7QTHcGRB/47gfEVOs?=
+ =?us-ascii?Q?weoC0KhldQpRdYwqVB/LQL7kLGPv5yIGcxCG2u7loKHhcExFdT6iR9wWUBN/?=
+ =?us-ascii?Q?w8+C25XuaEM=3D?=
+X-Forefront-Antispam-Report-Untrusted: CIP:255.255.255.255;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:GV1PR01MB10640.eurprd01.prod.exchangelabs.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(376014)(1800799024)(7053199007)(38070700021)(8096899003);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-Original-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-Original-0: =?windows-1255?Q?6U4H+rUVB7Ul7/6Hu3tlSE+9aiaoyM+FjwMTNYAULC9kY/EhlJFxxTrR?=
+ =?windows-1255?Q?WAZXhVsIhy2BFRKutCVsc5+H03jyWo74oD1ANvGaCLA9Yidq2Jy/DsxF?=
+ =?windows-1255?Q?CDv+p+jsrYHz5iBfWkfTMqAdDy9IEWhtgmpP5k8W9Fca5HJskHzOA+MR?=
+ =?windows-1255?Q?cuXLmh4eDILqaBo6m2UnuIRGGh+sU9iHIsJZzNZBSJrxZaxx/YKM24t4?=
+ =?windows-1255?Q?I3fI64USbGq4erDn0tVQRMSi5nSU3rguB3aA5koXupsBs9+djrX8Tk8z?=
+ =?windows-1255?Q?ziRpyx7FO9+eOtBoJQ7GAkvYLYzYtZtV3rDvaiuuECvubwudd7oNRsn1?=
+ =?windows-1255?Q?jl+Kgyx7mLCAWnTBLh6fjCR+j+XP6sa4Gve0rFyurv4rBjYiqCIksKmM?=
+ =?windows-1255?Q?mJBBj19W86Sk2meaDfmNPgUaF1hO1rDX/y/u3tEO06kkE7t4xUnm6Tkh?=
+ =?windows-1255?Q?3ORcoCQKTbLDbIy4j9rhOrdxIsoPIQAI0BgBC2q++QqA5kVBdX3vshBP?=
+ =?windows-1255?Q?M/NEazPDoQn5IdRrtFBtLuBL3oa00U528F5fMRmqKFbHvxU/s9eZrr+n?=
+ =?windows-1255?Q?v0YTg7Q4QmVBw4hf43IAIr6i2XHNRIZiLPWiJq1d9g54MivAJt01EBni?=
+ =?windows-1255?Q?psUTo508jjGTr7tN/wU1pv5HAw92PRdW1X9vUqS3+v9rjhpocXqplpeB?=
+ =?windows-1255?Q?uY7d/Fjdv6ONic19EJJj4ZZIglXZqi1mcJnzhYIhQ2iP6AE4eQXuI+tU?=
+ =?windows-1255?Q?h5R8PLek/MYjAj8pIfqprhOGaU+rvjDDGRl1aKSzOidSv+CxC4/utfvo?=
+ =?windows-1255?Q?XyZZsE+TYNbaWRGsehXQa5HvDkJSLBxV2LhkR+XPmFZlvK0OBj+ZSpZr?=
+ =?windows-1255?Q?vbg7gIoGkQYZI3Tt5fsX1uJhrrtCJxl1zS5mjABdqjBg8Borv+MLqGwq?=
+ =?windows-1255?Q?wTJRDrkmiDzkxrlzBDfMOtOM2VbbbdK3NAK9C/DuxTD6RNJE3M44oDmN?=
+ =?windows-1255?Q?kGmcBRgIHmABPiMDTlr4U+3KCYzHSqPtU7ps3ErmCduwzXNfi98+St+/?=
+ =?windows-1255?Q?BJpB3cUET4w38KSWhEtMfkWPY85yIZRIOVW5yVc5Gy9JXPjNa7Wlq8Dx?=
+ =?windows-1255?Q?OADvMYiypAc/PLcp1EJZuDYreEmAb7EYQWsPFmq/oksueGQ8fCF6c+2d?=
+ =?windows-1255?Q?2FORyW3XZ4Rfs9PVB6wz0AJpujqwSYnFVoIjvoO84VxmqS7rlY+YbBOu?=
+ =?windows-1255?Q?iXMn8e9wJh9lBWPIOVxW8aqqfcA5RB586bcX9g/kOPfZ/iq2/LAbTNnt?=
+ =?windows-1255?Q?w9qEyIDetp0zkVt+pyAYSpQmRFzER1XYZQkX0IBOFXomXNeQJsNoKQGL?=
+ =?windows-1255?Q?sJGUDNPMFGMDoPDhQEzlI9jJfkOH5Txrfq8CCWXF10oIdj4Ao6ymfTwf?=
+ =?windows-1255?Q?7SjDwSQOh2IhNm0e77qcxSsCCadCRnoFYteZFyLUOfg0+WlkhAjvluzG?=
+ =?windows-1255?Q?DJuopslmo664/DvyZ58SPj4mQ8SiJYaDqUhfeVs9LSMkxdzE5A9YxtHU?=
+ =?windows-1255?Q?pNW5l1YRKa2rXlK0hejvecGXkpZUwOC4d1jYzR8RZof8SgS4sNBZfpAK?=
+ =?windows-1255?Q?js1Qu4FdiUwBVBFs+uvXxWlc6+wNmjnP80l058dvHg6MniGTZqUrCnJY?=
+ =?windows-1255?Q?J6mIaMrz9JwMjDprs+FtlIV9rQIiwoqrEDLzoPUBCbAJbu9C6hP1HQ?=
+ =?windows-1255?Q?=3D=3D?=
+Content-Type: multipart/alternative;
+	boundary="_000_GV1PR01MB106402D48B57AFF0651A7DFA9B90FAGV1PR01MB10640eu_"
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB8PR01MB6229
+Return-Path: assaf@smoove.io
+X-MS-Exchange-Organization-ExpirationStartTime: 09 Sep 2025 17:17:15.3970
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id: 88669dea-9546-4517-73a7-08ddefc4b910
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 384c4129-e818-4ea7-8f8b-189d997170d1:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-Exchange-Transport-CrossTenantHeadersStripped: DB1PEPF000509F5.eurprd02.prod.outlook.com
+X-MS-Exchange-Transport-CrossTenantHeadersPromoted: DB1PEPF000509F5.eurprd02.prod.outlook.com
+X-MS-PublicTrafficType: Email
+X-MS-Exchange-Organization-AuthSource: DB1PEPF000509F5.eurprd02.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id-Prvs: a0855b75-1614-4021-acc2-08ddefc4b4f9
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040|35042699022|7053199007|8096899003|13003099007;
+X-Forefront-Antispam-Report: CIP:2a01:111:f403:c20f::7;CTRY:;LANG:he;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:OSPPR02CU001.outbound.protection.outlook.com;PTR:mail-norwayeastazlp170130007.outbound.protection.outlook.com;CAT:NONE;SFS:(13230040)(35042699022)(7053199007)(8096899003)(13003099007);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 09 Sep 2025 17:17:15.1769
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 88669dea-9546-4517-73a7-08ddefc4b910
+X-MS-Exchange-CrossTenant-Id: 384c4129-e818-4ea7-8f8b-189d997170d1
+X-MS-Exchange-CrossTenant-AuthSource: DB1PEPF000509F5.eurprd02.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PA1PR01MB11222
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:01.9988171
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.9094.017
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910005)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?windows-1255?Q?Rr2u80M9a+FAG/fVLIV1fdZ/hzh19/4DfJhwHtINN6NPJ2Zan2zfZX72?=
+ =?windows-1255?Q?6fU1BEShF1iqBSE/EoE3a0MhbdMOI3EF0QuLBVhVMlyo2951sJfXXImX?=
+ =?windows-1255?Q?eNp9nQCWVaFhbgK6ODBvYfF2ywIU0B6faIa122ME5DhC/fQodVHpxlnz?=
+ =?windows-1255?Q?hlu9GH/HCvdsUzeWktQsou8CvLttvnwD6clGRMVYEdXOMNrxX64pq5/d?=
+ =?windows-1255?Q?uSDHbBGW7UIJIHWJAFzFUQDMdHykTNbNp2s6F7Vp/RKK2ATVtiSXnCAg?=
+ =?windows-1255?Q?jiYE0hyy9MSJ/QuHRvgch0Iv2tDTt9JBKHGHVht2PVbE9WXRHI0u6t7L?=
+ =?windows-1255?Q?lDICW+Uwizon2tmA39+I1qw4dFuWspJsdczTRkWsyrFmRHtxKylKqMar?=
+ =?windows-1255?Q?Z8nXI1IKZK4gm0J/JpMVD8knGA6sHj0aWqbuVRuH0ICQ/cVnRzV6T5DH?=
+ =?windows-1255?Q?6DR/DPvhY/UbC3zQoW1bs0VCjgRKGfBc/LbZxZmqu26dsxeC2JavYfNW?=
+ =?windows-1255?Q?t7BZxitQoY4/PFdBxAKXyyvOOiSFJnGuZw3GS/Zen3Gp3bQ0sww2hgD7?=
+ =?windows-1255?Q?nHUC/zX7wowrwV4D7z0KStPbprVpcxn15v9c+QsRspZlkxsMCYTzzwgN?=
+ =?windows-1255?Q?2BEElhqC1uga58mMQSTOhp8I7XNZgU8Pl/NVFRaoFbdNE4+/SLMOAZDI?=
+ =?windows-1255?Q?esM4VJwsZgOsf5C694xgVztff2MLDnvTXGfouBkOQtBsnGoV8tYNXL+B?=
+ =?windows-1255?Q?yNPO4XtviAioxiyvT7/gY1/BwXWpAxx+ApUH/YHuEvL6CL7nRhE1IlPk?=
+ =?windows-1255?Q?sR2GqhwaTw3M247fLqVP2Ym0vOAJVHUruJzhB0EF9D+smrW7QyiOyCRg?=
+ =?windows-1255?Q?SmNsVm3CSWi4QItx4MSOp4EiI2i48NkgJbyrc5J/dgswm+rBOUQFlW1G?=
+ =?windows-1255?Q?DKQsDXWw44l/ofPxf1oPOtG+djq9p5VqIyjdNkslqMkYTwXISniWQFFZ?=
+ =?windows-1255?Q?9byxU8U2LNuAujmPMXAbZXJuLox2mr/ps11MN3XT3+L7x97x8A5q4mrW?=
+ =?windows-1255?Q?4Vtg0RMWtPX8qj/QkRAVph4jdpVoRcWI3kg/RkdlDd7Mp/5Jj9Rh7O5j?=
+ =?windows-1255?Q?IbOQvlGK5yoNfEUKFdOmw7Wa/H+/y4NpOJwKPVRgTyO1uwrrk56/K+mg?=
+ =?windows-1255?Q?l9Mml3e4KPcvfF68KNN64eOR8PXPoyyKtVUnhxOlpWfk8KzJvunk/UEf?=
+ =?windows-1255?Q?lV2YlgtOXwh2n0jYcaONLnT8UGG4AMxxsKDnKDAOXVIgyQkOSborVXRl?=
+ =?windows-1255?Q?4imt2/J+a1W/HBTYsxNoyM39VBg+QPkuu6Tc9JTjUtOl6EK5JEP10kIf?=
+ =?windows-1255?Q?DMU4rrqCNDPBUbU7qZuXivcfJr9nmJ4a5TrZI+NktXden2NHGgX0DsSW?=
+ =?windows-1255?Q?ljXYtAJdBLU+FVXGaAGVq8sCinRTsAH+6QUCXSgmJERi/O9WRUG95q53?=
+ =?windows-1255?Q?cfg/e/INrPvYrrosdtuEFLbNI3M0G5jUM20LlaYY038MLBIe57tXZVWC?=
+ =?windows-1255?Q?tUs/I4WNxVVAogNZIMymLaHGjZTQEU6kKlvIxFys7Uv/IFlo45oPD+Rp?=
+ =?windows-1255?Q?TFaCvCUnedvcF6omSANmPrrcvhMrNI4tO+Pwy6dqk04+nquLhBlUuVUa?=
+ =?windows-1255?Q?j3S7zYxXLDF0nNy5uU/lnxljEKRfXY9pgDPAerWXIgCPQtSkT9NwumC/?=
+ =?windows-1255?Q?lXhKlRNaXHEjo9Vq4i8JR8lLi/9jJYHJyXWwPS4fRFPkHqQOYTDf19kp?=
+ =?windows-1255?Q?TtK8vQNHefbflm3NA69mNN8NF4ppnrwERkhvZy05mObY7vX+xGP5yhGb?=
+ =?windows-1255?Q?p97FMoerYfV9ikXu1qNghx8xxwYL1v2C3N4PEuTsh9nF3cm0QhCFOO5V?=
+ =?windows-1255?Q?les3PUVVGwWLRf8FAf4c10OCWwtq1Ev/sdFg2E3J/tXUkTR4UmOHOjEz?=
+ =?windows-1255?Q?QbQx7FCfs+sVswR11Kxe/wIyIabOdqKgOX3YIyvp0zrxXq39edG6Zqle?=
+ =?windows-1255?Q?jG5K7MBPFH8w+H63BYHEOn4YgqWlXhkYnH3L2dLEOdUK8vwG4/CjplZk?=
+ =?windows-1255?Q?Zgb5CZDOkHxzcshWpKMiF4ov?=
+MIME-Version: 1.0
+
+--_000_GV1PR01MB106402D48B57AFF0651A7DFA9B90FAGV1PR01MB10640eu_
+Content-Type: text/plain; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+=EE=F6=E5=E9=EF.
+=FA=E5=E3=E4 =F8=E1=E4!
+=F0=FA=F7=E3=ED =E5=F0=F2=E3=EB=EF =EB=EB=EC =F9=E9=E4=E9=E4 =F6=E5=F8=EA.
+
+=F7=E1=EC =FEOutlook =F2=E1=E5=F8 Android=FE<https://aka.ms/AAb9ysg>
+________________________________
+From: Eitan Shamir <eitan@eislaw.co.il>
+Sent: Monday, September 8, 2025 9:33:26 PM
+To: Assaf Lessner <assaf@smoove.io>
+Cc: Ohad Afgin <ohad@unicell.co.il>; alon harel <alon@eislaw.co.il>
+Subject: =E4=F1=EB=ED =EE=EC=E0 - =F1=EE=E5=E1
+
+Caution: This is an external email. Please take care when clicking links or=
+ opening attachments. When in doubt, contact your IT Department
+
+
+=E0=E4=EC=EF,
+
+
+
+=E1=E4=EE=F9=EA =EC=F9=E9=E7=FA=F0=E5 =EE=E4=E9=E5=ED =E1=F6=E4=F8=E9=E9=ED=
+, =E5=EC=E1=F7=F9=FA=EB=ED =EC=E8=F4=EC =E1=F2=F0=E9=E9=EF =E1=EB=EC =E4=EE=
+=E4=E9=F8=E5=FA =E4=E0=F4=F9=F8=E9=FA, =E1=F9=EC =EC=F7=E5=E7=E5=FA =F9=EE=
+=E7=EB=E9=ED =EC=E8=E9=E5=E8=E4:
+
+
+
+=F8=E0=E5 =EE=F6"=E1 =E4=F1=EB=ED =EC=EE=FA=EF =F9=E9=F8=E5=FA=E9 =E4=EE=F2=
+=F8=EB=FA (=3D =E1=EE=F7=E5=ED =FA=F0=E0=E9 =E4=F9=E9=EE=E5=F9, =EE=E9=E5=
+=F2=E3 =EC=EC=F7=E5=E7=E5=FA =E2=E3=E5=EC=E9=ED). =E1=E2=E5=F3 =E4=EE=F1=EE=
+=EA =E9=F9 =EB=E1=F8 (=EB=F0=F1=F4=E7) =E4=F1=EB=ED =EC=EE=FA=EF =F9=E9=F8=
+=E5=FA=E9=ED =EE=F7=F6=E5=F2=E9=E9=ED.
+
+
+
+=EC=E4=F1=EB=ED =E6=E4 =E9=F9 =EC=F6=F8=F3 =E0=FA =F0=F1=F4=E7=E9=ED "=E0" =
+(=E4=F6=F2=FA =E4=EE=E7=E9=F8) =E5=EB=EF "=E1" (=E4=F1=EB=ED =F2=E9=E1=E5=
+=E3 =EE=E9=E3=F2 =F1=E8=F0=E3=F8=E8=E9 =F9=EC =F1=EE=E5=E1). =F9=E9=ED =EC=
+=E1 =F9=E4=EE=F1=EE=EA =E4=E5=E0 =E1=F4=E5=F8=EE=E8 DOTX (=E8=EE=F4=EC=E9=
+=E9=E8) =EB=EA =F9=EC=E7=E9=F6=E4 =F2=EC=E9=E5 =FA=F4=FA=E7 =EE=F1=EE=EA =
+=E5=E5=F8=E3 =E7=E3=F9 =EC=EC=E0 =F9=ED. =E6=E4 =F0=E5=F2=E3 =EC=EB=EA =F9=
+=E4=E4=F1=EB=ED =E9=E4=E9=E4 =F7=F9=E9=E7 =E5=EC=E0 =E9=F9=FA=F0=E4 =E1=E8=
+=F2=E5=FA =EE=EC=F7=E5=E7 =EC=EC=F7=E5=E7. =E4=E4=F1=EB=ED =EE=F2=E5=E3=EB=
+=EF =E1=E9=E7=F1 =EC=F9=E9=F0=E5=E9=E9=ED =F9=E1=E9=F6=F2=F0=E5 =E1=FA=F0=
+=E0=E9 =E4=F9=E9=EE=E5=F9 =F2=ED =E4=F9=E9=F0=E5=E9 =F9=EC =E4=EE=E5=E3=EC =
+=E1=EE=F8=F5 2025.
+
+
+
+=E1=F0=E5=F1=F3 =F2=E1=F8=FA=E9 =F2=EC =F0=E5=F1=E7 =E4=F6=F2=FA =E4=EE=E7=
+=E9=F8 =F9=E0=F1=F3 =F9=EC=E7 =E5=E6=E4 =F0=F8=E0=E4 =E1=F1=E3=F8 =E2=EE=E5=
+=F8.
+
+
+
+=F2=E1=F8=E5 =F0=E0, =E5=E4=F2=E9=F8=E5 =E4=F2=F8=E5=FA =E0=ED =E9=F9, =F0=
+=F9=EE=E7 =EC=FA=F7=EF =EB=EC =E3=E1=F8 =F9=F6=F8=E9=EA.
+
+
+
+=E0=F0=E9 =EE=EB=FA=E1 =E0=FA =F2=E5"=E3 =E0=EC=E5=EF =E4=F8=E0=EC =EE=EE=
+=F9=F8=E3=E9, =F9=E9=F1=E9=E9=F2 =EC=E9 =E1=E8=E9=F4=E5=EC =E1=EB=ED =E1=EB=
+=EC =EE=E5"=EE =F9=E9=F0=FA=F0=E4=EC =EC=E2=E1=E9 =E4=F1=EB=ED =E6=E4.
+
+
+
+=E0=E9=FA=EF
+
+--_000_GV1PR01MB106402D48B57AFF0651A7DFA9B90FAGV1PR01MB10640eu_
+Content-Type: text/html; charset="windows-1255"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dwindows-1=
+255">
+</head>
+<body>
+<div style=3D"font-family: Aptos, Aptos_MSFontService, -apple-system, Robot=
+o, Arial, Helvetica, sans-serif; font-size: 12pt;" dir=3D"rtl">
+=EE=F6=E5=E9=EF.&nbsp;</div>
+<div style=3D"font-family: Aptos, Aptos_MSFontService, -apple-system, Robot=
+o, Arial, Helvetica, sans-serif; font-size: 12pt;" dir=3D"rtl">
+=FA=E5=E3=E4 =F8=E1=E4!&nbsp;</div>
+<div style=3D"font-family: Aptos, Aptos_MSFontService, -apple-system, Robot=
+o, Arial, Helvetica, sans-serif; font-size: 12pt;" dir=3D"rtl">
+=F0=FA=F7=E3=ED =E5=F0=F2=E3=EB=EF =EB=EB=EC =F9=E9=E4=E9=E4 =F6=E5=F8=EA.&=
+nbsp;</div>
+<div id=3D"ms-outlook-mobile-body-separator-line" dir=3D"auto"><br>
+</div>
+<div id=3D"ms-outlook-mobile-signature" dir=3D"auto" style=3D"font-family: =
+Aptos, Aptos_MSFontService, -apple-system, Roboto, Arial, Helvetica, sans-s=
+erif; font-size: 12pt;">
+=F7=E1=EC <a href=3D"https://aka.ms/AAb9ysg">=FEOutlook =F2=E1=E5=F8 Androi=
+d=FE</a></div>
+<hr style=3D"display:inline-block;width:98%" tabindex=3D"-1">
+<div id=3D"divRplyFwdMsg" dir=3D"ltr"><font face=3D"Calibri, sans-serif" st=
+yle=3D"font-size:11pt" color=3D"#000000"><b>From:</b> Eitan Shamir &lt;eita=
+n@eislaw.co.il&gt;<br>
+<b>Sent:</b> Monday, September 8, 2025 9:33:26 PM<br>
+<b>To:</b> Assaf Lessner &lt;assaf@smoove.io&gt;<br>
+<b>Cc:</b> Ohad Afgin &lt;ohad@unicell.co.il&gt;; alon harel &lt;alon@eisla=
+w.co.il&gt;<br>
+<b>Subject:</b> =E4=F1=EB=ED =EE=EC=E0 - =F1=EE=E5=E1</font>
+<div>&nbsp;</div>
+</div>
+<style>
+<!--
+@font-face
+	{font-family:"Cambria Math"}
+@font-face
+	{font-family:Aptos}
+p.x_MsoNormal, li.x_MsoNormal, div.x_MsoNormal
+	{margin:0cm;
+	font-size:12.0pt;
+	font-family:"Aptos",sans-serif}
+span.x_EmailStyle17
+	{font-family:"Aptos",sans-serif;
+	color:windowtext}
+.x_MsoChpDefault
+	{}
+@page WordSection1
+	{margin:72.0pt 72.0pt 72.0pt 72.0pt}
+div.x_WordSection1
+	{}
+-->
+</style>
+<div lang=3D"en-IL" link=3D"#467886" vlink=3D"#96607D" style=3D"word-wrap:b=
+reak-word">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"left" widt=
+h=3D"100%">
+<tbody>
+<tr>
+<td style=3D"background:#00A0d2; padding:5pt 2pt 5pt 2pt"></td>
+<td width=3D"100%" cellpadding=3D"7px 6px 7px 15px" style=3D"background:#e5=
+f5fa; padding:5pt 4pt 5pt 12pt; word-wrap:break-word">
+<div style=3D"color:#222222"><span style=3D"color:#222; font-weight:bold">C=
+aution:</span> This is an external email. Please take care when clicking li=
+nks or opening attachments. When in doubt, contact your IT Department
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<br>
+<div>
+<div class=3D"x_WordSection1">
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=E0=E4=EC=EF, </span>
+</p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=E1=E4=EE=F9=EA =EC=F9=E9=E7=FA=F0=E5 =EE=E4=E9=E5=ED =E1=F6=E4=
+=F8=E9=E9=ED, =E5=EC=E1=F7=F9=FA=EB=ED =EC=E8=F4=EC =E1=F2=F0=E9=E9=EF =E1=
+=EB=EC =E4=EE=E4=E9=F8=E5=FA =E4=E0=F4=F9=F8=E9=FA, =E1=F9=EC =EC=F7=E5=E7=
+=E5=FA =F9=EE=E7=EB=E9=ED =EC=E8=E9=E5=E8=E4:</span><span dir=3D"LTR"></spa=
+n><span dir=3D"LTR"></span><span lang=3D"HE" dir=3D"LTR" style=3D"font-size=
+:11.0pt"><span dir=3D"LTR"></span><span dir=3D"LTR"></span>
+</span><span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial=
+&quot;,sans-serif"></span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=F8=E0=E5 =EE=F6&quot;=E1 =E4=F1=EB=ED =EC=EE=FA=EF =F9=E9=F8=
+=E5=FA=E9 =E4=EE=F2=F8=EB=FA (=3D =E1=EE=F7=E5=ED =FA=F0=E0=E9 =E4=F9=E9=EE=
+=E5=F9, =EE=E9=E5=F2=E3 =EC=EC=F7=E5=E7=E5=FA =E2=E3=E5=EC=E9=ED). =E1=E2=
+=E5=F3 =E4=EE=F1=EE=EA =E9=F9 =EB=E1=F8 (=EB=F0=F1=F4=E7) =E4=F1=EB=ED =EC=
+=EE=FA=EF =F9=E9=F8=E5=FA=E9=ED =EE=F7=F6=E5=F2=E9=E9=ED.
+</span><span lang=3D"EN-US" dir=3D"LTR" style=3D"font-size:11.0pt"></span><=
+/p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=EC=E4=F1=EB=ED =E6=E4 =E9=F9 =EC=F6=F8=F3 =E0=FA =F0=F1=F4=E7=
+=E9=ED
+<b><u>&quot;=E0&quot;</u></b> (=E4=F6=F2=FA =E4=EE=E7=E9=F8) =E5=EB=EF <b><=
+u>&quot;=E1&quot;</u></b> (=E4=F1=EB=ED =F2=E9=E1=E5=E3 =EE=E9=E3=F2 =F1=E8=
+=F0=E3=F8=E8=E9 =F9=EC =F1=EE=E5=E1).
+<b>=F9=E9=ED =EC=E1 =F9=E4=EE=F1=EE=EA =E4=E5=E0 =E1=F4=E5=F8=EE=E8 </b></s=
+pan><b><span lang=3D"EN-US" dir=3D"LTR" style=3D"font-size:11.0pt">DOTX</sp=
+an></b><span dir=3D"RTL"></span><span dir=3D"RTL"></span><b><span lang=3D"H=
+E" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,sans-serif"><sp=
+an dir=3D"RTL"></span><span dir=3D"RTL"></span>
+ (=E8=EE=F4=EC=E9=E9=E8) =EB=EA =F9=EC=E7=E9=F6=E4 =F2=EC=E9=E5 =FA=F4=FA=
+=E7 =EE=F1=EE=EA =E5=E5=F8=E3 =E7=E3=F9 =EC=EC=E0 =F9=ED. </span></b><span =
+lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,sans-s=
+erif">=E6=E4 =F0=E5=F2=E3 =EC=EB=EA =F9=E4=E4=F1=EB=ED =E9=E4=E9=E4 =F7=F9=
+=E9=E7 =E5=EC=E0 =E9=F9=FA=F0=E4 =E1=E8=F2=E5=FA =EE=EC=F7=E5=E7 =EC=EC=F7=
+=E5=E7. =E4=E4=F1=EB=ED =EE=F2=E5=E3=EB=EF =E1=E9=E7=F1 =EC=F9=E9=F0=E5=E9=
+=E9=ED =F9=E1=E9=F6=F2=F0=E5 =E1=FA=F0=E0=E9 =E4=F9=E9=EE=E5=F9 =F2=ED =E4=
+=F9=E9=F0=E5=E9 =F9=EC =E4=EE=E5=E3=EC
+ =E1=EE=F8=F5 2025. <b></b></span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=E1=F0=E5=F1=F3 =F2=E1=F8=FA=E9 =F2=EC =F0=E5=F1=E7 =E4=F6=F2=
+=FA =E4=EE=E7=E9=F8 =F9=E0=F1=F3 =F9=EC=E7 =E5=E6=E4 =F0=F8=E0=E4 =E1=F1=E3=
+=F8 =E2=EE=E5=F8.
+</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=F2=E1=F8=E5 =F0=E0, =E5=E4=F2=E9=F8=E5 =E4=F2=F8=E5=FA =E0=ED =
+=E9=F9, =F0=F9=EE=E7 =EC=FA=F7=EF =EB=EC =E3=E1=F8 =F9=F6=F8=E9=EA. &nbsp;<=
+/span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=E0=F0=E9 =EE=EB=FA=E1 =E0=FA =F2=E5&quot;=E3 =E0=EC=E5=EF =E4=
+=F8=E0=EC =EE=EE=F9=F8=E3=E9, =F9=E9=F1=E9=E9=F2 =EC=E9 =E1=E8=E9=F4=E5=EC =
+=E1=EB=ED =E1=EB=EC =EE=E5&quot;=EE =F9=E9=F0=FA=F0=E4=EC =EC=E2=E1=E9 =E4=
+=F1=EB=ED =E6=E4. &nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">&nbsp;</span></p>
+<p class=3D"x_MsoNormal" dir=3D"RTL" style=3D"text-align:right; direction:r=
+tl; unicode-bidi:embed">
+<span lang=3D"HE" style=3D"font-size:11.0pt; font-family:&quot;Arial&quot;,=
+sans-serif">=E0=E9=FA=EF </span>
+</p>
+</div>
+</div>
+</div>
+</body>
+</html>
+
+--_000_GV1PR01MB106402D48B57AFF0651A7DFA9B90FAGV1PR01MB10640eu_--
