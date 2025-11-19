@@ -189,6 +189,13 @@ E2E test (local)
 - Click Approve & Publish → copy `share_url` (`/r/{token}`) and open it → report renders
 - Click Preview Email → `{{report_url}}` present; send manually for now
 
+Questionnaire → Airtable smoke test
+- Script: `python tools/privacy_flow_smoke_test.py --count 10 --form-id t9nJNoMdBgus`
+- Prereqs: `secrets.local.json` must include `fillout.api_key` and the Airtable token/base/table IDs; the script reuses `docs/fillout_field_mapping.json` plus `config/security_scoring_rules.json`.
+- Flow: seeds the Fillout form with `{count}` timestamped submissions via the bulk API response (no polling), scores them locally, and upserts each submission into `Security_Submissions` via `tools.airtable_utils`.
+- Output: prints a JSON summary listing each submission id, derived level, Airtable record id, and stored status/level so we can confirm the answers landed end-to-end.
+- Optional flags: `--email-template privacy-test+{ts}-{n}@domain`, `--airtable-status waiting_review`.
+
 ## 10) Roadmap
 - Click Send Email → email is sent via Microsoft Graph (requires app settings)
 

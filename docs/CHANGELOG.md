@@ -10,9 +10,13 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 ## 2025-11-20
 - Infra/Backups: Added Airtable snapshot CLI (Azure Blob upload + retention GC) and scheduled GitHub Action to run every 6h or on-demand; backup plan + deploy runbook updated with steps.
 - DevEx: Documented how to run local snapshots and metadata-based `--all-tables` option (requires Airtable metadata scope).
+- DevEx/Process: Created the main GitHub repo (`EISLAW/EISLAWManagerWebApp`) and wrote down the push workflow so code + automations rely on the same remote.
 
 ## 2025-11-19
+- Infra/Azure: Mirrored Fillout/Airtable/Graph secrets into `eislaw-api-01`, built a production zip with vendored deps, deployed backend + refreshed static site (`eislawstweb`) so cloud env matches local (API still failing `/health`; continuing to investigate uvicorn start in App Service).
 - Frontend/UI: Privacy dashboard polish — added refresh control, auto-open latest submission, clearer metrics badges, toasts for actions, and empty-state guidance. Preview at `http://localhost:5197/#/privacy` (commands above).
 - DevEx/Process: Added this changelog + lightweight rollback note; keep entries dated and scoped (Frontend/UI, Backend/API, DevEx/Infra).
 - RAG/Desktop parity: Added a stub doc-transcription uploader on the web RAG tab and mock backend endpoint so we can route desktop transcripts into the index flow.
 - DevEx/Design: Boot instructions now link to the design system quick guide + tokens/templates so every UI task defaults to the same visual language.
+- DevEx/Containers: Dockerfiles (`Dockerfile.api`, `Dockerfile.web`) + `docker-compose.yml` now drive `start_local.bat`, so running that script launches the API, web, and Meilisearch containers automatically.
+- Privacy QA: Added `tools/privacy_flow_smoke_test.py` to seed 10 questionnaire submissions end-to-end (Fillout → scoring → Airtable) with JSON summaries, trimmed Airtable field writes to the currently provisioned columns, and documented the flow in `docs/PrivacyExpress/PROJECT_OVERVIEW.md`.

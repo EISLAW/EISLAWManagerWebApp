@@ -19,6 +19,11 @@ Last updated: 2025-11-04
   - Implement shared owners store (backend + Airtable Clients view) and refactor TaskCard/TaskModal to use the new UX.
   - Extend Playwright coverage: assign owner, verify chip updates across Dashboard, Clients tab, and Task Modal.
 
+- Azure deployment parity (in progress)
+  - Web App `eislaw-api-01` now has the latest code + secrets, but `/health` still returns 503. Fix the backend startup (uvicorn should run directly without Gunicorn fallback) and confirm the vendored `.python_packages` path works.
+  - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the cloud.
+  - Once `/health` is green, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
+
 - Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
 - Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
 - Optional: add PDF export in the Word compose step and attach.

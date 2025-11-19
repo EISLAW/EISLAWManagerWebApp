@@ -187,30 +187,9 @@ def main():
                     "submission_id": sub_id,
                     "form_id": form_id,
                     "submitted_at": submitted_at,
-                    "source": "fillout",
                     "email": answers.get("contact_email"),
-                    # Inputs
-                    "owners": int(answers.get("owners")) if answers.get("owners") is not None else None,
-                    "access": int(answers.get("access")) if answers.get("access") is not None else None,
-                    "ethics": bool(answers.get("ethics")) if answers.get("ethics") is not None else None,
-                    "ppl": int(answers.get("ppl")) if answers.get("ppl") is not None else None,
-                    "sensitive": (bool(answers.get("sensitive")) if answers.get("sensitive") is not None else (
-                        (int(answers.get("sensitive_people") or 0) > 0) or (bool(answers.get("sensitive_types")) if answers.get("sensitive_types") is not None else False)
-                    )),
-                    "sensitive_people": int(answers.get("sensitive_people")) if answers.get("sensitive_people") is not None else None,
-                    # Not writing sensitive_types to avoid choice mismatch between locales
-                    "biometric_100k": bool(answers.get("biometric_100k")) if answers.get("biometric_100k") is not None else None,
-                    "transfer": bool(answers.get("transfer")) if answers.get("transfer") is not None else None,
-                    "directmail_biz": bool(answers.get("directmail_biz")) if answers.get("directmail_biz") is not None else None,
-                    "directmail_self": bool(answers.get("directmail_self")) if answers.get("directmail_self") is not None else None,
-                    "monitor_1000": bool(answers.get("monitor_1000")) if answers.get("monitor_1000") is not None else None,
-                    "processor": bool(answers.get("processor")) if answers.get("processor") is not None else None,
-                    "processor_large_org": bool(answers.get("processor_large_org")) if answers.get("processor_large_org") is not None else None,
-                    "employees_exposed": bool(answers.get("employees_exposed")) if answers.get("employees_exposed") is not None else None,
-                    "cameras": bool(answers.get("cameras")) if answers.get("cameras") is not None else None,
                     # Review defaults
                     "status": args.airtable_status,
-                    "scored": True,
                     "email_to": answers.get("contact_email"),
                     # Score mirrors
                     "score_level": out.get("level"),

@@ -3,6 +3,16 @@ import { Routes, Route, NavLink } from 'react-router-dom'
 import RoutesRoot from './routes.jsx'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from './utils/apiBase.js'
 
+const NAV_LINKS = [
+  { to: '/', label: 'Dashboard' },
+  { to: '/clients', label: 'Clients' },
+  { to: '/rag', label: 'RAG' },
+  { to: '/marketing', label: 'Marketing' },
+  { to: '/prompts', label: 'Prompts' },
+  { to: '/settings', label: 'Settings' },
+  { to: '/privacy', label: 'Privacy' },
+]
+
 export default function App(){
   const initialBase = React.useMemo(() => {
     const envBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/,'')
@@ -55,12 +65,11 @@ export default function App(){
           <span className="text-xs text-slate-500">FE v{FE_VER}{FE_SHA? ` (${FE_SHA})`:''}</span>
           {health && <span className="text-xs text-slate-500">BE {health.version || ''}{health.commit? ` (${health.commit})`:''}</span>}
           <nav className="flex gap-3 text-sm">
-            <NavLink to="/privacy" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Privacy</NavLink>
-            <NavLink to="/settings" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Settings</NavLink>
-            <NavLink to="/prompts" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Prompts</NavLink>
-            <NavLink to="/marketing" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Marketing</NavLink>
-            <NavLink to="/clients" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Clients</NavLink>
-            <NavLink to="/" className={({isActive})=>isActive? 'text-petrol' : 'text-slate-600'}>Dashboard</NavLink>
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'text-petrol' : 'text-slate-600')}>
+                {label}
+              </NavLink>
+            ))}
           </nav>
           <button className="ml-auto text-sm text-slate-600 underline" onClick={()=>setShowAbout(v=>!v)}>About</button>
         </div>

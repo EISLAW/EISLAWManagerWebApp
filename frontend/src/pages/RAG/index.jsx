@@ -35,6 +35,32 @@ function StatusPill({ tone = 'info', children }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneMap[tone]}`}>{children}</span>
 }
 
+function SearchResultCard({ result }) {
+  const [expanded, setExpanded] = useState(false)
+  const snippet = result.snippet || result.text || 'ללא תקציר זמין.'
+  const short = snippet.length > 320 ? `${snippet.slice(0, 320)}…` : snippet
+  return (
+    <article className="border border-slate-200 rounded-xl bg-white shadow-sm">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">{result.file || 'ללא שם קובץ'}</div>
+          <div className="text-xs text-slate-500">
+            {result.client || 'ללא לקוח'} · {result.score ? `ציון ${result.score}` : 'תוצאה דמו'}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="text-xs text-petrol underline"
+          onClick={() => setExpanded((prev) => !prev)}
+        >
+          {expanded ? 'הצג פחות' : 'פתח תצוגה מלאה'}
+        </button>
+      </header>
+      <div className="px-4 py-3 text-sm leading-relaxed text-slate-700">{expanded ? snippet : short}</div>
+    </article>
+  )
+}
+
 export default function RAG() {
   const ENV_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
   const [apiBase, setApiBase] = useState(() => getStoredApiBase())
@@ -161,7 +187,7 @@ export default function RAG() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </LabeledField>
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] items-end">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] items-start">
             <LabeledField label="סינון לקוח (אופציונלי)" helper="הגבל את החיפוש ללקוח אחד">
               <input
                 dir="auto"
@@ -185,15 +211,14 @@ export default function RAG() {
             {searchError}
           </div>
         )}
-        <div className="border border-slate-200 rounded-lg divide-y bg-white">
+        <div className="space-y-3">
           {results.length === 0 && (
-            <div className="p-4 text-sm text-slate-500">{searchStatus === 'loading' ? 'מחפש…' : 'אין תוצאות להצגה עדיין.'}</div>
+            <div className="border border-dashed border-slate-200 rounded-lg p-4 text-sm text-slate-500">
+              {searchStatus === 'loading' ? 'מחפש…' : 'אין תוצאות להצגה עדיין.'}
+            </div>
           )}
           {results.map((r, idx) => (
-            <div key={idx} className="p-4 space-y-1">
-              <div className="text-xs uppercase tracking-wide text-slate-500">{r.file || 'ללא שם קובץ'}</div>
-              <div className="text-base text-slate-800">{r.snippet || r.text || 'ללא תקציר זמין.'}</div>
-            </div>
+            <SearchResultCard key={`${idx}-${r.file || 'snippet'}`} result={r} />
           ))}
         </div>
       </SectionCard>

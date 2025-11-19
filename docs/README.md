@@ -45,3 +45,13 @@ What lives here and how to resume work quickly.
 - Stack: React + Vite + Tailwind + React Router + React Query
 - Start tasks: see `docs/Frontend_Dashboard_Plan.md`
 
+## GitHub Repository & Push Flow
+
+- Remote: `https://github.com/EISLAW/EISLAWManagerWebApp` (main branch). Keep this repo as the source of truth for code and workflows (e.g., the Airtable snapshot Action).
+- Quick push steps:
+  1. `git status` → ensure only intentional files are staged (secrets stay in `secrets.local.json`, which is ignored).
+  2. `git add <files>` or `git add .` when ready.
+  3. `git commit -m "Short description"` (small, frequent commits).
+  4. `git pull --rebase origin main` if others pushed meanwhile, resolve conflicts, then `git push origin main`.
+- Authentication: GitHub requires a Personal Access Token (PAT); when prompted for `https://github.com`, enter your PAT instead of a password. Store PATs securely (not in the repo).
+
