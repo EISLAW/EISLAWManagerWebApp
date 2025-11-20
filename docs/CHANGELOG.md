@@ -12,6 +12,7 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - DevEx: Documented how to run local snapshots and metadata-based `--all-tables` option (requires Airtable metadata scope).
 - DevEx/Process: Created the main GitHub repo (`EISLAW/EISLAWManagerWebApp`) and wrote down the push workflow so code + automations rely on the same remote.
 - DevEx/Infra: Fixed `infra/deploy_privacy_only.ps1` to vendor backend deps automatically and fall back to `powershell.exe` when `pwsh` is missing, so Azure deploys no longer choke on missing packages.
+- Infra/Containers: Built Docker image (`Dockerfile.api`) for the backend, created ACR `eislawacr`, and switched `eislaw-api-01` to run the container (`privacy-api:2025-11-20`). `/health` now served from the containerized stack; zip deploy is deprecated except for local fallbacks.
 - Infra/Azure: Added `tools/azure_log_stream.py` + docs so we can stream App Service logs via Kudu when `az webapp log tail` flakes (auto-reconnect + file output) while chasing the `/health` failure on `eislaw-api-01`.
 
 ## 2025-11-19

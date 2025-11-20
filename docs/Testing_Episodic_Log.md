@@ -573,3 +573,12 @@ How to Verify
   - Added test contact under רני דבוש (Name: איתן שמיר, Email: eitan@eislaw.co.il, Phone: 0525903675) → success. Created Airtable record `rec52amHcyA7yaLgB` in “אנשי קשר נוספים” linked to client `recTX3GWmVmbAIaea`.
   - Removed the test contact from Airtable (deleted `rec52amHcyA7yaLgB`) to leave no residue.
 - Notes/Next: When running the normal stack (8799 + frontend), UI “Add Contact” should now write to Airtable correctly provided the backend is running. If contact add fails again, check Airtable schema changes first (link/name/email columns). 
+
+## 2025-11-20 – Backend containerization
+- Issue: Zip deploy kept missing native deps and Azure Identity modules, causing `/health` to return 503. Needed a reproducible packaging path before the SaaS pilot.
+- Actions:
+  - Added `opencensus-ext-azure`, `azure-identity`, `azure-core`, and `cryptography==44.0.3` to backend requirements.
+  - Built Docker image via `Dockerfile.api` and pushed to new Azure Container Registry `eislawacr` (tag `privacy-api:2025-11-20`).
+  - Switched App Service `eislaw-api-01` to run the container (`linuxFxVersion=DOCKER|eislawacr.azurecr.io/privacy-api:2025-11-20`) and set `WEBSITES_PORT=8799`.
+  - `curl https://eislaw-api-01.azurewebsites.net/health` → 200.
+- Notes/Next: Wire GitHub Action for container builds/push + slot swap; add Application Insights exporter verification inside the container.

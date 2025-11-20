@@ -20,6 +20,12 @@ Outcomes
 - Client-facing report (HTML/PDF), email preview, and optional Word path
 - Review queue + status trail (waiting_review → in_review → approved → sent)
 - Metrics for overall accuracy and rolling last‑N accuracy
+- 2025 Pilot: launching with a large SaaS partner who will route tens of privacy test takers through the system each week. The pilot requires near-zero downtime, quick rollback, and tight monitoring so two-person team can respond fast.
+
+Pilot readiness principles
+- Document every deploy/incident so a fresh operator (or new LLM session) can catch up within minutes.
+- Keep the UI/API ship-ready: no long-running migrations; every change must be shippable.
+- Automate packaging/deploys to avoid manual zip drift; target containerized hosting to match local env and accelerate hotfixes.
 
 ## 2) System Components
 
@@ -70,6 +76,8 @@ Phase 2 (planned)
 - Fillout → backend webhook (`/fillout/webhook`) for real‑time push
 - Upsert core state to Airtable immediately (CRM and queue continuity)
 - PDF export of HTML and richer email tracking
+- Containerized deployment (target): backend + frontend bundled into a single image deployed to Azure Web App for Containers (or AKS). This removes manual zip vendoring, lets us reproduce prod locally, and supports faster hotfixes during the SaaS pilot.
+- CI/CD guardrails: GitHub Action builds image + runs smoke script (`tools/privacy_flow_smoke_test.py`) before pushing to production slot.
 
 ## 4.1) Implementation Status (2025-11-07)
 
@@ -182,7 +190,12 @@ Email
 - Report from a module (example):
   - `python tools/compose_report_from_md.py docs/PrivacyExpress/ResultTexts/level_lone.md docs/PrivacyExpress/report_from_lone.html "דו"ח פרטיות" "" "דוח פרטיות, נערך על-ידי עו"ד איתן שמיר"`
 
-
+Pilot operations checklist
+- Keep `docs/NEXT_ACTIONS.md` → “Current Incident” up to date after each deploy or outage so future sessions know the live blocker.
+- Update `docs/DEPLOY_RUNBOOK.md` table after every deploy attempt (pass/fail, timestamp, summary).
+- During the SaaS pilot run Kudu log stream (`tools/azure_log_stream.py`) whenever deploying; archive relevant snippets into `docs/Testing_Episodic_Log.md`.
+- Target container build (`docker build -f Dockerfile.api .`) -> push to Azure Container Registry -> use App Service for Containers. Until then, ensure `infra/package_backend.ps1` is run before every zip deploy so dependencies (azure identity/opencensus) are included.
+- Smoke test after deploy: `python tools/privacy_flow_smoke_test.py --count 2 --airtable-status waiting_review` to confirm questionnaire→Airtable chain before notifying the partner.
 E2E test (local)
 - Run: `start_dev.bat` → backend `http://127.0.0.1:8788`, frontend `http://localhost:5173/#/privacy`
 - In UI: open a submission → set level/checklists → Save Review (see Airtable row)

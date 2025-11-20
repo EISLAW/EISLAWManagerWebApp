@@ -1,6 +1,14 @@
 <!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
 # Next Actions (Short Queue)
 
+## Current Focus (2025-11-20)
+- **State**: Backend now runs as a custom container (`eislawacr.azurecr.io/privacy-api:2025-11-20`) and `/health` is green. Next objective is to harden the container workflow (automated builds, monitoring, smoke tests) ahead of the SaaS pilot.
+- **Next fixes**:
+  1. Add GitHub Action that builds/pushes the Docker image to ACR on `main` pushes (or manual dispatch) and updates the Web App slot.
+  2. Wire Application Insights/Container logs to the container (ensure AI connection string + opencensus exporter working in the image).
+  3. Add staging slot + smoke test script invocation before slot swap.
+- **Notes**: Kudu credentials stored under `azure_kudu` in `secrets.local.json`. Deployment history lives in `docs/DEPLOY_RUNBOOK.md`.
+
 Owner: You
 Last updated: 2025-11-04
 
@@ -19,12 +27,11 @@ Last updated: 2025-11-04
   - Implement shared owners store (backend + Airtable Clients view) and refactor TaskCard/TaskModal to use the new UX.
   - Extend Playwright coverage: assign owner, verify chip updates across Dashboard, Clients tab, and Task Modal.
 
-- Azure deployment parity (in progress)
-  - Web App `eislaw-api-01` now has the latest code + secrets, but `/health` still returns 503. Fix the backend startup (uvicorn should run directly without Gunicorn fallback) and confirm the vendored `.python_packages` path works.
-  - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the cloud.
-  - Once `/health` is green, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
-  - Use `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to keep streaming logs with auto-reconnect during diagnostics.
-  - Current failure (`RuntimeError: Form data requires "python-multipart"`) is fixed by redeploying `build/webapp_package.zip` generated after `python-multipart==0.0.9` was vendored under `.python_packages/`; run `infra/deploy_privacy_only.ps1` once the new zip is staged.
+- Azure platform hardening (in progress)
+  - Backend now runs as custom container. Next up: wire automated builds (GitHub Action) that runs `az acr build` + deploy, so we don’t copy contexts manually.
+  - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the container.
+  - Once CI is live, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
+  - Keep using `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to monitor containers during each deploy.
 
 - Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
 - Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
