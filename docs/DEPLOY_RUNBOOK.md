@@ -10,6 +10,29 @@ Audience: non-technical operator running ship cycles.
 - Verify the deployment target (API/UI) is healthy and that Airtable records look correct for a small sample.
 - If an Airtable mistake is detected, pull the matching snapshot blob by timestamp and restore targeted rows (see docs/AIRTABLE_BACKUP_PLAN.md for the playbook).
 
+## Preferred path: GitHub Actions container deploy (staging slot → smoke → swap)
+- Workflow: GitHub → Actions → **Deploy Privacy Module** → Run workflow.
+- Inputs:
+  - `resource_group`, `webapp_name`, `storage_account`, `acr_name`, `image_name` (backend), optional `frontend_webapp_name` + `frontend_image_name` (containerized frontend).
+  - `frontend_api_url` (default prod API) baked into the frontend image.
+  - `image_tag` (optional override; defaults to commit SHA) and `promote_tag` (extra ACR tag, default `staging`).
+  - `slot_name` (default `staging`), `run_smoke_tests` (default true), `swap_on_success` (default true).
+  - `release_tag` (Git tag to create/push, e.g., `v2025.11.20a`) — set this on every deploy for traceability.
+- Flow (automated in the workflow):
+  1. Build + push backend image to ACR (tags: `${IMAGE_TAG}` + `${PROMOTE_TAG}`).
+  2. Optionally build + push frontend container (Dockerfile.web) with `VITE_API_URL` baked in, and deploy to the provided frontend Web App.
+  3. Ensure the staging slot exists; deploy the backend container + app settings there (includes `APPINSIGHTS_CONNECTION_STRING` if present).
+  4. Health-check `/$slot/health`, send an App Insights heartbeat (if configured), run `python tools/privacy_flow_smoke_test.py --count 2`.
+  5. Swap the slot into production (if enabled) and re-run the production `/health` check.
+  6. Build the frontend and upload to the static website container (kept for compatibility even if the container is used).
+  7. If `release_tag` is provided, create and push a Git tag from the workflow (git bot identity).
+- Secrets required: `AZURE_CREDENTIALS`, `ACR_USERNAME`/`ACR_PASSWORD`, `FILLOUT_API_KEY`, `AIRTABLE_*`, `GRAPH_*`, `APPINSIGHTS_CONNECTION_STRING` (optional but recommended). Smoke tests will fail if Fillout/Airtable secrets are missing.
+
+## Versioning and tagging discipline
+- Before each deploy, update `docs/CHANGELOG.md` with a dated entry and include backend/frontend image tags.
+- Run the deploy workflow with `release_tag` set (e.g., `vYYYY.MM.DDa`). The workflow will create/push the tag automatically using `GITHUB_TOKEN`.
+- Note in `docs/DEPLOY_RUNBOOK.md` table which tag was pushed and whether the deploy swapped to production.
+
 ## Deployment history (manual log)
 
 | Timestamp (UTC) | Change summary | Result |

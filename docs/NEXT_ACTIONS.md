@@ -2,11 +2,12 @@
 # Next Actions (Short Queue)
 
 ## Current Focus (2025-11-20)
-- **State**: Backend now runs as a custom container (`eislawacr.azurecr.io/privacy-api:2025-11-20`) and `/health` is green. Next objective is to harden the container workflow (automated builds, monitoring, smoke tests) ahead of the SaaS pilot.
+- **State**: CI deploy workflow now builds/pushes the backend image, deploys to a staging slot, runs /health + smoke tests, and can swap into production. App Insights connection string is applied when present and a heartbeat is emitted during deploy. Frontend still ships to Azure Storage static site.
 - **Next fixes**:
-  1. Add GitHub Action that builds/pushes the Docker image to ACR on `main` pushes (or manual dispatch) and updates the Web App slot.
-  2. Wire Application Insights/Container logs to the container (ensure AI connection string + opencensus exporter working in the image).
-  3. Add staging slot + smoke test script invocation before slot swap.
+  1. Validate App Insights ingestion in Azure (traces/logs) and add alerts for health failures/container restarts.
+  2. Tune smoke test cadence (count/timeout) and ensure Fillout/Airtable quotas are respected; add a dry-run toggle if secrets are missing.
+  3. Containerized frontend path added (Dockerfile.web + optional Web App input) — decide target Web App/slot and cut over from static if desired.
+  4. Enforce tagging discipline: every deploy should set `release_tag` in the workflow and update `docs/CHANGELOG.md` with the tag/image references.
 - **Notes**: Kudu credentials stored under `azure_kudu` in `secrets.local.json`. Deployment history lives in `docs/DEPLOY_RUNBOOK.md`.
 
 Owner: You

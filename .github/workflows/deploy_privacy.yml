@@ -23,15 +23,53 @@ on:
         description: Container image repository
         required: true
         default: privacy-api
+      frontend_image_name:
+        description: Frontend container image repository
+        required: false
+        default: privacy-web
+      frontend_webapp_name:
+        description: Azure Web App name for the frontend container (leave empty to skip)
+        required: false
+      frontend_api_url:
+        description: API URL baked into the frontend container (VITE_API_URL)
+        required: false
+        default: https://eislaw-api-01.azurewebsites.net
+      image_tag:
+        description: Override container image tag (defaults to commit SHA)
+        required: false
+      promote_tag:
+        description: Additional tag to apply (e.g., staging/latest)
+        required: false
+        default: staging
+      slot_name:
+        description: Deploy to this slot before swap (leave blank to deploy directly to production)
+        required: false
+        default: staging
+      run_smoke_tests:
+        description: Run privacy smoke tests against the slot before swap
+        required: false
+        default: "true"
+      swap_on_success:
+        description: Swap slot into production after health + smoke tests pass
+        required: false
+        default: "true"
+      release_tag:
+        description: Git tag to create/push for this deployment (e.g., v2025.11.20a)
+        required: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
     env:
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: ${{ github.event.inputs.image_tag != '' && github.event.inputs.image_tag || github.sha }}
+      PROMOTE_TAG: ${{ github.event.inputs.promote_tag }}
+      DEPLOY_SLOT: ${{ github.event.inputs.slot_name }}
+      RUN_SMOKE_TESTS: ${{ github.event.inputs.run_smoke_tests }}
+      SWAP_ON_SUCCESS: ${{ github.event.inputs.swap_on_success }}
+      FRONTEND_WEBAPP: ${{ github.event.inputs.frontend_webapp_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,10 +91,51 @@ jobs:
           IMAGE_NAME: ${{ github.event.inputs.image_name }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
+          TAG_ARGS="-t ${IMAGE_NAME}:${IMAGE_TAG}"
+          if [ -n "${PROMOTE_TAG}" ]; then
+            TAG_ARGS="$TAG_ARGS -t ${IMAGE_NAME}:${PROMOTE_TAG}"
+          fi
           az acr build \
             -r "$ACR_NAME" \
-            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+            $TAG_ARGS \
             -f Dockerfile.api .
+
+      - name: Build and push frontend container
+        if: env.FRONTEND_WEBAPP != ''
+        working-directory: "EISLAW System"
+        env:
+          ACR_NAME: ${{ github.event.inputs.acr_name }}
+          IMAGE_NAME: ${{ github.event.inputs.frontend_image_name }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          PROMOTE_TAG: ${{ env.PROMOTE_TAG }}
+          FRONTEND_API_URL: ${{ github.event.inputs.frontend_api_url }}
+        run: |
+          TAG_ARGS="-t ${IMAGE_NAME}:${IMAGE_TAG}"
+          if [ -n "${PROMOTE_TAG}" ]; then
+            TAG_ARGS="$TAG_ARGS -t ${IMAGE_NAME}:${PROMOTE_TAG}"
+          fi
+          az acr build \
+            -r "$ACR_NAME" \
+            $TAG_ARGS \
+            -f Dockerfile.web \
+            --build-arg VITE_API_URL="${FRONTEND_API_URL}" .
+
+      - name: Ensure deployment slot exists
+        if: env.DEPLOY_SLOT != ''
+        env:
+          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
+          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
+        run: |
+          if az webapp deployment slot list -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" --query "[?name=='${WEBAPP_NAME}/${DEPLOY_SLOT}'] | length(@)" -o tsv | grep -q "^1$"; then
+            echo "Slot ${DEPLOY_SLOT} already exists."
+          else
+            az webapp deployment slot create \
+              -g "$RESOURCE_GROUP" \
+              -n "$WEBAPP_NAME" \
+              --slot "$DEPLOY_SLOT" \
+              --configuration-source "$WEBAPP_NAME"
+          fi
 
       - name: Update Web App container
         env:
@@ -67,6 +146,36 @@ jobs:
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
+        run: |
+          LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
+          IMAGE_REF="${LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}"
+          az webapp config container set \
+            -g "$RESOURCE_GROUP" \
+            -n "$WEBAPP_NAME" \
+            ${DEPLOY_SLOT:+--slot "$DEPLOY_SLOT"} \
+            --container-image-name "$IMAGE_REF" \
+            --container-registry-url "https://$LOGIN_SERVER" \
+            --container-registry-user "$ACR_USERNAME" \
+            --container-registry-password "$ACR_PASSWORD"
+          az webapp config appsettings set \
+            -g "$RESOURCE_GROUP" \
+            -n "$WEBAPP_NAME" \
+            ${DEPLOY_SLOT:+--slot "$DEPLOY_SLOT"} \
+            --settings WEBSITES_PORT=8799
+          az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" ${DEPLOY_SLOT:+--slot "$DEPLOY_SLOT"}
+
+      - name: Update frontend Web App container
+        if: env.FRONTEND_WEBAPP != ''
+        env:
+          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
+          WEBAPP_NAME: ${{ env.FRONTEND_WEBAPP }}
+          ACR_NAME: ${{ github.event.inputs.acr_name }}
+          IMAGE_NAME: ${{ github.event.inputs.frontend_image_name }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          PROMOTE_TAG: ${{ env.PROMOTE_TAG }}
         run: |
           LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
           IMAGE_REF="${LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}"
@@ -77,36 +186,44 @@ jobs:
             --container-registry-url "https://$LOGIN_SERVER" \
             --container-registry-user "$ACR_USERNAME" \
             --container-registry-password "$ACR_PASSWORD"
-          az webapp config appsettings set \
-            -g "$RESOURCE_GROUP" \
-            -n "$WEBAPP_NAME" \
-            --settings WEBSITES_PORT=8799
           az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME"
 
       - name: Apply app settings
         run: |
+          APPINSIGHTS_VALUE="${{ secrets.APPINSIGHTS_CONNECTION_STRING }}"
+          SETTINGS=(
+            "FILLOUT_API_KEY=${{ secrets.FILLOUT_API_KEY }}"
+            "AIRTABLE_TOKEN=${{ secrets.AIRTABLE_TOKEN }}"
+            "AIRTABLE_BASE_ID=${{ secrets.AIRTABLE_BASE_ID }}"
+            "AIRTABLE_TABLE_ID=${{ secrets.AIRTABLE_TABLE_ID }}"
+            "AIRTABLE_VIEW=${{ secrets.AIRTABLE_VIEW }}"
+            "GRAPH_CLIENT_ID=${{ secrets.GRAPH_CLIENT_ID }}"
+            "GRAPH_CLIENT_SECRET=${{ secrets.GRAPH_CLIENT_SECRET }}"
+            "GRAPH_TENANT_ID=${{ secrets.GRAPH_TENANT_ID }}"
+            "GRAPH_MAILBOX=${{ secrets.GRAPH_MAILBOX }}"
+            "DEV_CORS_ORIGINS=https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net,http://localhost:5173,http://127.0.0.1:5173"
+            "REPORT_LINK_HOST=https://${{ github.event.inputs.webapp_name }}.azurewebsites.net"
+          )
+          if [ -n "$APPINSIGHTS_VALUE" ]; then
+            SETTINGS+=("APPINSIGHTS_CONNECTION_STRING=$APPINSIGHTS_VALUE")
+          fi
           az webapp config appsettings set \
             -g "${{ github.event.inputs.resource_group }}" \
             -n "${{ github.event.inputs.webapp_name }}" \
-            --settings \
-              FILLOUT_API_KEY='${{ secrets.FILLOUT_API_KEY }}' \
-              AIRTABLE_TOKEN='${{ secrets.AIRTABLE_TOKEN }}' \
-              AIRTABLE_BASE_ID='${{ secrets.AIRTABLE_BASE_ID }}' \
-              AIRTABLE_TABLE_ID='${{ secrets.AIRTABLE_TABLE_ID }}' \
-              AIRTABLE_VIEW='${{ secrets.AIRTABLE_VIEW }}' \
-              GRAPH_CLIENT_ID='${{ secrets.GRAPH_CLIENT_ID }}' \
-              GRAPH_CLIENT_SECRET='${{ secrets.GRAPH_CLIENT_SECRET }}' \
-              GRAPH_TENANT_ID='${{ secrets.GRAPH_TENANT_ID }}' \
-              GRAPH_MAILBOX='${{ secrets.GRAPH_MAILBOX }}' \
-              DEV_CORS_ORIGINS='https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net,http://localhost:5173,http://127.0.0.1:5173' \
-              REPORT_LINK_HOST='https://${{ github.event.inputs.webapp_name }}.azurewebsites.net'
+            ${DEPLOY_SLOT:+--slot "${{ env.DEPLOY_SLOT }}"} \
+            --settings "${SETTINGS[@]}"
 
       - name: Verify backend health
         env:
           WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
         run: |
+          HOST="${WEBAPP_NAME}.azurewebsites.net"
+          if [ -n "$DEPLOY_SLOT" ]; then
+            HOST="${WEBAPP_NAME}-${DEPLOY_SLOT}.azurewebsites.net"
+          fi
           for attempt in {1..12}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$WEBAPP_NAME.azurewebsites.net/health" || true)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${HOST}/health" || true)
             if [ "$STATUS" = "200" ]; then
               echo "Backend healthy (200)."
               exit 0
@@ -115,6 +232,115 @@ jobs:
             sleep 10
           done
           echo "Backend did not become healthy in time."
+          exit 1
+
+      - name: Send App Insights heartbeat
+        if: secrets.APPINSIGHTS_CONNECTION_STRING != ''
+        env:
+          APPINSIGHTS_CONNECTION_STRING: ${{ secrets.APPINSIGHTS_CONNECTION_STRING }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          SLOT: ${{ env.DEPLOY_SLOT }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          python3 -m pip install --quiet opencensus-ext-azure==1.1.9 opencensus==0.11.1
+          python3 - <<'PY'
+import logging
+import time
+import os
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+conn = os.getenv("APPINSIGHTS_CONNECTION_STRING", "").strip()
+if not conn:
+    raise SystemExit("No connection string provided; skipping heartbeat.")
+
+logger = logging.getLogger("deploy")
+logger.setLevel(logging.INFO)
+handler = AzureLogHandler(connection_string=conn)
+logger.addHandler(handler)
+logger.info(
+    "privacy-api deploy heartbeat",
+    extra={
+        "custom_dimensions": {
+            "image_tag": os.getenv("IMAGE_TAG"),
+            "slot": os.getenv("SLOT") or "production",
+            "commit": os.getenv("COMMIT_SHA"),
+            "source": "gha_deploy_privacy",
+        }
+    },
+)
+handler.flush()
+time.sleep(2)
+PY
+
+      - name: Verify frontend container health
+        if: env.FRONTEND_WEBAPP != ''
+        env:
+          WEBAPP_NAME: ${{ env.FRONTEND_WEBAPP }}
+        run: |
+          for attempt in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${WEBAPP_NAME}.azurewebsites.net" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend container healthy (200)."
+              exit 0
+            fi
+            echo "Frontend health check attempt $attempt failed (status=$STATUS). Retrying..."
+            sleep 10
+          done
+          echo "Frontend container did not become healthy in time."
+          exit 1
+
+      - name: Run privacy smoke tests
+        if: env.RUN_SMOKE_TESTS == 'true'
+        working-directory: "EISLAW System"
+        env:
+          FILLOUT_API_KEY: ${{ secrets.FILLOUT_API_KEY }}
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
+          AIRTABLE_VIEW: ${{ secrets.AIRTABLE_VIEW }}
+        run: |
+          cat > secrets.local.json <<EOF
+{
+  "fillout": {"api_key": "${FILLOUT_API_KEY}"},
+  "airtable": {
+    "token": "${AIRTABLE_TOKEN}",
+    "base_id": "${AIRTABLE_BASE_ID}",
+    "table_id": "${AIRTABLE_TABLE_ID}",
+    "view": "${AIRTABLE_VIEW}"
+  }
+}
+EOF
+          python3 tools/privacy_flow_smoke_test.py --count 2
+          rm -f secrets.local.json
+
+      - name: Swap slot into production
+        if: env.DEPLOY_SLOT != '' && env.SWAP_ON_SUCCESS == 'true'
+        env:
+          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
+          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
+        run: |
+          az webapp deployment slot swap \
+            -g "$RESOURCE_GROUP" \
+            -n "$WEBAPP_NAME" \
+            --slot "$DEPLOY_SLOT" \
+            --target-slot production
+
+      - name: Verify production health
+        if: env.DEPLOY_SLOT != '' && env.SWAP_ON_SUCCESS == 'true'
+        env:
+          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+        run: |
+          for attempt in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${WEBAPP_NAME}.azurewebsites.net/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Production backend healthy (200)."
+              exit 0
+            fi
+            echo "Production health check attempt $attempt failed (status=$STATUS). Retrying..."
+            sleep 10
+          done
+          echo "Production backend did not become healthy in time."
           exit 1
 
       - name: Build frontend
@@ -132,7 +358,28 @@ jobs:
             --auth-mode login \
             --overwrite
 
+      - name: Create git tag (release discipline)
+        if: github.event.inputs.release_tag != ''
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists locally; skipping create."
+          else
+            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          fi
+          git push origin "$RELEASE_TAG"
+
       - name: Output endpoints
         run: |
-          echo "API: https://${{ github.event.inputs.webapp_name }}.azurewebsites.net/health"
+          if [ -n "${{ env.DEPLOY_SLOT }}" ]; then
+            echo "Staging API: https://${{ github.event.inputs.webapp_name }}-${{ env.DEPLOY_SLOT }}.azurewebsites.net/health"
+          fi
+          echo "Production API: https://${{ github.event.inputs.webapp_name }}.azurewebsites.net/health"
+          if [ -n "${{ env.FRONTEND_WEBAPP }}" ]; then
+            echo "Frontend (container): https://${{ env.FRONTEND_WEBAPP }}.azurewebsites.net/"
+          fi
           echo "APP: https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net/#/privacy"
