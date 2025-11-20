@@ -56,6 +56,9 @@ on:
       release_tag:
         description: Git tag to create/push for this deployment (e.g., v2025.11.20a)
         required: false
+  repository_dispatch:
+    types:
+      - deploy_privacy
 
 jobs:
   deploy:
@@ -64,12 +67,20 @@ jobs:
       id-token: write
       contents: write
     env:
-      IMAGE_TAG: ${{ github.event.inputs.image_tag != '' && github.event.inputs.image_tag || github.sha }}
-      PROMOTE_TAG: ${{ github.event.inputs.promote_tag }}
-      DEPLOY_SLOT: ${{ github.event.inputs.slot_name }}
-      RUN_SMOKE_TESTS: ${{ github.event.inputs.run_smoke_tests }}
-      SWAP_ON_SUCCESS: ${{ github.event.inputs.swap_on_success }}
-      FRONTEND_WEBAPP: ${{ github.event.inputs.frontend_webapp_name }}
+      RESOURCE_GROUP: ${{ github.event.inputs.resource_group || github.event.client_payload.resource_group || 'EISLAW-Dashboard' }}
+      WEBAPP_NAME: ${{ github.event.inputs.webapp_name || github.event.client_payload.webapp_name || 'eislaw-api-01' }}
+      STORAGE_ACCOUNT: ${{ github.event.inputs.storage_account || github.event.client_payload.storage_account || 'eislawstweb' }}
+      ACR_NAME: ${{ github.event.inputs.acr_name || github.event.client_payload.acr_name || 'eislawacr' }}
+      IMAGE_NAME: ${{ github.event.inputs.image_name || github.event.client_payload.image_name || 'privacy-api' }}
+      FRONTEND_IMAGE_NAME: ${{ github.event.inputs.frontend_image_name || github.event.client_payload.frontend_image_name || 'privacy-web' }}
+      FRONTEND_WEBAPP: ${{ github.event.inputs.frontend_webapp_name || github.event.client_payload.frontend_webapp_name || '' }}
+      FRONTEND_API_URL: ${{ github.event.inputs.frontend_api_url || github.event.client_payload.frontend_api_url || 'https://eislaw-api-01.azurewebsites.net' }}
+      IMAGE_TAG: ${{ github.event.inputs.image_tag != '' && github.event.inputs.image_tag || github.event.client_payload.image_tag || github.sha }}
+      PROMOTE_TAG: ${{ github.event.inputs.promote_tag || github.event.client_payload.promote_tag || 'staging' }}
+      DEPLOY_SLOT: ${{ github.event.inputs.slot_name || github.event.client_payload.slot_name || 'staging' }}
+      RUN_SMOKE_TESTS: ${{ github.event.inputs.run_smoke_tests || github.event.client_payload.run_smoke_tests || 'true' }}
+      SWAP_ON_SUCCESS: ${{ github.event.inputs.swap_on_success || github.event.client_payload.swap_on_success || 'true' }}
+      RELEASE_TAG: ${{ github.event.inputs.release_tag || github.event.client_payload.release_tag || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,8 +98,8 @@ jobs:
       - name: Build and push backend container
         working-directory: "EISLAW System"
         env:
-          ACR_NAME: ${{ github.event.inputs.acr_name }}
-          IMAGE_NAME: ${{ github.event.inputs.image_name }}
+          ACR_NAME: ${{ env.ACR_NAME }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           TAG_ARGS="-t ${IMAGE_NAME}:${IMAGE_TAG}"
@@ -104,11 +115,11 @@ jobs:
         if: env.FRONTEND_WEBAPP != ''
         working-directory: "EISLAW System"
         env:
-          ACR_NAME: ${{ github.event.inputs.acr_name }}
-          IMAGE_NAME: ${{ github.event.inputs.frontend_image_name }}
+          ACR_NAME: ${{ env.ACR_NAME }}
+          IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           PROMOTE_TAG: ${{ env.PROMOTE_TAG }}
-          FRONTEND_API_URL: ${{ github.event.inputs.frontend_api_url }}
+          FRONTEND_API_URL: ${{ env.FRONTEND_API_URL }}
         run: |
           TAG_ARGS="-t ${IMAGE_NAME}:${IMAGE_TAG}"
           if [ -n "${PROMOTE_TAG}" ]; then
@@ -123,8 +134,8 @@ jobs:
       - name: Ensure deployment slot exists
         if: env.DEPLOY_SLOT != ''
         env:
-          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          WEBAPP_NAME: ${{ env.WEBAPP_NAME }}
           DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
         run: |
           if az webapp deployment slot list -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" --query "[?name=='${WEBAPP_NAME}/${DEPLOY_SLOT}'] | length(@)" -o tsv | grep -q "^1$"; then
@@ -139,10 +150,10 @@ jobs:
 
       - name: Update Web App container
         env:
-          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
-          ACR_NAME: ${{ github.event.inputs.acr_name }}
-          IMAGE_NAME: ${{ github.event.inputs.image_name }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          WEBAPP_NAME: ${{ env.WEBAPP_NAME }}
+          ACR_NAME: ${{ env.ACR_NAME }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
@@ -168,10 +179,10 @@ jobs:
       - name: Update frontend Web App container
         if: env.FRONTEND_WEBAPP != ''
         env:
-          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
           WEBAPP_NAME: ${{ env.FRONTEND_WEBAPP }}
-          ACR_NAME: ${{ github.event.inputs.acr_name }}
-          IMAGE_NAME: ${{ github.event.inputs.frontend_image_name }}
+          ACR_NAME: ${{ env.ACR_NAME }}
+          IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
@@ -201,21 +212,21 @@ jobs:
             "GRAPH_CLIENT_SECRET=${{ secrets.GRAPH_CLIENT_SECRET }}"
             "GRAPH_TENANT_ID=${{ secrets.GRAPH_TENANT_ID }}"
             "GRAPH_MAILBOX=${{ secrets.GRAPH_MAILBOX }}"
-            "DEV_CORS_ORIGINS=https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net,http://localhost:5173,http://127.0.0.1:5173"
-            "REPORT_LINK_HOST=https://${{ github.event.inputs.webapp_name }}.azurewebsites.net"
+            "DEV_CORS_ORIGINS=https://${{ env.STORAGE_ACCOUNT }}.z39.web.core.windows.net,http://localhost:5173,http://127.0.0.1:5173"
+            "REPORT_LINK_HOST=https://${{ env.WEBAPP_NAME }}.azurewebsites.net"
           )
           if [ -n "$APPINSIGHTS_VALUE" ]; then
             SETTINGS+=("APPINSIGHTS_CONNECTION_STRING=$APPINSIGHTS_VALUE")
           fi
           az webapp config appsettings set \
-            -g "${{ github.event.inputs.resource_group }}" \
-            -n "${{ github.event.inputs.webapp_name }}" \
+            -g "${{ env.RESOURCE_GROUP }}" \
+            -n "${{ env.WEBAPP_NAME }}" \
             ${DEPLOY_SLOT:+--slot "${{ env.DEPLOY_SLOT }}"} \
             --settings "${SETTINGS[@]}"
 
       - name: Verify backend health
         env:
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          WEBAPP_NAME: ${{ env.WEBAPP_NAME }}
           DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
         run: |
           HOST="${WEBAPP_NAME}.azurewebsites.net"
@@ -316,8 +327,8 @@ EOF
       - name: Swap slot into production
         if: env.DEPLOY_SLOT != '' && env.SWAP_ON_SUCCESS == 'true'
         env:
-          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          WEBAPP_NAME: ${{ env.WEBAPP_NAME }}
           DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
         run: |
           az webapp deployment slot swap \
@@ -329,7 +340,7 @@ EOF
       - name: Verify production health
         if: env.DEPLOY_SLOT != '' && env.SWAP_ON_SUCCESS == 'true'
         env:
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+          WEBAPP_NAME: ${{ env.WEBAPP_NAME }}
         run: |
           for attempt in {1..12}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${WEBAPP_NAME}.azurewebsites.net/health" || true)
@@ -354,14 +365,14 @@ EOF
           az storage blob upload-batch \
             -s "EISLAW System/frontend/dist" \
             -d '$web' \
-            --account-name "${{ github.event.inputs.storage_account }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT }}" \
             --auth-mode login \
             --overwrite
 
       - name: Create git tag (release discipline)
-        if: github.event.inputs.release_tag != ''
+        if: env.RELEASE_TAG != ''
         env:
-          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
@@ -376,10 +387,10 @@ EOF
       - name: Output endpoints
         run: |
           if [ -n "${{ env.DEPLOY_SLOT }}" ]; then
-            echo "Staging API: https://${{ github.event.inputs.webapp_name }}-${{ env.DEPLOY_SLOT }}.azurewebsites.net/health"
+            echo "Staging API: https://${{ env.WEBAPP_NAME }}-${{ env.DEPLOY_SLOT }}.azurewebsites.net/health"
           fi
-          echo "Production API: https://${{ github.event.inputs.webapp_name }}.azurewebsites.net/health"
+          echo "Production API: https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health"
           if [ -n "${{ env.FRONTEND_WEBAPP }}" ]; then
             echo "Frontend (container): https://${{ env.FRONTEND_WEBAPP }}.azurewebsites.net/"
           fi
-          echo "APP: https://${{ github.event.inputs.storage_account }}.z39.web.core.windows.net/#/privacy"
+          echo "APP: https://${{ env.STORAGE_ACCOUNT }}.z39.web.core.windows.net/#/privacy"

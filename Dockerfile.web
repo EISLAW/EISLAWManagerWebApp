@@ -5,11 +5,14 @@ WORKDIR /app
 COPY frontend/package*.json /app/frontend/
 WORKDIR /app/frontend
 RUN npm ci
+COPY frontend /app/frontend
 
 # Build with API URL passed as build arg/env
 ARG VITE_API_URL=https://eislaw-api-01.azurewebsites.net
 ENV VITE_API_URL=${VITE_API_URL}
-RUN npm run build
+ENV CI=true
+# Reduce noisy output to avoid CI log encoding issues
+RUN npm run build -- --logLevel warn --clearScreen=false
 
 FROM nginx:1.27-alpine AS web
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
