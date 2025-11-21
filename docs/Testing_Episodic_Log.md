@@ -84,6 +84,13 @@ Entries
 - Mitigation: Added a new "Hebrew Text & Encoding" checklist to `docs/20251030_Codex_Boot_Manifest.md` (lines 49-53) covering UTF-8 saves, UTF-8 console usage, and `rg "???"` linting before handoff.
 - Follow-ups: Restore each `???` string from the Figma source (owners, task labels, docs) before closing the Task Modal work; consider adding an automated check in the frontend build to flag `???` occurrences in RTL-facing components.
 
+## 2025-11-21 - Airtable schema writes for “שירות DPO” (metadata endpoint confusion)
+- Scope: Adding fields and importing rows into table `tbl8wHVlimpXvWi4h` (base `appv3nlRQTtsk97Y5`).
+- Symptom: 422 errors when using metadata PATCH on `/tables/{tableId}`; record API returned UNKNOWN_FIELD_NAME.
+- Root cause: Wrong endpoint for creating fields; must use POST `/meta/bases/{base}/tables/{table}/fields`. Also, select options must match existing choices to avoid “Insufficient permissions to create new select option”.
+- Fix: Used POST to add fields; mapped select values (“Client HR”→“Client Mgmt”, “Vendors”→“Vendor”) and then imported rows from `docs/Privacy_DPO/regulations_table.json`.
+- Verification: Table now contains correct fields and regulation rows; GET records shows Regulation Number + Deliverable populated.
+
 ## 2025-11-08 - Task modal tree controls + add flows
 - Scope: Task modal checklist UX (client tab) - align with Figma: per-task chevron, nested subtasks, working "add task / add subtask," and tag picker popover.
 - Changes: `frontend/src/features/tasksNew/TaskModal.jsx` now renders the full client task list (so new root tasks appear instantly), keeps rows expanded after inserts, adds an inline subtask composer per node, and introduces the tag dropdown (with presets + custom input). `TaskBoard.jsx` refreshes parent/child maps so new rows are visible immediately.
@@ -582,3 +589,8 @@ How to Verify
   - Switched App Service `eislaw-api-01` to run the container (`linuxFxVersion=DOCKER|eislawacr.azurecr.io/privacy-api:2025-11-20`) and set `WEBSITES_PORT=8799`.
   - `curl https://eislaw-api-01.azurewebsites.net/health` → 200.
 - Notes/Next: Wire GitHub Action for container builds/push + slot swap; add Application Insights exporter verification inside the container.
+
+## 2025-11-21 - Privacy flow smoke (staging containers)
+- Scope: Backend/Frontend containers test via `tools/privacy_flow_smoke_test.py --count 2` against staging services.
+- Result: ok=true; Airtable records created with scenarios lone/basic. Emails: privacy-test+20251121003207-1@eislaw.co.il (lone), privacy-test+20251121003207-2@eislaw.co.il (basic).
+- Notes: Deprecation warning from datetime.utcnow in smoke script; non-blocking.
