@@ -9,10 +9,13 @@ services:
       - .env.local
     environment:
       - PORT=${API_PORT:-8799}
-      - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://localhost:80,http://localhost:5173}
+      - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://localhost:80,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080}
       - MEILI_URL=${MEILI_URL:-http://meili:7700}
     ports:
       - "${API_PORT:-8799}:8799"
+    volumes:
+      - ./secrets.local.json:/app/secrets.local.json:ro
+      - ~/.eislaw/store:/root/.eislaw/store:ro
     depends_on:
       - meili
     restart: unless-stopped
@@ -38,6 +41,35 @@ services:
       - "${MEILI_PORT:-7700}:7700"
     volumes:
       - meili_data:/meili_data
+    restart: unless-stopped
+
+  sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - .env.local
+    environment:
+      - PORT=${API_PORT:-8799}
+      - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://localhost:80,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080}
+      - MEILI_URL=${MEILI_URL:-http://meili:7700}
+      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
+    command: >
+      /bin/sh -c "
+        while true; do
+          echo '[sync] running email_sync_worker.py';
+          python tools/email_sync_worker.py || echo '[sync] email_sync_worker failed';
+          echo '[sync] running fillout_fetch_and_score.py';
+          python tools/fillout_fetch_and_score.py || echo '[sync] fillout_fetch_and_score failed';
+          echo '[sync] sleeping ${SYNC_INTERVAL_SECONDS:-3600}s';
+          sleep ${SYNC_INTERVAL_SECONDS:-3600};
+        done
+      "
+    volumes:
+      - ./secrets.local.json:/app/secrets.local.json:ro
+      - ~/.eislaw/store:/root/.eislaw/store:ro
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
