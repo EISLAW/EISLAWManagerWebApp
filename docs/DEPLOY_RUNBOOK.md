@@ -28,6 +28,10 @@ Audience: non-technical operator running ship cycles.
   7. If `release_tag` is provided, create and push a Git tag from the workflow (git bot identity).
 - Secrets required: `AZURE_CREDENTIALS`, `ACR_USERNAME`/`ACR_PASSWORD`, `FILLOUT_API_KEY`, `AIRTABLE_*`, `GRAPH_*`, `APPINSIGHTS_CONNECTION_STRING` (optional but recommended). Smoke tests will fail if Fillout/Airtable secrets are missing.
 
+### CORS checklist (staging/prod)
+- Add the frontend origins for the target environment to API CORS (no wildcards in prod). If a new host is introduced, update CORS and redeploy.
+- Prefer serving frontend via the same host/reverse proxy to eliminate CORS where possible.
+
 ## Versioning and tagging discipline
 - Before each deploy, update `docs/CHANGELOG.md` with a dated entry and include backend/frontend image tags.
 - Run the deploy workflow with `release_tag` set (e.g., `vYYYY.MM.DDa`). The workflow will create/push the tag automatically using `GITHUB_TOKEN`.

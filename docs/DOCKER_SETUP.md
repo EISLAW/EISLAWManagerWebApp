@@ -35,6 +35,11 @@ docker compose up --build
 - A `sync` service in `docker-compose.yml` runs `tools/email_sync_worker.py` and `tools/fillout_fetch_and_score.py` on a loop (default every hour; set `SYNC_INTERVAL_SECONDS` to change).
 - It mounts `secrets.local.json` and reuses the API image; it does not serve traffic.
 
+## CORS checklist (dev/staging)
+- Always allow the active frontend origin(s) in `DEV_CORS_ORIGINS`. For the dev VM, include `http://20.217.86.4:5173` plus localhost variants.
+- When introducing a new dev/staging URL, update CORS and redeploy; avoid wildcards in prod.
+- Prefer serving frontend and API on the same host (reverse proxy) to avoid CORS where possible.
+
 ## Azure notes
 - Build images from `Dockerfile.api` and `Dockerfile.web` or use `docker-compose.yml` if Azure service supports it.
 - Provide env vars/secrets via Azure container app settings/key vault; do not bake secrets into images.

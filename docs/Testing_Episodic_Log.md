@@ -577,8 +577,9 @@ How to Verify
 ## 2025-11-20 – Backend containerization
 - Issue: Zip deploy kept missing native deps and Azure Identity modules, causing `/health` to return 503. Needed a reproducible packaging path before the SaaS pilot.
 - Actions:
-  - Added `opencensus-ext-azure`, `azure-identity`, `azure-core`, and `cryptography==44.0.3` to backend requirements.
-  - Built Docker image via `Dockerfile.api` and pushed to new Azure Container Registry `eislawacr` (tag `privacy-api:2025-11-20`).
-  - Switched App Service `eislaw-api-01` to run the container (`linuxFxVersion=DOCKER|eislawacr.azurecr.io/privacy-api:2025-11-20`) and set `WEBSITES_PORT=8799`.
-  - `curl https://eislaw-api-01.azurewebsites.net/health` → 200.
+- Added `opencensus-ext-azure`, `azure-identity`, `azure-core`, and `cryptography==44.0.3` to backend requirements.
+- Built Docker image via `Dockerfile.api` and pushed to new Azure Container Registry `eislawacr` (tag `privacy-api:2025-11-20`).
+- Switched App Service `eislaw-api-01` to run the container (`linuxFxVersion=DOCKER|eislawacr.azurecr.io/privacy-api:2025-11-20`) and set `WEBSITES_PORT=8799`.
+- `curl https://eislaw-api-01.azurewebsites.net/health` → 200.
+- Lesson: dashboard “Graph/SharePoint offline” and empty Clients/Privacy can be caused by CORS missing the active frontend host. Added VM host to `DEV_CORS_ORIGINS` in compose and set `/graph/check` to use app creds; add CORS host checklist to runbooks to avoid recurrence.
 - Notes/Next: Wire GitHub Action for container builds/push + slot swap; add Application Insights exporter verification inside the container.
