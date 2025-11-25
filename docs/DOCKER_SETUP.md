@@ -18,6 +18,11 @@ docker compose up --build
    API: http://localhost:${API_PORT:-8799}
    Meilisearch: http://localhost:${MEILI_PORT:-7700}
 
+### Secrets (local vs Azure vs PC)
+- Local (Mac/PC/WSL): place `secrets.local.json` in the repo root. Compose mounts it into the API container (`/app/secrets.local.json:ro`) so Airtable/Graph/Fillout work without baking secrets into images. `.env.local` can override ports/URLs if needed.
+- Azure: do **not** mount files. Provide the same keys as App Settings/env vars (`GRAPH_CLIENT_ID/SECRET/TENANT_ID`, `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`, `FILL0UT_SHARED_SECRET`, etc.). The backend reads env vars first and falls back to the file only if envs are missing, so cloud stays clean.
+- PC/WSL: same compose flow; ensure Docker (or Colima/WSL Docker) is running and that `secrets.local.json` is accessible at the repo root for the bind mount.
+
 ## Env vars
 - `API_PORT` (host port for backend, default 8799)
 - `WEB_PORT` (host port for frontend, default 8080)
@@ -25,6 +30,10 @@ docker compose up --build
 - `VITE_API_URL` (API base used at build time for the frontend)
 - `DEV_CORS_ORIGINS` (frontend origins allowed by the API)
 - `MEILI_URL` (API-side Meilisearch URL, default `http://meili:7700` in compose)
+
+## Background sync (dev/compose)
+- A `sync` service in `docker-compose.yml` runs `tools/email_sync_worker.py` and `tools/fillout_fetch_and_score.py` on a loop (default every hour; set `SYNC_INTERVAL_SECONDS` to change).
+- It mounts `secrets.local.json` and reuses the API image; it does not serve traffic.
 
 ## Azure notes
 - Build images from `Dockerfile.api` and `Dockerfile.web` or use `docker-compose.yml` if Azure service supports it.
