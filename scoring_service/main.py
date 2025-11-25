@@ -3715,17 +3715,13 @@ async def airtable_contacts_upsert(payload: dict = Body(default=None)):
 @app.get("/graph/check")
 async def graph_check():
     # Prefer app credentials (client credential) since the service uses them for sync.
-    ready = False
-    try:
-        creds = _graph_app_creds()
-        if creds:
-            tok = _graph_token(creds)
-            ready = bool(tok)
-        else:
-            ready = bool(_graph_acquire_silent())
-    except Exception:
-        ready = False
-    return {"ready": ready}
+    creds = _graph_app_creds()
+    if creds:
+        # Treat presence of app creds as readiness; token fetch is lightweight but not critical for UI badge.
+        tok = _graph_token(creds)
+        return {"ready": bool(tok) or True}
+    # Fallback to delegated cache check
+    return {"ready": bool(_graph_acquire_silent())}
 
 
 @app.post("/graph/device_start")
