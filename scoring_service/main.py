@@ -4169,6 +4169,39 @@ def _level_label(level: Optional[str]) -> str:
     return level or ""
 
 
+# ===== Privacy cache (persist submissions locally by form_id) =====
+def _privacy_cache_path() -> Path:
+    store = Path.home() / ".eislaw" / "store"
+    store.mkdir(parents=True, exist_ok=True)
+    return store / "privacy_cache.json"
+
+
+def _privacy_cache_read(form_id: str) -> dict:
+    p = _privacy_cache_path()
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data.get(form_id, {}) if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _privacy_cache_write(form_id: str, payload: dict) -> None:
+    try:
+        p = _privacy_cache_path()
+        base = {}
+        if p.exists():
+            try:
+                base = json.loads(p.read_text(encoding="utf-8")) or {}
+            except Exception:
+                base = {}
+        base[form_id] = payload
+        p.write_text(json.dumps(base, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
 @app.get("/privacy/labels")
 async def privacy_labels():
     return {"labels": _label_map()}
@@ -4176,65 +4209,102 @@ async def privacy_labels():
 
 @app.get("/privacy/submissions")
 async def privacy_submissions(form_id: str, limit: int = 10):
+    cache = _privacy_cache_read(form_id)
     secrets = _load_secrets()
     api_key = ((secrets.get("fillout") or {}).get("api_key") or "").strip()
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Missing Fillout API key")
-    try:
-        subs = _fillout_list_submissions(api_key, form_id, max(1, min(limit, 50)))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Fillout error: {e}")
     mapping = _load_mapping()
     rules = load_rules()
+
     items = []
-    for sub in subs.get("responses", [])[:limit]:
-        answers_raw = _map_submission(sub, mapping)
-        ans = coerce_inputs(answers_raw)
-        score = evaluate(rules, ans)
-        items.append({
-            "submission_id": sub.get("submissionId"),
-            "submitted_at": sub.get("submissionTime"),
-            "contact_name": ans.get("contact_name"),
-            "contact_email": ans.get("contact_email"),
-            "contact_phone": ans.get("contact_phone"),
-            "business_name": ans.get("business_name"),
-            "level": score.get("level"),
-            "level_label": _level_label(score.get("level")),
-            "dpo": bool(score.get("dpo")),
-            "reg": bool(score.get("reg")),
-            "report": bool(score.get("report")),
-            "requirements_count": len(score.get("requirements") or []),
-            "status": None,
-        })
+    total = None
+    pages = None
+
+    try:
+        if not api_key:
+            raise RuntimeError("Missing Fillout API key")
+        subs = _fillout_list_submissions(api_key, form_id, max(1, min(limit, 50)))
+        items = []
+        for sub in subs.get("responses", [])[:limit]:
+            answers_raw = _map_submission(sub, mapping)
+            ans = coerce_inputs(answers_raw)
+            score = evaluate(rules, ans)
+            item = {
+                "submission_id": sub.get("submissionId"),
+                "submitted_at": sub.get("submissionTime"),
+                "contact_name": ans.get("contact_name"),
+                "contact_email": ans.get("contact_email"),
+                "contact_phone": ans.get("contact_phone"),
+                "business_name": ans.get("business_name"),
+                "level": score.get("level"),
+                "level_label": _level_label(score.get("level")),
+                "dpo": bool(score.get("dpo")),
+                "reg": bool(score.get("reg")),
+                "report": bool(score.get("report")),
+                "requirements_count": len(score.get("requirements") or []),
+                "status": None,
+            }
+            # keep answers/score in cache for detail
+            item["_answers"] = ans
+            item["_score"] = score
+            items.append(item)
+        total = subs.get("totalResponses")
+        pages = subs.get("pageCount")
+        _privacy_cache_write(form_id, {"items": items, "totalResponses": total, "pageCount": pages})
+    except Exception:
+        # Fallback to cache
+        items = cache.get("items") or []
+        total = cache.get("totalResponses")
+        pages = cache.get("pageCount")
+
     return {
         "items": items,
-        "totalResponses": subs.get("totalResponses"),
-        "pageCount": subs.get("pageCount"),
+        "totalResponses": total,
+        "pageCount": pages,
+        "cached": bool(cache),
     }
 
 
 @app.get("/privacy/submissions/{submission_id}")
 async def privacy_submission_detail(submission_id: str, form_id: str):
+    # Try live fetch; fall back to cache
     secrets = _load_secrets()
     api_key = ((secrets.get("fillout") or {}).get("api_key") or "").strip()
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Missing Fillout API key")
-    subs = _fillout_list_submissions(api_key, form_id, limit=50)
-    hit = next((r for r in subs.get("responses", []) if r.get("submissionId") == submission_id), None)
-    if not hit:
-        raise HTTPException(status_code=404, detail="submission not found")
     mapping = _load_mapping()
-    answers_raw = _map_submission(hit, mapping)
-    ans = coerce_inputs(answers_raw)
-    score = evaluate(load_rules(), ans)
-    return {
-        "submission_id": hit.get("submissionId"),
-        "submitted_at": hit.get("submissionTime"),
-        "answers": ans,
-        "labels": _label_map(),
-        "score": score,
-        "level_label": _level_label(score.get("level")),
-    }
+    try:
+        if not api_key:
+            raise RuntimeError("Missing Fillout API key")
+        subs = _fillout_list_submissions(api_key, form_id, limit=50)
+        hit = next((r for r in subs.get("responses", []) if r.get("submissionId") == submission_id), None)
+        if hit:
+            answers_raw = _map_submission(hit, mapping)
+            ans = coerce_inputs(answers_raw)
+            score = evaluate(load_rules(), ans)
+            return {
+                "submission_id": hit.get("submissionId"),
+                "submitted_at": hit.get("submissionTime"),
+                "answers": ans,
+                "labels": _label_map(),
+                "score": score,
+                "level_label": _level_label(score.get("level")),
+                "cached": False,
+            }
+    except Exception:
+        pass
+    cache = _privacy_cache_read(form_id)
+    for item in cache.get("items") or []:
+        if item.get("submission_id") == submission_id:
+            ans = item.get("_answers") or {}
+            score = item.get("_score") or {}
+            return {
+                "submission_id": submission_id,
+                "submitted_at": item.get("submitted_at"),
+                "answers": ans,
+                "labels": _label_map(),
+                "score": score,
+                "level_label": _level_label((score or {}).get("level")),
+                "cached": True,
+            }
+    raise HTTPException(status_code=404, detail="submission not found")
 
 
 def _render_email_from_template(ctx: dict) -> dict:
