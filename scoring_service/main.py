@@ -3714,8 +3714,18 @@ async def airtable_contacts_upsert(payload: dict = Body(default=None)):
 
 @app.get("/graph/check")
 async def graph_check():
-    ready = _graph_acquire_silent()
-    return {"ready": bool(ready)}
+    # Prefer app credentials (client credential) since the service uses them for sync.
+    ready = False
+    try:
+        creds = _graph_app_creds()
+        if creds:
+            tok = _graph_token(creds)
+            ready = bool(tok)
+        else:
+            ready = bool(_graph_acquire_silent())
+    except Exception:
+        ready = False
+    return {"ready": ready}
 
 
 @app.post("/graph/device_start")
