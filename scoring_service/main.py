@@ -1790,7 +1790,8 @@ def _graph_app_creds() -> Optional[dict]:
 
 
 # ===== Delegated (Device Code) support =====
-_GRAPH_SCOPES = ["Mail.Read", "offline_access", "openid", "profile"]
+# Use resource-scoped permissions for delegated device flow
+_GRAPH_SCOPES = ["https://graph.microsoft.com/Mail.Read", "offline_access"]
 _graph_cache_path = Path(__file__).resolve().parent / ".graph_cache.json"
 _graph_ready_flag = False
 _graph_lock = threading.Lock()
