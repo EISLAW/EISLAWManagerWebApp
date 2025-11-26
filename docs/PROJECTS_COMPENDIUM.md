@@ -54,6 +54,7 @@ MarketingAgent (Storytelling Composer)
 - System prompt (viral, cinematic): tools/marketing_agent/prompt_marketing_agent_viral.txt
 - CLI: tools/marketing_agent/marketing_agent.py
 - Launchers: marketing_agent.bat, marketing_agent_viral_tk.bat
+- Brand Voice (Eitan Shamir): docs/MarketingOps/VOICE_OF_BRAND.md — canonical style/voice for marketing prompts and copy.
 
 Client Communications (Email UX)
 - Outlook deep link backend: scoring_service/main.py (endpoints: /api/outlook/latest_link, /graph/*)

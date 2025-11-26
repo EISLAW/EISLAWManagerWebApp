@@ -10,6 +10,9 @@ Metadata:
 Project Overview:
 - See: docs/System_Definition.md#references
 
+Brand Voice:
+- Voice of the Brand (Eitan Shamir): docs/MarketingOps/VOICE_OF_BRAND.md — use this for all marketing prompts/copy.
+
 Execution Docs:
 
 Reverse Index:
