@@ -31,3 +31,4 @@ This is the canonical style and voice guide for all marketing prompts and copy.
 ## Related docs
 - Marketing Content Prompt: docs/MarketingOps/MARKETING_CONTENT_PROMPT_EITAN_SHAMIR.md
 - Hebrew Style Appendix: docs/MarketingOps/VOICE_OF_BRAND_APPENDIX_HE.md
+- Note: For actual drafting in Hebrew, you must strictly follow the attached Hebrew Style Guide regarding syntax, vocabulary, and the specific psychological dynamics of the “Wife” and “Daughter” characters (see VOICE_OF_BRAND_APPENDIX_HE.md).
