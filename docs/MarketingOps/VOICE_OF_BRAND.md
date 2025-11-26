@@ -27,3 +27,7 @@ This is the canonical style and voice guide for all marketing prompts and copy.
 
 ## Example (DPO)
 - Acknowledge pain (“another salary”), short rhythm (“answer is annoying: Yes”), fear/solution (fine → outsource), tachles (“tick the box”).
+
+## Related docs
+- Marketing Content Prompt: docs/MarketingOps/MARKETING_CONTENT_PROMPT_EITAN_SHAMIR.md
+- Hebrew Style Appendix: docs/MarketingOps/VOICE_OF_BRAND_APPENDIX_HE.md

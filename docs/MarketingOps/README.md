@@ -12,7 +12,7 @@ Project Overview:
 
 Brand Voice:
 - Voice of the Brand (Eitan Shamir): docs/MarketingOps/VOICE_OF_BRAND.md — use this for all marketing prompts/copy.
-- Master Prompt (content engine): docs/MarketingOps/MASTER_PROMPT_EITAN_SHAMIR.md — system prompt for generating content in brand voice.
+- Marketing Content Prompt (content engine): docs/MarketingOps/MARKETING_CONTENT_PROMPT_EITAN_SHAMIR.md — system prompt for generating marketing materials in brand voice.
 
 Execution Docs:
 
