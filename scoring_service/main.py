@@ -4077,8 +4077,14 @@ def _fillout_list_submissions(api_key: str, form_id: str, limit: int = 10) -> di
 
 def _load_mapping() -> dict:
     try:
-        p = _repo_root() / "docs" / "fillout_field_mapping.json"
-        return json.loads(p.read_text(encoding="utf-8"))
+        roots = [
+            _repo_root() / "docs" / "fillout_field_mapping.json",
+            _repo_root() / "config" / "fillout_field_mapping.json",
+            Path(__file__).resolve().parents[1] / "docs" / "fillout_field_mapping.json",
+        ]
+        for p in roots:
+            if p.exists():
+                return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
 
