@@ -11,6 +11,11 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - Infra/Dev VM: Provisioned `eislaw-dev-vm` (Ubuntu 22.04, israelcentral) and enabled hot-reload stack via `docker-compose.dev.yml` (API 8799, Vite frontend 5173, Meili 7700). NSG updated to allow inbound 5173/8799 for easy browser access; SSH key stored at `EISLAWManagerWebApp/eislaw-dev-vm_key.pem`. Usage: `docker compose -f docker-compose.dev.yml up --build -d` in `~/EISLAWManagerWebApp`; tunnel if ports are blocked.
 - DevEx/Local: docker-compose now mounts `secrets.local.json` into the API container so Airtable/Graph/Fillout work locally without baking secrets; documented local vs Azure vs PC/WSL handling in `docs/DOCKER_SETUP.md` (env vars in cloud, file mount only locally).
 
+## 2025-11-26
+- Marketing: Added canonical brand voice (`docs/MarketingOps/VOICE_OF_BRAND.md`), Hebrew style appendix, and marketing content prompt (`docs/MarketingOps/MARKETING_CONTENT_PROMPT_EITAN_SHAMIR.md`); linked in MarketingOps README and Projects Compendium.
+- Privacy: Fixed Fillout field mapping to live form IDs, ship mapping in API image, and cache submissions locally so details render even if Fillout is down.
+- DevEx: CORS/VITE updated for VM host; Graph health uses app creds for badge; sidecar continues hourly email/fillout sync.
+
 ## 2025-11-20
 - Infra/Backups: Added Airtable snapshot CLI (Azure Blob upload + retention GC) and scheduled GitHub Action to run every 6h or on-demand; backup plan + deploy runbook updated with steps.
 - DevEx: Documented how to run local snapshots and metadata-based `--all-tables` option (requires Airtable metadata scope).
