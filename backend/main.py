@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import json
@@ -236,6 +236,35 @@ def rag_publish(item_id: str):
     if file_path and file_path.exists():
         shutil.move(str(file_path), dest_path)
     updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path)}
+    upsert_item(updated)
+    return updated
+
+
+@app.patch("/api/rag/file/{item_id}")
+def rag_update(item_id: str, payload: dict = Body(...)):
+    """
+    Update metadata/status for an inbox item. If status is set to 'ready', we attempt to move to Library.
+    """
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    updated = {**item}
+    for key in ["client", "domain", "date", "status", "note", "tags"]:
+        if key in payload:
+            updated[key] = payload[key]
+
+    # if moving to ready and file still in inbox, move to library folder
+    if updated.get("status") == "ready":
+        hash_prefix = updated.get("hash")
+        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
+        dest_dir = LIBRARY_DIR / (updated.get("domain") or "UNKNOWN") / (updated.get("client") or "Unassigned")
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{updated.get('fileName','file')}")
+        if file_path and file_path.exists():
+            shutil.move(str(file_path), dest_path)
+        updated["libraryPath"] = str(dest_path)
+
     upsert_item(updated)
     return updated
 

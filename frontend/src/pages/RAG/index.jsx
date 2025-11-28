@@ -256,6 +256,28 @@ export default function RAG() {
     }
   }
 
+  const handleQuickEdit = async (item) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    const newClient = window.prompt('Client (leave blank to keep current)', item.client || '') ?? item.client
+    const newDomain = window.prompt('Domain (leave blank to keep current)', item.domain || '') ?? item.domain
+    const newDate = window.prompt('Date (YYYY-MM-DD)', item.date || '') ?? item.date
+    const payload = { client: newClient || item.client, domain: newDomain || item.domain, date: newDate || item.date }
+    try {
+      const res = await fetch(`${base}/api/rag/file/${item.id || item.hash}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('update failed')
+      const data = await res.json()
+      setInboxItems((prev) => prev.map((p) => ((p.id || p.hash) === (item.id || item.hash) ? { ...p, ...data } : p)))
+    } catch (err) {
+      console.error(err)
+      setInboxError('עדכון מטאדטה נכשל.')
+    }
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between gap-3">
@@ -360,7 +382,12 @@ export default function RAG() {
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Open Reviewer</button>
-                  <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Quick Edit</button>
+                  <button
+                    className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+                    onClick={() => handleQuickEdit(item)}
+                  >
+                    Quick Edit
+                  </button>
                   <button
                     className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100"
                     onClick={() => handlePublish(item)}
