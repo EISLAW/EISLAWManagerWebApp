@@ -28,12 +28,14 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent
 TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
 INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
+LIBRARY_DIR = TRANSCRIPTS_DIR / "Library"
 INDEX_PATH = TRANSCRIPTS_DIR / "index.json"
 
 
 def ensure_dirs():
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
     TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
+    LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_index():
@@ -63,6 +65,20 @@ def upsert_item(new_item):
         items.append(new_item)
     save_index(items)
     return new_item
+
+
+def remove_item(item_id: str):
+    items = load_index()
+    remaining = [i for i in items if i.get("id") != item_id]
+    save_index(remaining)
+    return len(items) != len(remaining)
+
+
+def find_item(item_id: str):
+    for itm in load_index():
+        if itm.get("id") == item_id:
+            return itm
+    return None
 
 
 @app.get("/api/auth/me")
@@ -200,6 +216,46 @@ async def rag_transcribe_doc(
         "note": "Stub transcription endpoint; replace with desktop pipeline integration.",
         "createdAt": datetime.utcnow().isoformat(),
     }
+
+
+@app.post("/api/rag/publish/{item_id}")
+def rag_publish(item_id: str):
+    """
+    Stub: moves file from Inbox to Library and marks status ready.
+    """
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    hash_prefix = item.get("hash")
+    # locate file in inbox
+    file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
+    dest_dir = LIBRARY_DIR / (item.get("domain") or "UNKNOWN") / (item.get("client") or "Unassigned")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{item.get('fileName','file')}")
+    if file_path and file_path.exists():
+        shutil.move(str(file_path), dest_path)
+    updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path)}
+    upsert_item(updated)
+    return updated
+
+
+@app.delete("/api/rag/file/{item_id}")
+def rag_delete(item_id: str):
+    """
+    Stub hard delete: removes index entry and associated files (Inbox + Library).
+    """
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    hash_prefix = item.get("hash")
+    for p in INBOX_DIR.glob(f"{hash_prefix}_*"):
+        p.unlink(missing_ok=True)
+    for p in LIBRARY_DIR.glob(f"**/{hash_prefix}_*"):
+        p.unlink(missing_ok=True)
+    removed = remove_item(item_id)
+    return {"deleted": removed, "id": item_id}
 
 
 @app.get("/api/integrations/health")

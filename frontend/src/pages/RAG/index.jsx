@@ -227,6 +227,35 @@ export default function RAG() {
   const inboxPending = useMemo(() => inboxItems.filter((i) => i.status !== 'ready'), [inboxItems])
   const inboxPublished = useMemo(() => inboxItems.filter((i) => i.status === 'ready'), [inboxItems])
 
+  const handleDelete = async (item) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    setInboxItems((prev) => prev.filter((p) => (p.id || p.hash) !== (item.id || item.hash)))
+    try {
+      await fetch(`${base}/api/rag/file/${item.id || item.hash}`, { method: 'DELETE' })
+      refreshInbox()
+    } catch (err) {
+      console.error(err)
+      refreshInbox()
+    }
+  }
+
+  const handlePublish = async (item) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/rag/publish/${item.id || item.hash}`, { method: 'POST' })
+      if (!res.ok) throw new Error('publish failed')
+      const data = await res.json()
+      setInboxItems((prev) =>
+        prev.map((p) => ((p.id || p.hash) === (item.id || item.hash) ? { ...p, ...data } : p))
+      )
+    } catch (err) {
+      console.error(err)
+      setInboxError('פרסום נכשל. בדוק את ה-API.')
+    }
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between gap-3">
@@ -332,7 +361,16 @@ export default function RAG() {
                 <div className="flex items-center gap-2 text-xs">
                   <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Open Reviewer</button>
                   <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Quick Edit</button>
-                  <button className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100">
+                  <button
+                    className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100"
+                    onClick={() => handlePublish(item)}
+                  >
+                    Publish
+                  </button>
+                  <button
+                    className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100"
+                    onClick={() => handleDelete(item)}
+                  >
                     Delete
                   </button>
                 </div>
