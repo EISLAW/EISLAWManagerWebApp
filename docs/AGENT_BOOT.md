@@ -32,3 +32,6 @@ When done this session, update:
 - `docs/WORKING_MEMORY.md` (state + pointers)
 - `docs/NEXT_ACTIONS.md` (queue)
 - `docs/Testing_Episodic_Log.md` (any incidents)
+
+Working copy note
+- Active development repo: `/mnt/c/Coding Projects/EISLAW System Clean` (clean clone of `github.com/EISLAW/EISLAWManagerWebApp`). Treat the older `EISLAW System` tree as archive/reference only; do not develop or commit there.

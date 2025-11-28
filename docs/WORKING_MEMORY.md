@@ -1,6 +1,8 @@
 <!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
 # Working Memory (Current State)
 
+Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (clean clone of `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only.
+
 Last updated: 2025-11-06
 
 Context snapshot
