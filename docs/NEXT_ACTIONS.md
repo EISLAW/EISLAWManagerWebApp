@@ -43,11 +43,11 @@ Last updated: 2025-11-04
 - Update `docs/Testing_Episodic_Log.md` after each test round.
 
 Insights RAG — near‑term tasks (per PRD v2.0 “Inbox First”)
-- Frontend inbox: drag/drop with MD5(first 1MB) hash + duplicate rejection; upload progress and statuses (Uploading/Transcribing/Ready/Error); bulk controls (Select All, Apply Date/Domain); metadata safety (client-scoped tags); Quick Edit modal; reviewer chat view with inline edits, right-click speaker rename (global), timestamped audio playback; Publish/Save triggers re-index.
-- Backend ingest: POST `/api/rag/ingest` with hash check and storage under `Transcripts/Inbox`; status polling `/api/rag/inbox`; PATCH metadata; POST `/api/rag/publish`; DELETE `/api/rag/file/{id}` removes audio + JSON/TXT + Meilisearch entry; folder scaffolding (`Transcripts/Inbox`, `Transcripts/Library/...`); persistence of MD5 hash.
-- Transcription pipeline: primary Gemini 1.5 Flash/Pro for full-context transcription; fallback chunked Whisper; background worker/task queue for async processing; status updates; hook Meilisearch index/reindex on publish and on edits.
-- Auto-extraction: date from file creation or filename; client regex against Client Registry; tag safety filtering to Global_Tags + Client_Tags.
-- QA/logging: log deletions and transcription failures; add smoke path to upload a sample audio/text file and see it reach Inbox → Reviewer → Library.
+- Frontend inbox/reviewer (current status: stubbed): drop-zone with MD5(first 1MB) dedupe, inbox list, publish/delete, quick-edit, reviewer panel with inline transcript edits. Next: add status polling UI, audio playback hooks, speaker rename, tag safety, bulk actions.
+- Backend ingest/reviewer (current status: stubbed): `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` save to `Transcripts/Inbox/Library` and manage manifest. Next: integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
+- Secrets: replace Gemini key with the new “Gemini 3” key in `secrets.local.json`, then validate model list and content generation; pick target model (e.g., `gemini-2.0-flash-001` or Gemini 3 equivalent) for transcription.
+- Auto-extraction: date from file creation/filename; client regex against registry; tag safety filtering to Global_Tags + Client_Tags.
+- QA/logging: log deletions/transcription failures; add smoke path (sample audio/text) to verify Inbox → Reviewer → Library; add tests for duplicate hash rejection and publish/delete flows.
 
 Local‑first parity tasks (up next)
 - Clients list: multi‑address email search (done).

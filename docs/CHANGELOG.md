@@ -12,6 +12,7 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - Frontend RAG: rebuilt `/rag` page with drop-zone uploader, MD5(first 1MB) hashing for dedupe, inbox/published lists, status badges, and default metadata inputs; removed the old single-file transcribe form.
 - Backend RAG (stub): added `/api/rag/ingest` (saves to `Transcripts/Inbox` with manifest, duplicate hash returns status=duplicate), `/api/rag/inbox` (reads manifest), `/api/rag/publish/{id}` (moves to Library and marks ready), and `DELETE /api/rag/file/{id}` (hard delete files + manifest). Scaffolded `backend/Transcripts/`.
 - Reviewer path: added `/api/rag/reviewer/{id}` (GET/PATCH) for transcript + metadata edits; ingest now seeds a stub transcript. Frontend adds a Reviewer panel with inline edits and save/publish.
+- Gemini check: verified the existing Gemini key reaches `models/gemini-2.0-flash-001`; `gemini-1.5-flash-latest` path 404s. Awaiting the new “Gemini 3” key to replace the current one in `secrets.local.json`.
 - Build: ran `npm ci` + `npm run build` in `frontend/` (vite build succeeds).
 
 ## 2025-11-23

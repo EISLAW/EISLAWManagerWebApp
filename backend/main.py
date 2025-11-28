@@ -6,7 +6,9 @@ from pathlib import Path
 import json
 import shutil
 from typing import Optional
+import os
 import fixtures
+import httpx
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
@@ -79,6 +81,25 @@ def find_item(item_id: str):
         if itm.get("id") == item_id:
             return itm
     return None
+
+
+def gemini_api_key():
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+    return key
+
+
+def list_gemini_models():
+    key = gemini_api_key()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.get(url)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Gemini list failed: {resp.text}")
+        data = resp.json()
+    names = [m.get("name") for m in data.get("models", []) if m.get("name", "").startswith("models/gemini")]
+    return names
 
 
 @app.get("/api/auth/me")
@@ -195,10 +216,12 @@ async def rag_ingest(
 async def rag_transcribe_doc(
     file: UploadFile = File(...),
     client: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
 ):
     """
     Lightweight mock that accepts a document upload and returns a transcript preview.
     Replace with the real desktop pipeline when wiring Gemini/ffmpeg.
+    If model is provided, we just echo it for now; integration will call Gemini.
     """
     content = await file.read()
     preview = ""
@@ -219,6 +242,7 @@ async def rag_transcribe_doc(
         "transcriptPreview": preview or "Preview unavailable (binary or empty file).",
         "note": "Stub transcription endpoint; replace with desktop pipeline integration.",
         "createdAt": datetime.utcnow().isoformat(),
+        "modelUsed": model or "not-set",
     }
 
 
@@ -276,6 +300,15 @@ def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
         updated["libraryPath"] = str(dest_path)
     upsert_item(updated)
     return updated
+
+
+@app.get("/api/rag/models")
+def rag_models():
+    """
+    List available Gemini models for selection (uses GEMINI_API_KEY).
+    """
+    models = list_gemini_models()
+    return {"models": models}
 
 
 @app.patch("/api/rag/file/{item_id}")
