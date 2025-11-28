@@ -40,13 +40,17 @@ Last updated: 2025-11-04
 - Author final production texts in `docs/security_texts.he-IL.json`.
 - Update `docs/Testing_Episodic_Log.md` after each test round.
 
-Insights RAG — near‑term tasks
-- Scaffold backend endpoints `/api/insights/search|add|review` (FastAPI stubs returning 200 + shapes per PRD).
-- Add `src/pages/Insights/` (basic route + placeholder chat UI; link from nav hidden behind env flag if desired).
-- Extend `RAG_Pilot/ingest_transcripts.py` to accept manifest from `tools/insights_index.py` (metadata: client, tags, source).
-- Implement review queue store (SharePoint JSON `System/insights_registry.json`) and sample selection per transcript.
-- Implement `speaker_realign` helper (semi‑supervised) with cache: `speaker_alignment_cache.json`.
-- Decide vector store for staging (SQLite vs. Elastic/Qdrant) and wrap with an adapter.
+Insights RAG — updated tracks (2025-11-28)
+- **Track 1: Ingest & Transcript Correction (PRD drafted)**
+  - Frontend: batch ingest table (multi-file dropzone, type autodetect, per-row domain/client/tags/date required, bulk apply, per-row status/retry).
+  - Backend: `/api/rag/ingest_batch` (batch metadata+files), chunk AV (~30m + overlap), transcribe with diarization, emit both JSON segments and TXT; store inbox items with tags/date/domain/client/type/status.
+  - Inbox/Publish: show metadata, inline edit, bulk publish via `/api/rag/publish_batch`; index tags/date/domain/client; download JSON/TXT.
+  - Transcript reviewer: fetch JSON segments; speaker dropdowns + bulk reassign, text edits; save/reindex published items.
+  - Reindex on metadata/transcript edits; enforce limits (tags<=10, tag len<=32, size caps).
+- **Track 2: Chat with AI (to be specced separately)**
+  - Assistant filters: tags multi-select, date range, domain/client; prompt library; empty/error states; mobile tab access.
+  - Backend: apply tag/date filters in `/api/rag/assistant`; ensure published-only content used.
+  - UX: clear “ingest→publish→ask” guidance; retry and loading states.
 
 Local‑first parity tasks (up next)
 - Clients list: multi‑address email search (done).

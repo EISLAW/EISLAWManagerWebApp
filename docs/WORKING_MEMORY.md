@@ -65,3 +65,6 @@ What we paused on (2025-11-01)
 - "Open Files" behavior: native protocol (`eislaw-open://`) available; API fallback works when started via launcher; verify on your desktop and roll into CI docs.
 - SharePoint mapping: resolver works; confirm library display name (`SP_DRIVE_NAME`) in prod and redeploy.
 - Next features: Airtable Tasks + Contact edit (read/write), CI deploy workflow.
+
+Other tracks (note)
+- Insights/RAG work is now tracked in `docs/NEXT_ACTIONS.md` (2025-11-28) with two streams: Track 1 (Ingest & Transcript Correction) and Track 2 (Chat with AI).
