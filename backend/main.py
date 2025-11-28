@@ -83,15 +83,15 @@ def find_item(item_id: str):
     return None
 
 
-def gemini_api_key():
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-    return key
+def require_env(key_name: str):
+    val = os.environ.get(key_name)
+    if not val:
+        raise HTTPException(status_code=500, detail=f"{key_name} not configured")
+    return val
 
 
 def list_gemini_models():
-    key = gemini_api_key()
+    key = require_env("GEMINI_API_KEY")
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
     with httpx.Client(timeout=10.0) as client:
         resp = client.get(url)
@@ -99,6 +99,35 @@ def list_gemini_models():
             raise HTTPException(status_code=502, detail=f"Gemini list failed: {resp.text}")
         data = resp.json()
     names = [m.get("name") for m in data.get("models", []) if m.get("name", "").startswith("models/gemini")]
+    return names
+
+
+def list_openai_models():
+    key = require_env("OPENAI_API_KEY")
+    url = "https://api.openai.com/v1/models"
+    headers = {"Authorization": f"Bearer {key}"}
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.get(url, headers=headers)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"OpenAI list failed: {resp.text}")
+        data = resp.json()
+    names = [m.get("id") for m in data.get("data", [])]
+    return names
+
+
+def list_anthropic_models():
+    key = require_env("ANTHROPIC_API_KEY")
+    url = "https://api.anthropic.com/v1/models"
+    headers = {
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+    }
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.get(url, headers=headers)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Anthropic list failed: {resp.text}")
+        data = resp.json()
+    names = [m.get("id") for m in data.get("models", [])]
     return names
 
 
@@ -305,10 +334,26 @@ def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
 @app.get("/api/rag/models")
 def rag_models():
     """
-    List available Gemini models for selection (uses GEMINI_API_KEY).
+    List available models across providers (requires env vars):
+    - Gemini: GEMINI_API_KEY
+    - OpenAI: OPENAI_API_KEY
+    - Anthropic: ANTHROPIC_API_KEY
     """
-    models = list_gemini_models()
-    return {"models": models}
+    providers = {}
+    errors = {}
+    try:
+        providers["gemini"] = list_gemini_models()
+    except HTTPException as e:
+        errors["gemini"] = e.detail
+    try:
+        providers["openai"] = list_openai_models()
+    except HTTPException as e:
+        errors["openai"] = e.detail
+    try:
+        providers["anthropic"] = list_anthropic_models()
+    except HTTPException as e:
+        errors["anthropic"] = e.detail
+    return {"providers": providers, "errors": errors}
 
 
 @app.patch("/api/rag/file/{item_id}")
