@@ -5,8 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import json
 import shutil
-from typing import Optional
+from typing import Optional, List
 import os
+import base64
 import fixtures
 import httpx
 
@@ -131,6 +132,45 @@ def list_anthropic_models():
     return names
 
 
+def gemini_transcribe_audio(file_path: str, model: Optional[str] = None) -> List[dict]:
+    """
+    Synchronous Gemini call for audio transcription using inlineData.
+    Returns a list of transcript segments (single segment stub).
+    """
+    key = require_env("GEMINI_API_KEY")
+    model_name = model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+    data = Path(file_path).read_bytes()
+    b64 = base64.b64encode(data).decode("utf-8")
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": "Transcribe this audio to text. Return plain text only."},
+                    {"inlineData": {"mimeType": "audio/mpeg", "data": b64}},
+                ]
+            }
+        ]
+    }
+    with httpx.Client(timeout=240.0) as client:
+        resp = client.post(url, json=payload)
+        if resp.status_code != 200:
+            raise Exception(f"Gemini transcription failed: {resp.text}")
+        data = resp.json()
+    text = ""
+    try:
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                text = parts[0].get("text", "")
+    except Exception:
+        pass
+    if not text:
+        raise Exception("No transcript returned")
+    return [{"speaker": "Speaker 1", "start": "00:00", "end": "", "text": text.strip()}]
+
+
 @app.get("/api/auth/me")
 def auth_me():
     return {"user": {"email": "eitan@eislaw.co.il", "roles": ["admin"]}}
@@ -199,6 +239,7 @@ async def rag_ingest(
     client: Optional[str] = Form(None),
     domain: Optional[str] = Form(None),
     date: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
 ):
     """
     Minimal ingest stub: saves the uploaded file to Transcripts/Inbox/{hash}_filename
@@ -221,21 +262,28 @@ async def rag_ingest(
     with target_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    transcript, note, status = [], "Saved to inbox; transcription pending", "transcribing"
+    try:
+        transcript = gemini_transcribe_audio(str(target_path), model=model)
+        note = f"Transcribed with {model or os.environ.get('GEMINI_MODEL', 'gemini-3-pro-preview')}"
+        status = "ready"
+    except Exception as exc:
+        note = f"Transcription failed: {exc}"
+        status = "error"
+
     item = {
         "id": f"rag-{uuid.uuid4().hex[:8]}",
         "fileName": safe_name,
         "hash": hash,
-        "status": "transcribing",
+        "status": status,
         "client": client,
         "domain": domain,
         "date": date,
-        "note": "Saved to inbox; transcription pending",
+        "note": note,
         "size": int(size) if size and size.isdigit() else None,
         "createdAt": datetime.utcnow().isoformat(),
-        "transcript": [
-            {"speaker": "Speaker 1", "start": "00:00", "end": "00:05", "text": "Hi, this is a stub transcript."},
-            {"speaker": "Speaker 2", "start": "00:05", "end": "00:10", "text": "Thanks, got it. We'll process soon."},
-        ],
+        "transcript": transcript,
+        "modelUsed": model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
     }
     upsert_item(item)
     return item
