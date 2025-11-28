@@ -1,7 +1,10 @@
 from datetime import datetime
 import uuid
-from fastapi import FastAPI, Query, UploadFile, File, Form
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+import json
+import shutil
 from typing import Optional
 import fixtures
 
@@ -21,6 +24,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
+INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
+INDEX_PATH = TRANSCRIPTS_DIR / "index.json"
+
+
+def ensure_dirs():
+    INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def load_index():
+    if not INDEX_PATH.exists():
+        return []
+    try:
+        return json.loads(INDEX_PATH.read_text("utf-8"))
+    except Exception:
+        return []
+
+
+def save_index(items):
+    INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    INDEX_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def upsert_item(new_item):
+    items = load_index()
+    # replace if same id or hash
+    replaced = False
+    for idx, itm in enumerate(items):
+        if itm.get("id") == new_item["id"] or (new_item.get("hash") and itm.get("hash") == new_item["hash"]):
+            items[idx] = new_item
+            replaced = True
+            break
+    if not replaced:
+        items.append(new_item)
+    save_index(items)
+    return new_item
 
 
 @app.get("/api/auth/me")
@@ -74,6 +116,59 @@ def get_privacy_submissions(top: int = 50):
 def rag_search(q: str, client: Optional[str] = None):
     # demo
     return {"query": q, "client": client, "results": []}
+
+
+@app.get("/api/rag/inbox")
+def rag_inbox():
+    ensure_dirs()
+    return {"items": load_index()}
+
+
+@app.post("/api/rag/ingest")
+async def rag_ingest(
+    file: UploadFile = File(...),
+    hash: str = Form(...),
+    filename: Optional[str] = Form(None),
+    size: Optional[str] = Form(None),
+    client: Optional[str] = Form(None),
+    domain: Optional[str] = Form(None),
+    date: Optional[str] = Form(None),
+):
+    """
+    Minimal ingest stub: saves the uploaded file to Transcripts/Inbox/{hash}_filename
+    and records a manifest entry with status=transcribing. Duplicate hashes return
+    a duplicate status without re-saving.
+    """
+    ensure_dirs()
+    existing = next((i for i in load_index() if i.get("hash") == hash), None)
+    if existing:
+        return {
+            "id": existing.get("id"),
+            "status": "duplicate",
+            "note": "File already exists",
+            "hash": hash,
+            "client": existing.get("client"),
+        }
+
+    safe_name = filename or file.filename or "upload.bin"
+    target_path = INBOX_DIR / f"{hash}_{safe_name}"
+    with target_path.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    item = {
+        "id": f"rag-{uuid.uuid4().hex[:8]}",
+        "fileName": safe_name,
+        "hash": hash,
+        "status": "transcribing",
+        "client": client,
+        "domain": domain,
+        "date": date,
+        "note": "Saved to inbox; transcription pending",
+        "size": int(size) if size and size.isdigit() else None,
+        "createdAt": datetime.utcnow().isoformat(),
+    }
+    upsert_item(item)
+    return item
 
 
 @app.post("/api/rag/transcribe_doc")
