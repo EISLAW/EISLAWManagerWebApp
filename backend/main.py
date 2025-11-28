@@ -2,6 +2,7 @@ from datetime import datetime
 import uuid
 from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pathlib import Path
 import json
 import shutil
@@ -284,6 +285,7 @@ async def rag_ingest(
         "createdAt": datetime.utcnow().isoformat(),
         "transcript": transcript,
         "modelUsed": model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
+        "filePath": str(target_path),
     }
     upsert_item(item)
     return item
@@ -340,7 +342,7 @@ def rag_publish(item_id: str):
     dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{item.get('fileName','file')}")
     if file_path and file_path.exists():
         shutil.move(str(file_path), dest_path)
-    updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path)}
+    updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path), "filePath": str(dest_path)}
     upsert_item(updated)
     return updated
 
@@ -375,6 +377,7 @@ def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
         if file_path and file_path.exists():
             shutil.move(str(file_path), dest_path)
         updated["libraryPath"] = str(dest_path)
+        updated["filePath"] = str(dest_path)
     upsert_item(updated)
     return updated
 
@@ -428,6 +431,7 @@ def rag_update(item_id: str, payload: dict = Body(...)):
         if file_path and file_path.exists():
             shutil.move(str(file_path), dest_path)
         updated["libraryPath"] = str(dest_path)
+        updated["filePath"] = str(dest_path)
 
     upsert_item(updated)
     return updated
@@ -449,6 +453,28 @@ def rag_delete(item_id: str):
         p.unlink(missing_ok=True)
     removed = remove_item(item_id)
     return {"deleted": removed, "id": item_id}
+
+
+@app.get("/api/rag/audio/{item_id}")
+def rag_audio(item_id: str):
+    """
+    Stream the audio file for a given item (Inbox or Library).
+    """
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    path = item.get("filePath")
+    if not path or not Path(path).exists():
+        # try to resolve by hash
+        hash_prefix = item.get("hash")
+        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None) or next(
+            LIBRARY_DIR.glob(f"**/{hash_prefix}_*"), None
+        )
+        if not file_path:
+            raise HTTPException(status_code=404, detail="File not found")
+        path = file_path
+    return FileResponse(path, filename=Path(path).name)
 
 
 @app.get("/api/integrations/health")

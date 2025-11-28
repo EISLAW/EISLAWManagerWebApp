@@ -97,6 +97,8 @@ export default function RAG() {
   const [bulkDate, setBulkDate] = useState('')
   const [reviewItem, setReviewItem] = useState(null)
   const [reviewSaving, setReviewSaving] = useState(false)
+  const [renameFrom, setRenameFrom] = useState('')
+  const [renameTo, setRenameTo] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -589,6 +591,45 @@ export default function RAG() {
                   onChange={(e) => setReviewItem((prev) => ({ ...prev, tags: e.target.value }))}
                   placeholder="comma separated"
                 />
+              </LabeledField>
+              <LabeledField label="Audio">
+                <audio
+                  className="w-full"
+                  controls
+                  src={`${apiBase || ''}/api/rag/audio/${reviewItem.id}`}
+                >
+                  Your browser does not support audio playback.
+                </audio>
+              </LabeledField>
+              <LabeledField label="Rename speaker (global)">
+                <div className="flex gap-2">
+                  <input
+                    className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                    placeholder="From"
+                    value={renameFrom}
+                    onChange={(e) => setRenameFrom(e.target.value)}
+                  />
+                  <input
+                    className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                    placeholder="To"
+                    value={renameTo}
+                    onChange={(e) => setRenameTo(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 bg-slate-100 rounded text-xs"
+                    onClick={() => {
+                      if (!renameFrom || !renameTo) return
+                      const next = (reviewItem.transcript || []).map((seg) => ({
+                        ...seg,
+                        speaker: seg.speaker === renameFrom ? renameTo : seg.speaker,
+                      }))
+                      setReviewItem((prev) => ({ ...prev, transcript: next }))
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
               </LabeledField>
             </div>
             <div className="space-y-3">
