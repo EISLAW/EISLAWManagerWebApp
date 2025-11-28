@@ -1,6 +1,8 @@
 EISLAW Insights RAG — Product Definition (PRD)
 ==============================================
 
+> Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only—do not develop or commit there.
+
 Purpose
 
 Extend the existing RAG (Retrieval‑Augmented Generation) layer of the EISLAW System from a basic transcript retrieval utility into a full Insight Engine — a tool designed to extract human, emotional, and linguistic insights from client conversations, emails, and communications. This module will also serve as the knowledge substrate for marketing and storytelling prompts across the firm’s AI‑driven workflows.
@@ -166,4 +168,3 @@ Notes / Open Questions
 - Where to persist the review queue state — SharePoint JSON per client vs. central `System/insights_registry.json`?
 - Chat model/provider standardization (match LLM policy in `secrets.local.json`)?
 - Do we ingest personal transcripts separately (private namespace) with opt‑in linking to clients?
-

@@ -1,6 +1,8 @@
 Projects Compendium (C:\Coding Projects)
 ========================================
 
+> Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only—do not develop or commit there.
+
 Purpose
 - One place to navigate all active projects and their key documents, grouped by project/module. This is a read‑only map — no content removed, only linked.
 

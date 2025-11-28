@@ -1,6 +1,8 @@
 <!-- Project: SystemCore | Full Context: docs/System_Definition.md -->
 # INDEX
 
+> Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only—do not develop or commit there.
+
 Master Navigation:
 - System Definition: docs/System_Definition.md
 - Function Map: docs/System_Reference.md
