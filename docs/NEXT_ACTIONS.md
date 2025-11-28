@@ -42,13 +42,12 @@ Last updated: 2025-11-04
 - Author final production texts in `docs/security_texts.he-IL.json`.
 - Update `docs/Testing_Episodic_Log.md` after each test round.
 
-Insights RAG — near‑term tasks
-- Scaffold backend endpoints `/api/insights/search|add|review` (FastAPI stubs returning 200 + shapes per PRD).
-- Add `src/pages/Insights/` (basic route + placeholder chat UI; link from nav hidden behind env flag if desired).
-- Extend `RAG_Pilot/ingest_transcripts.py` to accept manifest from `tools/insights_index.py` (metadata: client, tags, source).
-- Implement review queue store (SharePoint JSON `System/insights_registry.json`) and sample selection per transcript.
-- Implement `speaker_realign` helper (semi‑supervised) with cache: `speaker_alignment_cache.json`.
-- Decide vector store for staging (SQLite vs. Elastic/Qdrant) and wrap with an adapter.
+Insights RAG — near‑term tasks (per PRD v2.0 “Inbox First”)
+- Frontend inbox: drag/drop with MD5(first 1MB) hash + duplicate rejection; upload progress and statuses (Uploading/Transcribing/Ready/Error); bulk controls (Select All, Apply Date/Domain); metadata safety (client-scoped tags); Quick Edit modal; reviewer chat view with inline edits, right-click speaker rename (global), timestamped audio playback; Publish/Save triggers re-index.
+- Backend ingest: POST `/api/rag/ingest` with hash check and storage under `Transcripts/Inbox`; status polling `/api/rag/inbox`; PATCH metadata; POST `/api/rag/publish`; DELETE `/api/rag/file/{id}` removes audio + JSON/TXT + Meilisearch entry; folder scaffolding (`Transcripts/Inbox`, `Transcripts/Library/...`); persistence of MD5 hash.
+- Transcription pipeline: primary Gemini 1.5 Flash/Pro for full-context transcription; fallback chunked Whisper; background worker/task queue for async processing; status updates; hook Meilisearch index/reindex on publish and on edits.
+- Auto-extraction: date from file creation or filename; client regex against Client Registry; tag safety filtering to Global_Tags + Client_Tags.
+- QA/logging: log deletions and transcription failures; add smoke path to upload a sample audio/text file and see it reach Inbox → Reviewer → Library.
 
 Local‑first parity tasks (up next)
 - Clients list: multi‑address email search (done).

@@ -3,6 +3,68 @@ EISLAW Insights RAG — Product Definition (PRD)
 
 > Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only—do not develop or commit there.
 
+RAG Ingest & Transcript Pipeline — PRD v2.0 (Ready for Dev)
+-----------------------------------------------------------
+
+Status: ready for development. This supersedes earlier ingest/staging notes in this document and should be treated as the source of truth for ingest + transcript review.
+
+Core principle: “Inbox First” — upload fast, process in background, review metadata later.
+
+1) Workflow
+- Drop & Go: user drags files, front-end calculates hash (MD5 of first 1MB), checks duplicates, uploads immediately if unique.
+- Processing (background): server handles transcription (prefer Gemini 1.5 Flash/Pro end-to-end; fallback chunking + Whisper).
+- Inbox (staging): files surface here with “Red Badges” for missing metadata.
+- Review (quality): user opens file → visual “script” editor → fixes speakers → fills tags.
+- Publish: user clicks “Index” → file moves to Library.
+
+2) Functional requirements
+
+A. Ingestion (“robust” upload)
+- Duplicate check: front-end computes MD5 of first 1MB; if hash matches existing DB hash, reject with “File already exists.”
+- Auto-extraction:
+  - Date: extract from file creation time or filename (e.g., 2024-11-28...).
+  - Client: regex-match filename against Client Registry list.
+  - Model: use Gemini 1.5 Flash/Pro when possible for transcription (1M+ context to keep speaker continuity).
+  - Fallback: if Gemini fails, fall back to chunking + Whisper.
+
+B. Inbox (metadata staging)
+- Status indicators: Uploading (X%), Transcribing, Ready (Draft), Error.
+- Tag safety: when “Client” is selected, filter tags to Global_Tags + This_Client_Tags.
+- Bulk actions: “Apply Date to All,” “Apply Domain to All.”
+
+C. Transcript reviewer (“WhatsApp” view)
+- Layout: chat-style bubbles (not a table).
+- Audio sync: clicking a text bubble plays that timestamp range (Start -> End).
+- Global rename: right-click “Speaker 1” → “Rename to Eitan” → applies across document.
+- Editor: inline text editing; “Save” re-indexes if already published.
+
+D. Storage & maintenance
+- File structure:
+  - `Transcripts/Inbox/{hash}_filename.ext`
+  - `Transcripts/Library/{Domain}/{Client}/{Date}_{filename}.txt`
+- Hard delete: `DELETE /api/rag/file/{id}` must remove Meilisearch index entry, JSON/TXT files, and original audio.
+
+Final UI layouts (summary)
+- Inbox (batch upload):
+  - Header “RAG PIPELINE [Drop Files Here to Upload]”.
+  - Bulk controls: Select All, Bulk Actions, Refresh.
+  - Inbox list shows filename, status (Ready for Review, Transcribing %, Duplicate with link), metadata badges, and actions (Open Reviewer, Quick Edit, Delete).
+  - Published Library list (latest items, editable).
+- Transcript reviewer (editor):
+  - Left: metadata form (Date, Domain, Client, Tags) + actions (Play Audio at timestamp, Save Changes, Publish to RAG).
+  - Right: chat bubbles with speaker labels and timestamps; inline editable text; right-click to rename speaker globally.
+
+Execution plan (initial track)
+- Backend: install FastAPI + python-multipart; create `Transcripts/Inbox` folder; implement POST `/ingest` with hash check and storage layout above.
+- UI: build Inbox list component first to allow manual drop tests; wire statuses and actions.
+- Transcription: integrate Gemini 1.5 Flash/Pro for long-form; fallback to chunked Whisper.
+- Deletion: implement hard delete endpoint as specified and ensure Meilisearch cleanup.
+
+Dev task breakdown (to track in tickets)
+- Frontend: drop-zone + MD5(first 1MB) hashing; duplicate rejection; upload progress; statuses (Uploading, Transcribing, Ready, Error); inbox table/cards matching layout; bulk actions (Select All, Apply Date/Domain); metadata safety (client-scoped tags); Quick Edit modal; Reviewer chat view with inline edits, right-click speaker rename (global), timestamped audio playback; Publish/Save actions that trigger re-index.
+- Backend API: POST `/api/rag/ingest` (hash check, store in `Transcripts/Inbox`, enqueue transcription job), GET `/api/rag/inbox` (list with statuses), PATCH metadata, POST `/api/rag/publish`, DELETE `/api/rag/file/{id}` (hard delete + Meilisearch cleanup), transcription service using Gemini 1.5 Flash/Pro with fallback to chunked Whisper, status updates, MD5 hash persistence.
+- Storage/infra: ensure folder scaffolding (`Transcripts/Inbox`, `Transcripts/Library/...`), configure Meilisearch client, add Gemini and Whisper credentials/envs, add python-multipart dependency, ensure background worker or task queue for transcription, log/audit for deletions.
+
 Purpose
 
 Extend the existing RAG (Retrieval‑Augmented Generation) layer of the EISLAW System from a basic transcript retrieval utility into a full Insight Engine — a tool designed to extract human, emotional, and linguistic insights from client conversations, emails, and communications. This module will also serve as the knowledge substrate for marketing and storytelling prompts across the firm’s AI‑driven workflows.

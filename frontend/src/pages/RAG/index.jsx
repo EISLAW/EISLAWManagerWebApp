@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { detectApiBase, getStoredApiBase } from '../../utils/apiBase.js'
+import { md5FirstMb } from '../../lib/md5.js'
 
 function SectionCard({ title, subtitle, helper, children, footer }) {
   return (
@@ -33,6 +34,24 @@ function StatusPill({ tone = 'info', children }) {
     danger: 'bg-rose-50 text-rose-700 border border-rose-100',
   }
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneMap[tone]}`}>{children}</span>
+}
+
+function StatusBadge({ status }) {
+  switch (status) {
+    case 'uploading':
+      return <StatusPill tone="info">Uploading…</StatusPill>
+    case 'transcribing':
+      return <StatusPill tone="warning">Transcribing…</StatusPill>
+    case 'ready':
+    case 'draft':
+      return <StatusPill tone="success">Ready for review</StatusPill>
+    case 'error':
+      return <StatusPill tone="danger">Error</StatusPill>
+    case 'duplicate':
+      return <StatusPill tone="danger">Duplicate</StatusPill>
+    default:
+      return <StatusPill tone="info">Pending</StatusPill>
+  }
 }
 
 function SearchResultCard({ result }) {
@@ -70,11 +89,12 @@ export default function RAG() {
   const [searchStatus, setSearchStatus] = useState('idle')
   const [searchError, setSearchError] = useState('')
 
-  const [docClient, setDocClient] = useState('')
-  const [docFile, setDocFile] = useState(null)
-  const [transcribeStatus, setTranscribeStatus] = useState('idle')
-  const [transcribeError, setTranscribeError] = useState('')
-  const [transcribeResult, setTranscribeResult] = useState(null)
+  const [inboxItems, setInboxItems] = useState([])
+  const [inboxStatus, setInboxStatus] = useState('idle')
+  const [inboxError, setInboxError] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [bulkDomain, setBulkDomain] = useState('')
+  const [bulkDate, setBulkDate] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -82,6 +102,9 @@ export default function RAG() {
       if (detected) setApiBase(detected)
     }
     init()
+    refreshInbox()
+    const t = setInterval(refreshInbox, 15000)
+    return () => clearInterval(t)
   }, [ENV_API])
 
   const ensureApiBase = async () => {
@@ -120,47 +143,221 @@ export default function RAG() {
     }
   }
 
-  const handleTranscribe = async (e) => {
-    e.preventDefault()
-    setTranscribeStatus('loading')
-    setTranscribeError('')
-    setTranscribeResult(null)
-    if (!docFile) {
-      setTranscribeStatus('idle')
-      setTranscribeError('בחר קובץ לפני השליחה.')
-      return
-    }
+  const refreshInbox = async () => {
+    setInboxStatus('loading')
+    setInboxError('')
     const base = await ensureApiBase()
     if (!base) {
-      setTranscribeStatus('idle')
-      setTranscribeError('השרת לא זמין (בדוק /health).')
+      setInboxStatus('idle')
+      setInboxError('השרת לא זמין (בדוק /health).')
       return
     }
     try {
-      const form = new FormData()
-      form.append('file', docFile)
-      if (docClient.trim()) form.append('client', docClient.trim())
-      const res = await fetch(`${base}/api/rag/transcribe_doc`, { method: 'POST', body: form })
+      const res = await fetch(`${base}/api/rag/inbox`, { credentials: 'omit' })
       if (!res.ok) throw new Error(`Status ${res.status}`)
       const data = await res.json()
-      setTranscribeResult(data)
-      setTranscribeStatus('ready')
+      const items = Array.isArray(data.items) ? data.items : []
+      setInboxItems(items.map((item) => ({ ...item, status: item.status || 'ready' })))
+      setInboxStatus('ready')
     } catch (err) {
-      setTranscribeStatus('idle')
-      setTranscribeError('העלאה נכשלה. ודא שהנתיב זמין.')
+      setInboxStatus('idle')
+      setInboxError('טעינת האינבוקס נכשלה. ודא שה-API פועל.')
       console.error(err)
     }
   }
+
+  const handleDrop = async (fileList) => {
+    if (!fileList || !fileList.length) return
+    setUploading(true)
+    const base = await ensureApiBase()
+    if (!base) {
+      setInboxError('השרת לא זמין (בדוק /health).')
+      setUploading(false)
+      return
+    }
+    for (const file of fileList) {
+      const hash = await md5FirstMb(file)
+      const exists = inboxItems.find((it) => it.hash === hash)
+      if (exists) {
+        setInboxItems((prev) => [
+          { fileName: file.name, hash, status: 'duplicate', note: 'File already exists', size: file.size },
+          ...prev,
+        ])
+        continue
+      }
+      const tempId = `${Date.now()}-${file.name}`
+      setInboxItems((prev) => [
+        { id: tempId, fileName: file.name, hash, status: 'uploading', size: file.size },
+        ...prev,
+      ])
+      try {
+        const form = new FormData()
+        form.append('file', file)
+        form.append('hash', hash)
+        form.append('filename', file.name)
+        form.append('size', String(file.size))
+        if (bulkDate) form.append('date', bulkDate)
+        if (bulkDomain) form.append('domain', bulkDomain)
+        const res = await fetch(`${base}/api/rag/ingest`, { method: 'POST', body: form })
+        if (!res.ok) throw new Error(`Status ${res.status}`)
+        const data = await res.json()
+        setInboxItems((prev) =>
+          prev.map((item) =>
+            item.id === tempId
+              ? {
+                  ...item,
+                  status: data.status || 'transcribing',
+                  id: data.id || tempId,
+                  note: data.note,
+                  client: data.client || item.client,
+                }
+              : item
+          )
+        )
+      } catch (err) {
+        setInboxItems((prev) =>
+          prev.map((item) => (item.id === tempId ? { ...item, status: 'error', note: 'Upload failed' } : item))
+        )
+        console.error(err)
+      }
+    }
+    setUploading(false)
+  }
+
+  const inboxPending = useMemo(() => inboxItems.filter((i) => i.status !== 'ready'), [inboxItems])
+  const inboxPublished = useMemo(() => inboxItems.filter((i) => i.status === 'ready'), [inboxItems])
 
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Insights / RAG</p>
-          <h1 className="heading">חיפוש וקליטת תמלולים</h1>
+          <h1 className="heading">RAG Pipeline — Inbox First</h1>
         </div>
         {apiBase && <StatusPill>API: {apiBase}</StatusPill>}
       </div>
+
+      <SectionCard
+        title="RAG PIPELINE — Drop Files Here to Upload"
+        subtitle="Upload first, process in background, review metadata later."
+        helper="חישוב MD5 על ‎1MB‎ ראשונים, דחיית כפילויות, סטטוסי עיבוד."
+        footer={
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Inbox status: {inboxStatus === 'loading' ? 'Loading…' : 'Live'}</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={refreshInbox}
+                className="px-3 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs"
+                disabled={inboxStatus === 'loading'}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <div
+          className="border-2 border-dashed border-petrol/40 rounded-xl bg-white px-4 py-6 text-center space-y-3"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault()
+            handleDrop(Array.from(e.dataTransfer.files || []))
+          }}
+        >
+          <div className="text-sm text-slate-700">Drop files here or choose manually</div>
+          <input
+            type="file"
+            multiple
+            className="block mx-auto text-sm text-slate-600"
+            onChange={(e) => handleDrop(Array.from(e.target.files || []))}
+            accept=".txt,.md,.pdf,.docx,.doc,.rtf,.m4a,.mp3,.wav,.mp4"
+          />
+          <div className="flex flex-wrap justify-center gap-3 text-xs text-slate-500">
+            <LabeledField label="Bulk date (optional)">
+              <input
+                type="date"
+                value={bulkDate}
+                onChange={(e) => setBulkDate(e.target.value)}
+                className="border border-slate-200 rounded px-2 py-1 text-sm"
+              />
+            </LabeledField>
+            <LabeledField label="Bulk domain (optional)">
+              <input
+                type="text"
+                value={bulkDomain}
+                onChange={(e) => setBulkDomain(e.target.value)}
+                className="border border-slate-200 rounded px-2 py-1 text-sm"
+                placeholder="CLIENT_WORK / INTERNAL…"
+              />
+            </LabeledField>
+          </div>
+          {uploading && <div className="text-xs text-petrol">Uploading…</div>}
+          {inboxError && (
+            <div className="flex items-center justify-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+              {inboxError}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-slate-800">INBOX (pending)</div>
+            <div className="text-xs text-slate-500">Defaults for new uploads: date/domain</div>
+          </div>
+          <div className="space-y-2">
+            {inboxPending.length === 0 && (
+              <div className="border border-dashed border-slate-200 rounded-lg p-3 text-sm text-slate-500">
+                אין קבצים ממתינים כרגע.
+              </div>
+            )}
+            {inboxPending.map((item) => (
+              <article key={item.id || item.hash || item.fileName} className="flex items-center gap-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                <input type="checkbox" className="accent-petrol" />
+                <div className="flex-1">
+                  <div className="font-medium text-slate-800 flex items-center gap-2">
+                    <span role="img" aria-label="file">
+                      📄
+                    </span>
+                    {item.fileName || item.name || 'ללא שם'}
+                  </div>
+                  <div className="text-xs text-slate-500 flex flex-wrap gap-2">
+                    <StatusBadge status={item.status} />
+                    {item.note && <span>{item.note}</span>}
+                    {item.client && <span>Client: {item.client}</span>}
+                    {item.domain && <span>Domain: {item.domain}</span>}
+                    {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Open Reviewer</button>
+                  <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Quick Edit</button>
+                  <button className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100">
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="pt-2 border-t border-slate-200 space-y-2">
+            <div className="text-sm font-semibold text-slate-800">PUBLISHED LIBRARY (latest)</div>
+            {inboxPublished.length === 0 && (
+              <div className="text-xs text-slate-500">לא נמצאו פריטים שפורסמו.</div>
+            )}
+            {inboxPublished.map((item) => (
+              <div key={item.id || item.hash} className="flex items-center justify-between text-sm border border-slate-200 rounded-lg px-3 py-2">
+                <div>
+                  {item.date ? `${item.date}: ` : ''}
+                  {item.fileName || item.name}{' '}
+                  {item.domain && <span className="text-slate-500">({item.domain})</span>}
+                </div>
+                <button className="text-xs text-petrol underline">Edit</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="חיפוש בתמלולים"
@@ -223,68 +420,6 @@ export default function RAG() {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="קליטת מסמך / תמלול"
-        subtitle="שמור תמלול מהדסקטופ ורשום אותו ל-RAG"
-        helper="הוספת שם לקוח מסייעת לקשר את התוצאה לכרטיס הלקוח."
-        footer={
-          transcribeResult ? (
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>
-                עודכן:{' '}
-                {transcribeResult.createdAt ? new Date(transcribeResult.createdAt).toLocaleString('he-IL') : '—'}
-              </span>
-              <StatusPill tone="success">הועלה</StatusPill>
-            </div>
-          ) : (
-            <div className="text-xs text-slate-500">מומלץ לשמור קובץ עד ‎10MB‎ (TXT, PDF, DOCX, אודיו).</div>
-          )
-        }
-      >
-        <form className="space-y-4" onSubmit={handleTranscribe}>
-          <LabeledField label="שם לקוח (אופציונלי)" helper="יופיע בתוך התוצאה ויקל על סינון מאוחר יותר">
-            <input
-              dir="auto"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-              placeholder="לדוגמה: יעל כהן / Unicell"
-              value={docClient}
-              onChange={(e) => setDocClient(e.target.value)}
-            />
-          </LabeledField>
-          <LabeledField label="בחר קובץ" helper="מותר: ‎.txt .docx .pdf .m4a .mp3 .wav (עד ‎10MB‎)">
-            <input
-              type="file"
-              className="w-full border border-dashed border-petrol/40 rounded-lg px-3 py-5 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-petrol/10 file:px-4 file:py-2 file:text-petrol"
-              accept=".txt,.md,.pdf,.docx,.doc,.rtf,.m4a,.mp3,.wav"
-              onChange={(e) => setDocFile(e.target.files?.[0] || null)}
-            />
-          </LabeledField>
-          <button
-            type="submit"
-            className="px-5 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={transcribeStatus === 'loading'}
-          >
-            {transcribeStatus === 'loading' ? 'מעלה…' : 'העלה ושמור ל-RAG'}
-          </button>
-        </form>
-        {transcribeError && (
-          <div className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2" role="alert">
-            {transcribeError}
-          </div>
-        )}
-        {transcribeResult && (
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-sm text-slate-700">
-            <div className="flex items-center justify-between">
-              <span>קובץ: {transcribeResult.fileName}</span>
-              <StatusPill tone="info">{transcribeResult.status}</StatusPill>
-            </div>
-            <div>לקוח: {transcribeResult.client || 'לא הוזן'}</div>
-            <div className="text-xs text-slate-500">תצוגה מקדימה:</div>
-            <p className="text-sm leading-relaxed">{transcribeResult.transcriptPreview}</p>
-            {transcribeResult.note && <div className="text-xs text-slate-500">{transcribeResult.note}</div>}
-          </div>
-        )}
-      </SectionCard>
     </div>
   )
 }
