@@ -95,6 +95,8 @@ export default function RAG() {
   const [uploading, setUploading] = useState(false)
   const [bulkDomain, setBulkDomain] = useState('')
   const [bulkDate, setBulkDate] = useState('')
+  const [reviewItem, setReviewItem] = useState(null)
+  const [reviewSaving, setReviewSaving] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -278,6 +280,46 @@ export default function RAG() {
     }
   }
 
+  const openReviewer = async (item) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/rag/reviewer/${item.id || item.hash}`)
+      if (!res.ok) throw new Error('reviewer fetch failed')
+      const data = await res.json()
+      setReviewItem({
+        ...data,
+        transcript: Array.isArray(data.transcript) ? data.transcript : [],
+      })
+    } catch (err) {
+      console.error(err)
+      setInboxError('טעינת סוקר נכשלה.')
+    }
+  }
+
+  const saveReviewer = async () => {
+    if (!reviewItem) return
+    const base = await ensureApiBase()
+    if (!base) return
+    setReviewSaving(true)
+    try {
+      const res = await fetch(`${base}/api/rag/reviewer/${reviewItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewItem),
+      })
+      if (!res.ok) throw new Error('save failed')
+      const data = await res.json()
+      setReviewItem(data)
+      refreshInbox()
+    } catch (err) {
+      console.error(err)
+      setInboxError('שמירת שינויים נכשלה.')
+    } finally {
+      setReviewSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between gap-3">
@@ -381,7 +423,12 @@ export default function RAG() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <button className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">Open Reviewer</button>
+                  <button
+                    className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+                    onClick={() => openReviewer(item)}
+                  >
+                    Open Reviewer
+                  </button>
                   <button
                     className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
                     onClick={() => handleQuickEdit(item)}
@@ -485,6 +532,114 @@ export default function RAG() {
         </div>
       </SectionCard>
 
+      {reviewItem && (
+        <SectionCard
+          title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
+          subtitle="Chat-style transcript preview (stub)"
+          footer={
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Status: {reviewItem.status || 'draft'}</span>
+              <div className="flex gap-2">
+                <button
+                  className="px-3 py-1 rounded bg-petrol text-white text-xs"
+                  onClick={() => {
+                    setReviewItem((prev) => ({ ...prev, status: 'ready' }))
+                    saveReviewer()
+                  }}
+                  disabled={reviewSaving}
+                >
+                  {reviewSaving ? 'Saving…' : 'Save & Publish'}
+                </button>
+                <button className="px-3 py-1 rounded bg-slate-100 text-xs" onClick={() => setReviewItem(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <div className="grid md:grid-cols-[280px_1fr] gap-4">
+            <div className="space-y-2">
+              <LabeledField label="Date">
+                <input
+                  type="date"
+                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                  value={reviewItem.date || ''}
+                  onChange={(e) => setReviewItem((prev) => ({ ...prev, date: e.target.value }))}
+                />
+              </LabeledField>
+              <LabeledField label="Domain">
+                <input
+                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                  value={reviewItem.domain || ''}
+                  onChange={(e) => setReviewItem((prev) => ({ ...prev, domain: e.target.value }))}
+                  placeholder="CLIENT_WORK / INTERNAL"
+                />
+              </LabeledField>
+              <LabeledField label="Client">
+                <input
+                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                  value={reviewItem.client || ''}
+                  onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
+                />
+              </LabeledField>
+              <LabeledField label="Tags">
+                <input
+                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                  value={reviewItem.tags || ''}
+                  onChange={(e) => setReviewItem((prev) => ({ ...prev, tags: e.target.value }))}
+                  placeholder="comma separated"
+                />
+              </LabeledField>
+            </div>
+            <div className="space-y-3">
+              {(reviewItem.transcript || []).map((seg, idx) => (
+                <div key={idx} className="border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <input
+                      className="border border-slate-200 rounded px-2 py-1 text-xs"
+                      value={seg.speaker || ''}
+                      onChange={(e) => {
+                        const next = [...reviewItem.transcript]
+                        next[idx] = { ...next[idx], speaker: e.target.value }
+                        setReviewItem((prev) => ({ ...prev, transcript: next }))
+                      }}
+                    />
+                    <input
+                      className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
+                      value={seg.start || ''}
+                      onChange={(e) => {
+                        const next = [...reviewItem.transcript]
+                        next[idx] = { ...next[idx], start: e.target.value }
+                        setReviewItem((prev) => ({ ...prev, transcript: next }))
+                      }}
+                      placeholder="00:00"
+                    />
+                    <input
+                      className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
+                      value={seg.end || ''}
+                      onChange={(e) => {
+                        const next = [...reviewItem.transcript]
+                        next[idx] = { ...next[idx], end: e.target.value }
+                        setReviewItem((prev) => ({ ...prev, transcript: next }))
+                      }}
+                      placeholder="00:05"
+                    />
+                  </div>
+                  <textarea
+                    className="w-full border border-slate-200 rounded px-2 py-2 text-sm"
+                    value={seg.text || ''}
+                    onChange={(e) => {
+                      const next = [...reviewItem.transcript]
+                      next[idx] = { ...next[idx], text: e.target.value }
+                      setReviewItem((prev) => ({ ...prev, transcript: next }))
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+      )}
     </div>
   )
 }

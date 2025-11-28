@@ -11,6 +11,7 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - RAG ingest PRD: updated `docs/INSIGHTS_RAG_PRD.md` with v2.0 “Inbox First” flow (MD5 dedupe, Gemini→Whisper fallback, inbox statuses, reviewer chat view, hard delete).
 - Frontend RAG: rebuilt `/rag` page with drop-zone uploader, MD5(first 1MB) hashing for dedupe, inbox/published lists, status badges, and default metadata inputs; removed the old single-file transcribe form.
 - Backend RAG (stub): added `/api/rag/ingest` (saves to `Transcripts/Inbox` with manifest, duplicate hash returns status=duplicate), `/api/rag/inbox` (reads manifest), `/api/rag/publish/{id}` (moves to Library and marks ready), and `DELETE /api/rag/file/{id}` (hard delete files + manifest). Scaffolded `backend/Transcripts/`.
+- Reviewer path: added `/api/rag/reviewer/{id}` (GET/PATCH) for transcript + metadata edits; ingest now seeds a stub transcript. Frontend adds a Reviewer panel with inline edits and save/publish.
 - Build: ran `npm ci` + `npm run build` in `frontend/` (vite build succeeds).
 
 ## 2025-11-23

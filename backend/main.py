@@ -182,6 +182,10 @@ async def rag_ingest(
         "note": "Saved to inbox; transcription pending",
         "size": int(size) if size and size.isdigit() else None,
         "createdAt": datetime.utcnow().isoformat(),
+        "transcript": [
+            {"speaker": "Speaker 1", "start": "00:00", "end": "00:05", "text": "Hi, this is a stub transcript."},
+            {"speaker": "Speaker 2", "start": "00:05", "end": "00:10", "text": "Thanks, got it. We'll process soon."},
+        ],
     }
     upsert_item(item)
     return item
@@ -236,6 +240,40 @@ def rag_publish(item_id: str):
     if file_path and file_path.exists():
         shutil.move(str(file_path), dest_path)
     updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path)}
+    upsert_item(updated)
+    return updated
+
+
+@app.get("/api/rag/reviewer/{item_id}")
+def rag_reviewer_get(item_id: str):
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    return item
+
+
+@app.patch("/api/rag/reviewer/{item_id}")
+def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
+    ensure_dirs()
+    item = find_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    updated = {**item}
+    if "transcript" in payload:
+        updated["transcript"] = payload["transcript"]
+    for key in ["client", "domain", "date", "tags", "note", "status"]:
+        if key in payload:
+            updated[key] = payload[key]
+    if updated.get("status") == "ready":
+        hash_prefix = updated.get("hash")
+        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
+        dest_dir = LIBRARY_DIR / (updated.get("domain") or "UNKNOWN") / (updated.get("client") or "Unassigned")
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{updated.get('fileName','file')}")
+        if file_path and file_path.exists():
+            shutil.move(str(file_path), dest_path)
+        updated["libraryPath"] = str(dest_path)
     upsert_item(updated)
     return updated
 
