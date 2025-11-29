@@ -533,3 +533,8 @@ def rag_assistant(payload: dict = Body(default=None)):
 def integrations_health():
     # simple summary reusing local knowledge
     return {"airtable": True, "graph": True, "azure": True}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": app.version if hasattr(app, "version") else "dev"}
