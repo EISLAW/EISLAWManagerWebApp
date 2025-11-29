@@ -30,6 +30,11 @@ export async function detectApiBase(preferred = []) {
     const norm = normalize(value)
     if (norm && !unique.includes(norm)) unique.push(norm)
   }
+  // Preferred fixed ports first
+  push('http://127.0.0.1:8080')
+  push('http://localhost:8080')
+  push('http://127.0.0.1:3000')
+  push('http://localhost:3000')
   preferred.forEach(push)
   push(import.meta.env.VITE_API_URL)
   push(getStoredApiBase())
