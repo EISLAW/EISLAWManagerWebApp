@@ -28,6 +28,20 @@ How to use
 
 Entries
 
+## 2025-11-29 - RAG UI regressions (tabs/layout) and version visibility gaps
+- Context: RAG assistant/ingest work was done on the archived tree; when switching to the clean repo the assistant tab and sidebar layout were missing, causing several hours of rework. Also, version/env badges were not visible in the new layout, leading to confusion between local/dev/staging.
+- Symptoms:
+  - `/rag` loaded without the expected assistant form/tab and without the right-side mini-nav; main app lacked the sidebar nav seen in prior screenshots.
+  - Dev server ports kept auto-bumping (5180→5181→5182→5183), and the missing env/version badges made it unclear which build was running.
+- Fixes applied:
+  - Ported the legacy assistant UI and sidebar from the archived repo into the clean repo (`frontend/src/App.jsx`, `frontend/src/pages/RAG/index.jsx`), restoring tabs (“קליטה ואישור” / “AI / עוזר”), assistant form, and sidebar nav.
+  - Added API link/badge back into the header.
+  - Added an assistant stub endpoint `/api/rag/assistant` to serve the form.
+- Mitigation/next time:
+  - Confirm working tree and repo before UI work; avoid editing the archived tree.
+  - Keep env/version badges visible on all layouts to distinguish local/dev/staging.
+  - Pin dev server port when possible to avoid confusion from auto-bumped ports.
+
 ## 2025-11-12 - Client email sync trigger + UI button
 - Scope: Backend endpoint to invoke the Graph ingestion worker per client + Client Card Emails tab CTA so ops can pull new mail for סיון בנימיני (and others) without leaving the app.
 - Changes:
