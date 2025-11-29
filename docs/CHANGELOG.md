@@ -19,6 +19,8 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - Backend RAG: integrated Gemini transcription in ingest (configurable model), added `/api/rag/models` (lists Gemini/OpenAI/Anthropic via env keys), audio streaming `/api/rag/audio/{id}`, and ensured library moves keep file paths.
 - Frontend RAG: added tabbed split “קליטה ואישור” (ingest/reviewer) and “AI / עוזר” (assistant form using search flow); reviewer now includes audio playback and global speaker rename.
 - DevEx/Detect: added `/health` endpoint to backend to let frontend auto-detect API base (fixes empty Clients list when health probe failed).
+- DevEx/Ports: pinned dev ports (frontend 3000, backend 8080, dev tools 900x) and documented in `docs/DEV_PORTS.md`; frontend dev script uses port 3000, backend CORS updated for 3000, API auto-detect prefers fixed ports.
+- RAG UI: “Edit” in Published Library now opens the reviewer, and a Playwright check script (`tools/playwright_rag_edit_check.mjs`) verifies the flow end-to-end.
 
 ## 2025-11-23
 - Infra/Dev VM: Provisioned `eislaw-dev-vm` (Ubuntu 22.04, israelcentral) and enabled hot-reload stack via `docker-compose.dev.yml` (API 8799, Vite frontend 5173, Meili 7700). NSG updated to allow inbound 5173/8799 for easy browser access; SSH key stored at `EISLAWManagerWebApp/eislaw-dev-vm_key.pem`. Usage: `docker compose -f docker-compose.dev.yml up --build -d` in `~/EISLAWManagerWebApp`; tunnel if ports are blocked.

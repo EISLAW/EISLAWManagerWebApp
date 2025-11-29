@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { detectApiBase, getStoredApiBase } from '../../utils/apiBase.js'
 import { md5FirstMb } from '../../lib/md5.js'
 
-function SectionCard({ title, subtitle, helper, children, footer }) {
+const SectionCard = React.forwardRef(function SectionCard({ title, subtitle, helper, children, footer }, ref) {
   return (
-    <section className="card space-y-4">
+    <section ref={ref} className="card space-y-4">
       <header className="space-y-1">
         <h2 className="text-lg font-semibold text-petrol">{title}</h2>
         {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
@@ -14,7 +14,7 @@ function SectionCard({ title, subtitle, helper, children, footer }) {
       {footer && <footer className="pt-2 border-t border-slate-200">{footer}</footer>}
     </section>
   )
-}
+})
 
 function LabeledField({ label, helper, children }) {
   return (
@@ -341,6 +341,15 @@ export default function RAG() {
     }
   }
 
+  const handleEditPublished = async (item) => {
+    setActiveTab('ingest')
+    setReviewItem({
+      ...item,
+      transcript: Array.isArray(item.transcript) ? item.transcript : [],
+    })
+    await openReviewer(item)
+  }
+
   const saveReviewer = async () => {
     if (!reviewItem) return
     const base = await ensureApiBase()
@@ -612,7 +621,7 @@ export default function RAG() {
                       {item.fileName || item.name}{' '}
                       {item.domain && <span className="text-slate-500">({item.domain})</span>}
                     </div>
-                    <button className="text-xs text-petrol underline" onClick={() => openReviewer(item)}>Edit</button>
+                    <button className="text-xs text-petrol underline" onClick={() => handleEditPublished(item)}>Edit</button>
                   </div>
                 ))}
               </div>
