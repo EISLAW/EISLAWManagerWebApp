@@ -612,7 +612,7 @@ export default function RAG() {
                       {item.fileName || item.name}{' '}
                       {item.domain && <span className="text-slate-500">({item.domain})</span>}
                     </div>
-                    <button className="text-xs text-petrol underline">Edit</button>
+                    <button className="text-xs text-petrol underline" onClick={() => openReviewer(item)}>Edit</button>
                   </div>
                 ))}
               </div>
@@ -765,6 +765,8 @@ export default function RAG() {
                 </div>
               </div>
             </SectionCard>
+          )}
+          </>
           )}
         </div>
         <aside className="w-64 space-y-3">
