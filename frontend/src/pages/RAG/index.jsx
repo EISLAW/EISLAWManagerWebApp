@@ -89,7 +89,7 @@ export default function RAG() {
   const [searchStatus, setSearchStatus] = useState('idle')
   const [searchError, setSearchError] = useState('')
 
-  const [activeTab, setActiveTab] = useState('ingest')
+  const [activeTab, setActiveTab] = useState('assistant')
   const [inboxItems, setInboxItems] = useState([])
   const [inboxStatus, setInboxStatus] = useState('idle')
   const [inboxError, setInboxError] = useState('')
@@ -324,7 +324,7 @@ export default function RAG() {
   }
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6 max-w-6xl mx-auto" dir="rtl">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Insights / RAG</p>
