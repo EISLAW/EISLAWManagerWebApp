@@ -365,38 +365,119 @@ export default function RAG() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto" dir="rtl">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">Insights / RAG</p>
-          <h1 className="heading">RAG Pipeline — Inbox First</h1>
-        </div>
-        {apiBase && (
-          <a href={apiBase} className="text-xs text-petrol underline">
-            API: {apiBase}
-          </a>
-        )}
-      </div>
+    <div className="space-y-6" dir="rtl">
+      <div className="flex items-start gap-8">
+        <div className="flex-1 space-y-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">INSIGHTS / RAG</p>
+              <h1 className="heading">AI / עוזר</h1>
+            </div>
+            {apiBase && (
+              <a href={apiBase} className="text-xs text-petrol underline">
+                API: {apiBase}
+              </a>
+            )}
+          </div>
 
-      <div className="flex gap-2 border-b border-slate-200">
-        {[
-          { id: 'ingest', label: 'קליטה ואישור' },
-          { id: 'assistant', label: 'AI / עוזר' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === tab.id ? 'border-petrol text-petrol' : 'border-transparent text-slate-500'
-            }`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+          {activeTab === 'assistant' && (
+            <SectionCard
+              ref={assistantRef}
+              id="rag-assistant"
+              title="עוזר על בסיס תמלולים"
+              subtitle="שאלות AI על בסיס קטעי תמלול מאושרים."
+              helper="העוזר משתמש ב-RAG ובונה תשובה מקטעי מקור."
+            >
+              <form className="space-y-4" onSubmit={handleAskAssistant}>
+                <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנגדויות עלו בשיחות האחרונות עם יעל כהן?"'}>
+                  <textarea
+                    dir="auto"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                    placeholder="כתוב כאן שאלה"
+                    value={assistantQ}
+                    onChange={(e) => setAssistantQ(e.target.value)}
+                    rows={4}
+                  />
+                </LabeledField>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <LabeledField label="דומיין" helper="ברירת מחדל: הכל ללא פרסונלי">
+                    <select
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                      value={assistantDomain}
+                      onChange={(e) => setAssistantDomain(e.target.value)}
+                    >
+                      <option value="all">הכול</option>
+                      <option value="Client_Work">Client_Work</option>
+                      <option value="Business_Ops">Business_Ops</option>
+                      <option value="Personal">Personal</option>
+                    </select>
+                  </LabeledField>
+                  <LabeledField label="לקוח (אופציונלי)">
+                    <input
+                      dir="auto"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                      placeholder="שם לקוח"
+                      value={assistantClient}
+                      onChange={(e) => setAssistantClient(e.target.value)}
+                    />
+                  </LabeledField>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={assistantIncludeDrafts}
+                        onChange={(e) => setAssistantIncludeDrafts(e.target.checked)}
+                      />
+                      כולל טיוטות
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={assistantIncludePersonal}
+                        onChange={(e) => setAssistantIncludePersonal(e.target.checked)}
+                      />
+                      כולל Personal
+                    </label>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={assistantStatus === 'loading'}
+                    >
+                      {assistantStatus === 'loading' ? 'מחפש...' : 'שאל את העוזר'}
+                    </button>
+                  </div>
+                </div>
+                {assistantStatus === 'ready' && <StatusPill tone="success">הושלם</StatusPill>}
+              </form>
+              {assistantError && <div className="text-sm text-rose-700 mt-2">{assistantError}</div>}
+              {assistantAnswer && (
+                <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
+                  <div className="text-sm text-slate-700 whitespace-pre-line">{assistantAnswer}</div>
+                  {assistantSources && assistantSources.length > 0 && (
+                    <div className="text-xs text-slate-500">
+                      מקורות:
+                      <ul className="list-disc pr-4">
+                        {assistantSources.map((s) => (
+                          <li key={s.id || s.hash}>
+                            {s.file || s.id} {s.client ? `· ${s.client}` : ''} {s.domain ? `· ${s.domain}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
-      {activeTab === 'ingest' && (
-        <>
+          {activeTab === 'ingest' && (
+            <>
           <SectionCard
             title="RAG PIPELINE — Drop Files Here to Upload"
             subtitle="Upload first, process in background, review metadata later."
@@ -685,251 +766,27 @@ export default function RAG() {
               </div>
             </SectionCard>
           )}
-        </>
-      )}
-
-      {activeTab === 'assistant' && (
-        <SectionCard
-          ref={assistantRef}
-          id="rag-assistant"
-          title="עוזר על בסיס תמלולים"
-          subtitle="שאלות AI על בסיס קטעי תמלול מאושרים."
-          helper="העוזר משתמש ב-RAG ובונה תשובה מקטעי מקור."
-        >
-          <form className="space-y-4" onSubmit={handleAskAssistant}>
-            <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנגדויות עלו בשיחות האחרונות עם יעל כהן?"'}>
-              <textarea
-                dir="auto"
-                className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-                placeholder="כתוב כאן שאלה"
-                value={assistantQ}
-                onChange={(e) => setAssistantQ(e.target.value)}
-                rows={4}
-              />
-            </LabeledField>
-            <div className="grid md:grid-cols-2 gap-4">
-              <LabeledField label="דומיין" helper="ברירת מחדל: הכל ללא פרסונלי">
-                <select
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-petrol/30"
-                  value={assistantDomain}
-                  onChange={(e) => setAssistantDomain(e.target.value)}
-                >
-                  <option value="all">הכול</option>
-                  <option value="Client_Work">Client_Work</option>
-                  <option value="Business_Ops">Business_Ops</option>
-                  <option value="Personal">Personal</option>
-                </select>
-              </LabeledField>
-              <LabeledField label="לקוח (אופציונלי)">
-                <input
-                  dir="auto"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-                  placeholder="שם לקוח"
-                  value={assistantClient}
-                  onChange={(e) => setAssistantClient(e.target.value)}
-                />
-              </LabeledField>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={assistantIncludeDrafts}
-                    onChange={(e) => setAssistantIncludeDrafts(e.target.checked)}
-                  />
-                  כולל טיוטות
-                </label>
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={assistantIncludePersonal}
-                    onChange={(e) => setAssistantIncludePersonal(e.target.checked)}
-                  />
-                  כולל Personal
-                </label>
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={assistantStatus === 'loading'}
-                >
-                  {assistantStatus === 'loading' ? 'מחפש...' : 'שאל את העוזר'}
-                </button>
-              </div>
-            </div>
-            {assistantStatus === 'ready' && <StatusPill tone="success">הושלם</StatusPill>}
-          </form>
-          {assistantError && <div className="text-sm text-rose-700 mt-2">{assistantError}</div>}
-          {assistantAnswer && (
-            <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
-              <div className="text-sm text-slate-700 whitespace-pre-line">{assistantAnswer}</div>
-              {assistantSources && assistantSources.length > 0 && (
-                <div className="text-xs text-slate-500">
-                  מקורות:
-                  <ul className="list-disc pr-4">
-                    {assistantSources.map((s) => (
-                      <li key={s.id || s.hash}>
-                        {s.file || s.id} {s.client ? `· ${s.client}` : ''} {s.domain ? `· ${s.domain}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </SectionCard>
-      )}
-
-      {reviewItem && (
-        <SectionCard
-          title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
-          subtitle="Chat-style transcript preview (stub)"
-          footer={
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Status: {reviewItem.status || 'draft'}</span>
-              <div className="flex gap-2">
-                <button
-                  className="px-3 py-1 rounded bg-petrol text-white text-xs"
-                  onClick={() => {
-                    setReviewItem((prev) => ({ ...prev, status: 'ready' }))
-                    saveReviewer()
-                  }}
-                  disabled={reviewSaving}
-                >
-                  {reviewSaving ? 'Saving…' : 'Save & Publish'}
-                </button>
-                <button className="px-3 py-1 rounded bg-slate-100 text-xs" onClick={() => setReviewItem(null)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          }
-        >
-          <div className="grid md:grid-cols-[280px_1fr] gap-4">
-            <div className="space-y-2">
-              <LabeledField label="Date">
-                <input
-                  type="date"
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
-                  value={reviewItem.date || ''}
-                  onChange={(e) => setReviewItem((prev) => ({ ...prev, date: e.target.value }))}
-                />
-              </LabeledField>
-              <LabeledField label="Domain">
-                <input
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
-                  value={reviewItem.domain || ''}
-                  onChange={(e) => setReviewItem((prev) => ({ ...prev, domain: e.target.value }))}
-                  placeholder="CLIENT_WORK / INTERNAL"
-                />
-              </LabeledField>
-              <LabeledField label="Client">
-                <input
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
-                  value={reviewItem.client || ''}
-                  onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
-                />
-              </LabeledField>
-              <LabeledField label="Tags">
-                <input
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
-                  value={reviewItem.tags || ''}
-                  onChange={(e) => setReviewItem((prev) => ({ ...prev, tags: e.target.value }))}
-                  placeholder="comma separated"
-                />
-              </LabeledField>
-              <LabeledField label="Audio">
-                <audio
-                  className="w-full"
-                  controls
-                  src={`${apiBase || ''}/api/rag/audio/${reviewItem.id}`}
-                >
-                  Your browser does not support audio playback.
-                </audio>
-              </LabeledField>
-              <LabeledField label="Rename speaker (global)">
-                <div className="flex gap-2">
-                  <input
-                    className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
-                    placeholder="From"
-                    value={renameFrom}
-                    onChange={(e) => setRenameFrom(e.target.value)}
-                  />
-                  <input
-                    className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
-                    placeholder="To"
-                    value={renameTo}
-                    onChange={(e) => setRenameTo(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="px-2 py-1 bg-slate-100 rounded text-xs"
-                    onClick={() => {
-                      if (!renameFrom || !renameTo) return
-                      const next = (reviewItem.transcript || []).map((seg) => ({
-                        ...seg,
-                        speaker: seg.speaker === renameFrom ? renameTo : seg.speaker,
-                      }))
-                      setReviewItem((prev) => ({ ...prev, transcript: next }))
-                    }}
-                  >
-                    Apply
-                  </button>
-                </div>
-              </LabeledField>
-            </div>
-            <div className="space-y-3">
-              {(reviewItem.transcript || []).map((seg, idx) => (
-                <div key={idx} className="border border-slate-200 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <input
-                      className="border border-slate-200 rounded px-2 py-1 text-xs"
-                      value={seg.speaker || ''}
-                      onChange={(e) => {
-                        const next = [...reviewItem.transcript]
-                        next[idx] = { ...next[idx], speaker: e.target.value }
-                        setReviewItem((prev) => ({ ...prev, transcript: next }))
-                      }}
-                    />
-                    <input
-                      className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
-                      value={seg.start || ''}
-                      onChange={(e) => {
-                        const next = [...reviewItem.transcript]
-                        next[idx] = { ...next[idx], start: e.target.value }
-                        setReviewItem((prev) => ({ ...prev, transcript: next }))
-                      }}
-                      placeholder="00:00"
-                    />
-                    <input
-                      className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
-                      value={seg.end || ''}
-                      onChange={(e) => {
-                        const next = [...reviewItem.transcript]
-                        next[idx] = { ...next[idx], end: e.target.value }
-                        setReviewItem((prev) => ({ ...prev, transcript: next }))
-                      }}
-                      placeholder="00:05"
-                    />
-                  </div>
-                  <textarea
-                    className="w-full border border-slate-200 rounded px-2 py-2 text-sm"
-                    value={seg.text || ''}
-                    onChange={(e) => {
-                      const next = [...reviewItem.transcript]
-                      next[idx] = { ...next[idx], text: e.target.value }
-                      setReviewItem((prev) => ({ ...prev, transcript: next }))
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+        </div>
+        <aside className="w-64 space-y-3">
+          <div className="text-sm font-semibold text-slate-700">ניווט</div>
+          <div className="space-y-2">
+            <button
+              className={`w-full border rounded-lg px-3 py-2 text-sm ${activeTab === 'ingest' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700'}`}
+              onClick={() => setActiveTab('ingest')}
+            >
+              קליטה ואישור
+            </button>
+            <button
+              className={`w-full border rounded-lg px-3 py-2 text-sm ${activeTab === 'assistant' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700'}`}
+              onClick={() => setActiveTab('assistant')}
+            >
+              AI / עוזר
+            </button>
           </div>
-        </SectionCard>
+        </aside>
+      </div>
+      {activeTab === 'assistant' && assistantAnswer === '' && assistantStatus === 'idle' && (
+        <div className="text-xs text-slate-500 px-2">API Host: {apiBase || 'n/a'}</div>
       )}
     </div>
   )
