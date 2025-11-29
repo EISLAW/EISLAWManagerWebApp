@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { detectApiBase, getStoredApiBase } from '../../utils/apiBase.js'
 import { md5FirstMb } from '../../lib/md5.js'
 
@@ -83,13 +83,10 @@ function SearchResultCard({ result }) {
 export default function RAG() {
   const ENV_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
   const [apiBase, setApiBase] = useState(() => getStoredApiBase())
-  const [query, setQuery] = useState('')
-  const [clientFilter, setClientFilter] = useState('')
-  const [results, setResults] = useState([])
-  const [searchStatus, setSearchStatus] = useState('idle')
-  const [searchError, setSearchError] = useState('')
-
   const [activeTab, setActiveTab] = useState('assistant')
+  const ingestRef = useRef(null)
+  const assistantRef = useRef(null)
+
   const [inboxItems, setInboxItems] = useState([])
   const [inboxStatus, setInboxStatus] = useState('idle')
   const [inboxError, setInboxError] = useState('')
@@ -100,6 +97,15 @@ export default function RAG() {
   const [reviewSaving, setReviewSaving] = useState(false)
   const [renameFrom, setRenameFrom] = useState('')
   const [renameTo, setRenameTo] = useState('')
+  const [assistantQ, setAssistantQ] = useState('')
+  const [assistantClient, setAssistantClient] = useState('')
+  const [assistantDomain, setAssistantDomain] = useState('all')
+  const [assistantIncludePersonal, setAssistantIncludePersonal] = useState(false)
+  const [assistantIncludeDrafts, setAssistantIncludeDrafts] = useState(false)
+  const [assistantAnswer, setAssistantAnswer] = useState('')
+  const [assistantSources, setAssistantSources] = useState([])
+  const [assistantStatus, setAssistantStatus] = useState('idle')
+  const [assistantError, setAssistantError] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -112,6 +118,25 @@ export default function RAG() {
     return () => clearInterval(t)
   }, [ENV_API])
 
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const tabParam = url.searchParams.get('tab')
+    if (tabParam === 'assistant') setActiveTab('assistant')
+    if (tabParam === 'ingest') setActiveTab('ingest')
+  }, [])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', activeTab)
+    window.history.replaceState({}, '', url.toString())
+    if (activeTab === 'ingest' && ingestRef.current) {
+      ingestRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    if (activeTab === 'assistant' && assistantRef.current) {
+      assistantRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab])
+
   const ensureApiBase = async () => {
     if (apiBase) return apiBase
     const detected = await detectApiBase([ENV_API])
@@ -122,28 +147,44 @@ export default function RAG() {
     return ''
   }
 
-  const handleSearch = async (e) => {
+  const handleAskAssistant = async (e) => {
     e?.preventDefault()
-    setSearchStatus('loading')
-    setSearchError('')
-    setResults([])
+    setAssistantStatus('loading')
+    setAssistantError('')
+    setAssistantAnswer('')
+    setAssistantSources([])
+    if (!assistantQ.trim()) {
+      setAssistantStatus('idle')
+      setAssistantError('שאלה נדרשת.')
+      return
+    }
     const base = await ensureApiBase()
     if (!base) {
-      setSearchStatus('idle')
-      setSearchError('השרת לא זמין (בדוק /health).')
+      setAssistantStatus('idle')
+      setAssistantError('השרת לא זמין (בדוק /health).')
       return
     }
     try {
-      const params = new URLSearchParams({ q: query || '' })
-      if (clientFilter.trim()) params.append('client', clientFilter.trim())
-      const res = await fetch(`${base}/api/rag/search?${params.toString()}`, { credentials: 'omit' })
+      const payload = {
+        question: assistantQ.trim(),
+        client: assistantClient.trim() || undefined,
+        domain: assistantDomain === 'all' ? undefined : assistantDomain,
+        include_personal: assistantIncludePersonal,
+        include_drafts: assistantIncludeDrafts,
+      }
+      const res = await fetch(`${base}/api/rag/assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
       if (!res.ok) throw new Error(`Status ${res.status}`)
       const data = await res.json()
-      setResults(Array.isArray(data.results) ? data.results : [])
-      setSearchStatus('ready')
+      setAssistantAnswer(data.answer || '')
+      setAssistantSources(Array.isArray(data.sources) ? data.sources : [])
+      setAssistantStatus('ready')
     } catch (err) {
-      setSearchStatus('idle')
-      setSearchError('החיפוש נכשל. ודא שה-API פועל.')
+      setAssistantStatus('idle')
+      setAssistantError('קריאת העוזר נכשלה. ודא שה-API פועל.')
       console.error(err)
     }
   }
@@ -330,7 +371,11 @@ export default function RAG() {
           <p className="text-xs uppercase tracking-wide text-slate-500">Insights / RAG</p>
           <h1 className="heading">RAG Pipeline — Inbox First</h1>
         </div>
-        {apiBase && <StatusPill>API: {apiBase}</StatusPill>}
+        {apiBase && (
+          <a href={apiBase} className="text-xs text-petrol underline">
+            API: {apiBase}
+          </a>
+        )}
       </div>
 
       <div className="flex gap-2 border-b border-slate-200">
@@ -645,65 +690,97 @@ export default function RAG() {
 
       {activeTab === 'assistant' && (
         <SectionCard
+          ref={assistantRef}
+          id="rag-assistant"
           title="עוזר על בסיס תמלולים"
           subtitle="שאלות AI על בסיס קטעי תמלול מאושרים."
           helper="העוזר משתמש ב-RAG ובונה תשובה מקטעי מקור."
-          footer={
-            searchStatus === 'ready' ? (
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>הושלם בהצלחה</span>
-                <StatusPill tone="success">נשמר</StatusPill>
-              </div>
-            ) : (
-              <div className="text-xs text-slate-500">השליחה מעבדת בצד השרת עם רמת רגישות גבוהה.</div>
-            )
-          }
         >
-          <form className="space-y-4" onSubmit={handleSearch}>
-            <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנהגויות עלו בשיחות האחרונות עם יעל כהן?"'}>
+          <form className="space-y-4" onSubmit={handleAskAssistant}>
+            <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנגדויות עלו בשיחות האחרונות עם יעל כהן?"'}>
               <textarea
                 dir="auto"
                 className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 placeholder="כתוב כאן שאלה"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={assistantQ}
+                onChange={(e) => setAssistantQ(e.target.value)}
                 rows={4}
               />
             </LabeledField>
-            <div className="grid gap-4 md:grid-cols-[1fr_auto] items-start">
-              <LabeledField label="לקוח (אופציונלי)" helper="הגבל את החיפוש ללקוח אחד">
+            <div className="grid md:grid-cols-2 gap-4">
+              <LabeledField label="דומיין" helper="ברירת מחדל: הכל ללא פרסונלי">
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                  value={assistantDomain}
+                  onChange={(e) => setAssistantDomain(e.target.value)}
+                >
+                  <option value="all">הכול</option>
+                  <option value="Client_Work">Client_Work</option>
+                  <option value="Business_Ops">Business_Ops</option>
+                  <option value="Personal">Personal</option>
+                </select>
+              </LabeledField>
+              <LabeledField label="לקוח (אופציונלי)">
                 <input
                   dir="auto"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-                  placeholder="שם לקוח / מזהה"
-                  value={clientFilter}
-                  onChange={(e) => setClientFilter(e.target.value)}
+                  placeholder="שם לקוח"
+                  value={assistantClient}
+                  onChange={(e) => setAssistantClient(e.target.value)}
                 />
               </LabeledField>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={searchStatus === 'loading'}
-              >
-                {searchStatus === 'loading' ? 'מחפש…' : 'שאל את העוזר'}
-              </button>
             </div>
-            {searchError && (
-              <div className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2" role="alert">
-                {searchError}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={assistantIncludeDrafts}
+                    onChange={(e) => setAssistantIncludeDrafts(e.target.checked)}
+                  />
+                  כולל טיוטות
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={assistantIncludePersonal}
+                    onChange={(e) => setAssistantIncludePersonal(e.target.checked)}
+                  />
+                  כולל Personal
+                </label>
               </div>
-            )}
-            <div className="space-y-3">
-              {results.length === 0 && (
-                <div className="border border-dashed border-slate-200 rounded-lg p-4 text-sm text-slate-500">
-                  {searchStatus === 'loading' ? 'מחפש…' : 'אין תוצאות להצגה עדיין.'}
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={assistantStatus === 'loading'}
+                >
+                  {assistantStatus === 'loading' ? 'מחפש...' : 'שאל את העוזר'}
+                </button>
+              </div>
+            </div>
+            {assistantStatus === 'ready' && <StatusPill tone="success">הושלם</StatusPill>}
+          </form>
+          {assistantError && <div className="text-sm text-rose-700 mt-2">{assistantError}</div>}
+          {assistantAnswer && (
+            <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
+              <div className="text-sm text-slate-700 whitespace-pre-line">{assistantAnswer}</div>
+              {assistantSources && assistantSources.length > 0 && (
+                <div className="text-xs text-slate-500">
+                  מקורות:
+                  <ul className="list-disc pr-4">
+                    {assistantSources.map((s) => (
+                      <li key={s.id || s.hash}>
+                        {s.file || s.id} {s.client ? `· ${s.client}` : ''} {s.domain ? `· ${s.domain}` : ''}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
-              {results.map((r, idx) => (
-                <SearchResultCard key={`${idx}-${r.file || 'snippet'}`} result={r} />
-              ))}
             </div>
-          </form>
+          )}
         </SectionCard>
       )}
 

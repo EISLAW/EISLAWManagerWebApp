@@ -477,6 +477,58 @@ def rag_audio(item_id: str):
     return FileResponse(path, filename=Path(path).name)
 
 
+@app.post("/api/rag/assistant")
+def rag_assistant(payload: dict = Body(default=None)):
+    """
+    Lightweight assistant stub: searches local manifest and stitches snippets.
+    Replace with real RAG+LLM when ready.
+    """
+    ensure_dirs()
+    if payload is None:
+        payload = {}
+    q = (payload.get("question") or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="question is required")
+    client = (payload.get("client") or "").strip() or None
+    domain = (payload.get("domain") or "").strip() or None
+    include_personal = bool(payload.get("include_personal"))
+    include_drafts = bool(payload.get("include_drafts"))
+
+    items = load_index()
+    results = []
+    for it in items:
+        if client and (it.get("client") or "").lower() != client.lower():
+            continue
+        if domain and domain.lower() != "all" and (it.get("domain") or "").lower() != domain.lower():
+            continue
+        if not include_personal and (it.get("domain") or "").lower() == "personal":
+            continue
+        if not include_drafts and (it.get("status") or "") != "ready":
+            continue
+        txt = ""
+        transcript = it.get("transcript") or []
+        if transcript and isinstance(transcript, list):
+            txt = " ".join(seg.get("text") or "" for seg in transcript)
+        snippet = txt[:400] + ("…" if len(txt) > 400 else "")
+        if q.lower() in txt.lower() or not txt:
+            results.append({**it, "snippet": snippet})
+
+    snippets = [r.get("snippet") or "" for r in results if r.get("snippet")]
+    answer = "\n\n".join(snippets[:3]) if snippets else "לא נמצאו מקורות רלוונטיים. נסה ניסוח אחר או הרחב את החיפוש."
+    sources = [
+        {
+          "id": r.get("id"),
+          "file": r.get("fileName") or r.get("file"),
+          "client": r.get("client"),
+          "domain": r.get("domain"),
+          "path": r.get("libraryPath") or r.get("filePath"),
+          "hash": r.get("hash"),
+        }
+        for r in results[:5]
+    ]
+    return {"answer": answer, "sources": sources}
+
+
 @app.get("/api/integrations/health")
 def integrations_health():
     # simple summary reusing local knowledge
