@@ -89,6 +89,7 @@ export default function RAG() {
   const [searchStatus, setSearchStatus] = useState('idle')
   const [searchError, setSearchError] = useState('')
 
+  const [activeTab, setActiveTab] = useState('ingest')
   const [inboxItems, setInboxItems] = useState([])
   const [inboxStatus, setInboxStatus] = useState('idle')
   const [inboxError, setInboxError] = useState('')
@@ -332,207 +333,379 @@ export default function RAG() {
         {apiBase && <StatusPill>API: {apiBase}</StatusPill>}
       </div>
 
-      <SectionCard
-        title="RAG PIPELINE — Drop Files Here to Upload"
-        subtitle="Upload first, process in background, review metadata later."
-        helper="חישוב MD5 על ‎1MB‎ ראשונים, דחיית כפילויות, סטטוסי עיבוד."
-        footer={
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Inbox status: {inboxStatus === 'loading' ? 'Loading…' : 'Live'}</span>
-            <div className="flex gap-2">
+      <div className="flex gap-2 border-b border-slate-200">
+        {[
+          { id: 'ingest', label: 'קליטה ואישור' },
+          { id: 'assistant', label: 'AI / עוזר' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            className={`px-4 py-2 text-sm font-medium border-b-2 ${
+              activeTab === tab.id ? 'border-petrol text-petrol' : 'border-transparent text-slate-500'
+            }`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'ingest' && (
+        <>
+          <SectionCard
+            title="RAG PIPELINE — Drop Files Here to Upload"
+            subtitle="Upload first, process in background, review metadata later."
+            helper="חישוב MD5 על ‎1MB‎ ראשונים, דחיית כפילויות, סטטוסי עיבוד."
+            footer={
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Inbox status: {inboxStatus === 'loading' ? 'Loading…' : 'Live'}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={refreshInbox}
+                    className="px-3 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs"
+                    disabled={inboxStatus === 'loading'}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            <div
+              className="border-2 border-dashed border-petrol/40 rounded-xl bg-white px-4 py-6 text-center space-y-3"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                handleDrop(Array.from(e.dataTransfer.files || []))
+              }}
+            >
+              <div className="text-sm text-slate-700">Drop files here or choose manually</div>
+              <input
+                type="file"
+                multiple
+                className="block mx-auto text-sm text-slate-600"
+                onChange={(e) => handleDrop(Array.from(e.target.files || []))}
+                accept=".txt,.md,.pdf,.docx,.doc,.rtf,.m4a,.mp3,.wav,.mp4"
+              />
+              <div className="flex flex-wrap justify-center gap-3 text-xs text-slate-500">
+                <LabeledField label="Bulk date (optional)">
+                  <input
+                    type="date"
+                    value={bulkDate}
+                    onChange={(e) => setBulkDate(e.target.value)}
+                    className="border border-slate-200 rounded px-2 py-1 text-sm"
+                  />
+                </LabeledField>
+                <LabeledField label="Bulk domain (optional)">
+                  <input
+                    type="text"
+                    value={bulkDomain}
+                    onChange={(e) => setBulkDomain(e.target.value)}
+                    className="border border-slate-200 rounded px-2 py-1 text-sm"
+                    placeholder="CLIENT_WORK / INTERNAL…"
+                  />
+                </LabeledField>
+              </div>
+              {uploading && <div className="text-xs text-petrol">Uploading…</div>}
+              {inboxError && (
+                <div className="flex items-center justify-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+                  {inboxError}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-slate-800">INBOX (pending)</div>
+                <div className="text-xs text-slate-500">Defaults for new uploads: date/domain</div>
+              </div>
+              <div className="space-y-2">
+                {inboxPending.length === 0 && (
+                  <div className="border border-dashed border-slate-200 rounded-lg p-3 text-sm text-slate-500">
+                    אין קבצים ממתינים כרגע.
+                  </div>
+                )}
+                {inboxPending.map((item) => (
+                  <article key={item.id || item.hash || item.fileName} className="flex items-center gap-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                    <input type="checkbox" className="accent-petrol" />
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-800 flex items-center gap-2">
+                        <span role="img" aria-label="file">
+                          📄
+                        </span>
+                        {item.fileName || item.name || 'ללא שם'}
+                      </div>
+                      <div className="text-xs text-slate-500 flex flex-wrap gap-2">
+                        <StatusBadge status={item.status} />
+                        {item.note && <span>{item.note}</span>}
+                        {item.client && <span>Client: {item.client}</span>}
+                        {item.domain && <span>Domain: {item.domain}</span>}
+                        {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+                        onClick={() => openReviewer(item)}
+                      >
+                        Open Reviewer
+                      </button>
+                      <button
+                        className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+                        onClick={() => handleQuickEdit(item)}
+                      >
+                        Quick Edit
+                      </button>
+                      <button
+                        className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100"
+                        onClick={() => handlePublish(item)}
+                      >
+                        Publish
+                      </button>
+                      <button
+                        className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100"
+                        onClick={() => handleDelete(item)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 space-y-2">
+                <div className="text-sm font-semibold text-slate-800">PUBLISHED LIBRARY (latest)</div>
+                {inboxPublished.length === 0 && (
+                  <div className="text-xs text-slate-500">לא נמצאו פריטים שפורסמו.</div>
+                )}
+                {inboxPublished.map((item) => (
+                  <div key={item.id || item.hash} className="flex items-center justify-between text-sm border border-slate-200 rounded-lg px-3 py-2">
+                    <div>
+                      {item.date ? `${item.date}: ` : ''}
+                      {item.fileName || item.name}{' '}
+                      {item.domain && <span className="text-slate-500">({item.domain})</span>}
+                    </div>
+                    <button className="text-xs text-petrol underline">Edit</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SectionCard>
+
+          {reviewItem && (
+            <SectionCard
+              title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
+              subtitle="Chat-style transcript preview (stub)"
+              footer={
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Status: {reviewItem.status || 'draft'}</span>
+                  <div className="flex gap-2">
+                    <button
+                      className="px-3 py-1 rounded bg-petrol text-white text-xs"
+                      onClick={() => {
+                        setReviewItem((prev) => ({ ...prev, status: 'ready' }))
+                        saveReviewer()
+                      }}
+                      disabled={reviewSaving}
+                    >
+                      {reviewSaving ? 'Saving…' : 'Save & Publish'}
+                    </button>
+                    <button className="px-3 py-1 rounded bg-slate-100 text-xs" onClick={() => setReviewItem(null)}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              }
+            >
+              <div className="grid md:grid-cols-[280px_1fr] gap-4">
+                <div className="space-y-2">
+                  <LabeledField label="Date">
+                    <input
+                      type="date"
+                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      value={reviewItem.date || ''}
+                      onChange={(e) => setReviewItem((prev) => ({ ...prev, date: e.target.value }))}
+                    />
+                  </LabeledField>
+                  <LabeledField label="Domain">
+                    <input
+                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      value={reviewItem.domain || ''}
+                      onChange={(e) => setReviewItem((prev) => ({ ...prev, domain: e.target.value }))}
+                      placeholder="CLIENT_WORK / INTERNAL"
+                    />
+                  </LabeledField>
+                  <LabeledField label="Client">
+                    <input
+                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      value={reviewItem.client || ''}
+                      onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
+                    />
+                  </LabeledField>
+                  <LabeledField label="Tags">
+                    <input
+                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      value={reviewItem.tags || ''}
+                      onChange={(e) => setReviewItem((prev) => ({ ...prev, tags: e.target.value }))}
+                      placeholder="comma separated"
+                    />
+                  </LabeledField>
+                  <LabeledField label="Audio">
+                    <audio
+                      className="w-full"
+                      controls
+                      src={`${apiBase || ''}/api/rag/audio/${reviewItem.id}`}
+                    >
+                      Your browser does not support audio playback.
+                    </audio>
+                  </LabeledField>
+                  <LabeledField label="Rename speaker (global)">
+                    <div className="flex gap-2">
+                      <input
+                        className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                        placeholder="From"
+                        value={renameFrom}
+                        onChange={(e) => setRenameFrom(e.target.value)}
+                      />
+                      <input
+                        className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                        placeholder="To"
+                        value={renameTo}
+                        onChange={(e) => setRenameTo(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="px-2 py-1 bg-slate-100 rounded text-xs"
+                        onClick={() => {
+                          if (!renameFrom || !renameTo) return
+                          const next = (reviewItem.transcript || []).map((seg) => ({
+                            ...seg,
+                            speaker: seg.speaker === renameFrom ? renameTo : seg.speaker,
+                          }))
+                          setReviewItem((prev) => ({ ...prev, transcript: next }))
+                        }}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </LabeledField>
+                </div>
+                <div className="space-y-3">
+                  {(reviewItem.transcript || []).map((seg, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <input
+                          className="border border-slate-200 rounded px-2 py-1 text-xs"
+                          value={seg.speaker || ''}
+                          onChange={(e) => {
+                            const next = [...reviewItem.transcript]
+                            next[idx] = { ...next[idx], speaker: e.target.value }
+                            setReviewItem((prev) => ({ ...prev, transcript: next }))
+                          }}
+                        />
+                        <input
+                          className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
+                          value={seg.start || ''}
+                          onChange={(e) => {
+                            const next = [...reviewItem.transcript]
+                            next[idx] = { ...next[idx], start: e.target.value }
+                            setReviewItem((prev) => ({ ...prev, transcript: next }))
+                          }}
+                          placeholder="00:00"
+                        />
+                        <input
+                          className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
+                          value={seg.end || ''}
+                          onChange={(e) => {
+                            const next = [...reviewItem.transcript]
+                            next[idx] = { ...next[idx], end: e.target.value }
+                            setReviewItem((prev) => ({ ...prev, transcript: next }))
+                          }}
+                          placeholder="00:05"
+                        />
+                      </div>
+                      <textarea
+                        className="w-full border border-slate-200 rounded px-2 py-2 text-sm"
+                        value={seg.text || ''}
+                        onChange={(e) => {
+                          const next = [...reviewItem.transcript]
+                          next[idx] = { ...next[idx], text: e.target.value }
+                          setReviewItem((prev) => ({ ...prev, transcript: next }))
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionCard>
+          )}
+        </>
+      )}
+
+      {activeTab === 'assistant' && (
+        <SectionCard
+          title="עוזר על בסיס תמלולים"
+          subtitle="שאלות AI על בסיס קטעי תמלול מאושרים."
+          helper="העוזר משתמש ב-RAG ובונה תשובה מקטעי מקור."
+          footer={
+            searchStatus === 'ready' ? (
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>הושלם בהצלחה</span>
+                <StatusPill tone="success">נשמר</StatusPill>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-500">השליחה מעבדת בצד השרת עם רמת רגישות גבוהה.</div>
+            )
+          }
+        >
+          <form className="space-y-4" onSubmit={handleSearch}>
+            <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנהגויות עלו בשיחות האחרונות עם יעל כהן?"'}>
+              <textarea
+                dir="auto"
+                className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                placeholder="כתוב כאן שאלה"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                rows={4}
+              />
+            </LabeledField>
+            <div className="grid gap-4 md:grid-cols-[1fr_auto] items-start">
+              <LabeledField label="לקוח (אופציונלי)" helper="הגבל את החיפוש ללקוח אחד">
+                <input
+                  dir="auto"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                  placeholder="שם לקוח / מזהה"
+                  value={clientFilter}
+                  onChange={(e) => setClientFilter(e.target.value)}
+                />
+              </LabeledField>
               <button
-                type="button"
-                onClick={refreshInbox}
-                className="px-3 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs"
-                disabled={inboxStatus === 'loading'}
+                type="submit"
+                className="px-5 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={searchStatus === 'loading'}
               >
-                Refresh
+                {searchStatus === 'loading' ? 'מחפש…' : 'שאל את העוזר'}
               </button>
             </div>
-          </div>
-        }
-      >
-        <div
-          className="border-2 border-dashed border-petrol/40 rounded-xl bg-white px-4 py-6 text-center space-y-3"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault()
-            handleDrop(Array.from(e.dataTransfer.files || []))
-          }}
-        >
-          <div className="text-sm text-slate-700">Drop files here or choose manually</div>
-          <input
-            type="file"
-            multiple
-            className="block mx-auto text-sm text-slate-600"
-            onChange={(e) => handleDrop(Array.from(e.target.files || []))}
-            accept=".txt,.md,.pdf,.docx,.doc,.rtf,.m4a,.mp3,.wav,.mp4"
-          />
-          <div className="flex flex-wrap justify-center gap-3 text-xs text-slate-500">
-            <LabeledField label="Bulk date (optional)">
-              <input
-                type="date"
-                value={bulkDate}
-                onChange={(e) => setBulkDate(e.target.value)}
-                className="border border-slate-200 rounded px-2 py-1 text-sm"
-              />
-            </LabeledField>
-            <LabeledField label="Bulk domain (optional)">
-              <input
-                type="text"
-                value={bulkDomain}
-                onChange={(e) => setBulkDomain(e.target.value)}
-                className="border border-slate-200 rounded px-2 py-1 text-sm"
-                placeholder="CLIENT_WORK / INTERNAL…"
-              />
-            </LabeledField>
-          </div>
-          {uploading && <div className="text-xs text-petrol">Uploading…</div>}
-          {inboxError && (
-            <div className="flex items-center justify-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
-              {inboxError}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-slate-800">INBOX (pending)</div>
-            <div className="text-xs text-slate-500">Defaults for new uploads: date/domain</div>
-          </div>
-          <div className="space-y-2">
-            {inboxPending.length === 0 && (
-              <div className="border border-dashed border-slate-200 rounded-lg p-3 text-sm text-slate-500">
-                אין קבצים ממתינים כרגע.
+            {searchError && (
+              <div className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2" role="alert">
+                {searchError}
               </div>
             )}
-            {inboxPending.map((item) => (
-              <article key={item.id || item.hash || item.fileName} className="flex items-center gap-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
-                <input type="checkbox" className="accent-petrol" />
-                <div className="flex-1">
-                  <div className="font-medium text-slate-800 flex items-center gap-2">
-                    <span role="img" aria-label="file">
-                      📄
-                    </span>
-                    {item.fileName || item.name || 'ללא שם'}
-                  </div>
-                  <div className="text-xs text-slate-500 flex flex-wrap gap-2">
-                    <StatusBadge status={item.status} />
-                    {item.note && <span>{item.note}</span>}
-                    {item.client && <span>Client: {item.client}</span>}
-                    {item.domain && <span>Domain: {item.domain}</span>}
-                    {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
-                  </div>
+            <div className="space-y-3">
+              {results.length === 0 && (
+                <div className="border border-dashed border-slate-200 rounded-lg p-4 text-sm text-slate-500">
+                  {searchStatus === 'loading' ? 'מחפש…' : 'אין תוצאות להצגה עדיין.'}
                 </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <button
-                    className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
-                    onClick={() => openReviewer(item)}
-                  >
-                    Open Reviewer
-                  </button>
-                  <button
-                    className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
-                    onClick={() => handleQuickEdit(item)}
-                  >
-                    Quick Edit
-                  </button>
-                  <button
-                    className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100"
-                    onClick={() => handlePublish(item)}
-                  >
-                    Publish
-                  </button>
-                  <button
-                    className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100"
-                    onClick={() => handleDelete(item)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="pt-2 border-t border-slate-200 space-y-2">
-            <div className="text-sm font-semibold text-slate-800">PUBLISHED LIBRARY (latest)</div>
-            {inboxPublished.length === 0 && (
-              <div className="text-xs text-slate-500">לא נמצאו פריטים שפורסמו.</div>
-            )}
-            {inboxPublished.map((item) => (
-              <div key={item.id || item.hash} className="flex items-center justify-between text-sm border border-slate-200 rounded-lg px-3 py-2">
-                <div>
-                  {item.date ? `${item.date}: ` : ''}
-                  {item.fileName || item.name}{' '}
-                  {item.domain && <span className="text-slate-500">({item.domain})</span>}
-                </div>
-                <button className="text-xs text-petrol underline">Edit</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="חיפוש בתמלולים"
-        subtitle="שאל כל שאלה וקבל קטעים ממוסמכים"
-        helper="התוצאות יכללו קישורים לקבצים המקומיים כאשר יהיו זמינים."
-        footer={
-          searchStatus === 'ready' ? (
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>הושלם בהצלחה</span>
-              <StatusPill tone="success">נשמר</StatusPill>
+              )}
+              {results.map((r, idx) => (
+                <SearchResultCard key={`${idx}-${r.file || 'snippet'}`} result={r} />
+              ))}
             </div>
-          ) : (
-            <div className="text-xs text-slate-500">השליחה מעבדת בצד השרת עם רמת רגישות גבוהה.</div>
-          )
-        }
-      >
-        <form className="space-y-4" onSubmit={handleSearch}>
-          <LabeledField label="שאלת חיפוש" helper={'לדוגמה: "מה היו ההתנגדויות בשיחה האחרונה?"'}>
-            <input
-              dir="auto"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-              placeholder="חפש בתמלולים…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </LabeledField>
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] items-start">
-            <LabeledField label="סינון לקוח (אופציונלי)" helper="הגבל את החיפוש ללקוח אחד">
-              <input
-                dir="auto"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
-                placeholder="שם לקוח / מזהה"
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-              />
-            </LabeledField>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={searchStatus === 'loading'}
-            >
-              {searchStatus === 'loading' ? 'מחפש…' : 'הרץ חיפוש'}
-            </button>
-          </div>
-        </form>
-        {searchError && (
-          <div className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2" role="alert">
-            {searchError}
-          </div>
-        )}
-        <div className="space-y-3">
-          {results.length === 0 && (
-            <div className="border border-dashed border-slate-200 rounded-lg p-4 text-sm text-slate-500">
-              {searchStatus === 'loading' ? 'מחפש…' : 'אין תוצאות להצגה עדיין.'}
-            </div>
-          )}
-          {results.map((r, idx) => (
-            <SearchResultCard key={`${idx}-${r.file || 'snippet'}`} result={r} />
-          ))}
-        </div>
-      </SectionCard>
+          </form>
+        </SectionCard>
+      )}
 
       {reviewItem && (
         <SectionCard

@@ -15,6 +15,10 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 - Gemini check: verified the existing Gemini key reaches `models/gemini-2.0-flash-001`; `gemini-1.5-flash-latest` path 404s. Awaiting the new “Gemini 3” key to replace the current one in `secrets.local.json`.
 - Build: ran `npm ci` + `npm run build` in `frontend/` (vite build succeeds).
 
+## 2025-11-29
+- Backend RAG: integrated Gemini transcription in ingest (configurable model), added `/api/rag/models` (lists Gemini/OpenAI/Anthropic via env keys), audio streaming `/api/rag/audio/{id}`, and ensured library moves keep file paths.
+- Frontend RAG: added tabbed split “קליטה ואישור” (ingest/reviewer) and “AI / עוזר” (assistant form using search flow); reviewer now includes audio playback and global speaker rename.
+
 ## 2025-11-23
 - Infra/Dev VM: Provisioned `eislaw-dev-vm` (Ubuntu 22.04, israelcentral) and enabled hot-reload stack via `docker-compose.dev.yml` (API 8799, Vite frontend 5173, Meili 7700). NSG updated to allow inbound 5173/8799 for easy browser access; SSH key stored at `EISLAWManagerWebApp/eislaw-dev-vm_key.pem`. Usage: `docker compose -f docker-compose.dev.yml up --build -d` in `~/EISLAWManagerWebApp`; tunnel if ports are blocked.
 - DevEx/Local: docker-compose now mounts `secrets.local.json` into the API container so Airtable/Graph/Fillout work locally without baking secrets; documented local vs Azure vs PC/WSL handling in `docs/DOCKER_SETUP.md` (env vars in cloud, file mount only locally).
