@@ -35,6 +35,8 @@ export async function detectApiBase(preferred = []) {
   push(getStoredApiBase())
   push('http://127.0.0.1:8788')
   push('http://localhost:8788')
+  push('http://127.0.0.1:8799')
+  push('http://localhost:8799')
   push('https://eislaw-api-01.azurewebsites.net')
 
   for (const base of unique) {
