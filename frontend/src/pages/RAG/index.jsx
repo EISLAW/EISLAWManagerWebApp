@@ -625,7 +625,16 @@ export default function RAG() {
                       {item.fileName || item.name}{' '}
                       {item.domain && <span className="text-slate-500">({item.domain})</span>}
                     </div>
-                    <button className="text-xs text-petrol underline" onClick={() => handleEditPublished(item)}>Edit</button>
+                    <div className="flex items-center gap-3">
+                      <button className="text-xs text-petrol underline" onClick={() => handleEditPublished(item)}>Edit</button>
+                      <button
+                        className="text-xs text-rose-600 underline"
+                        onClick={() => handleDelete(item)}
+                        title="Delete file and manifest entry"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
