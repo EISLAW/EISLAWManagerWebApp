@@ -47,15 +47,15 @@ Insights RAG — near‑term tasks (per PRD v2.0 "Inbox First")
 **UI/UX Audit (2024-11-30)** — Full report: `docs/reports/RAG_TAB_UI_UX_AUDIT_2024-11-30.md`
 
 Critical fixes (must do):
-- [ ] Add `data-testid` attributes to all interactive elements per COMPONENT_LIBRARY.md (zero testids currently)
-- [ ] Implement chat-style bubbles for transcript reviewer (currently uses segment cards, not WhatsApp-style per PRD)
-- [ ] Add audio timestamp sync — click segment to play from that timestamp (audio player exists but not linked)
+- [x] Add `data-testid` attributes to all interactive elements per COMPONENT_LIBRARY.md (30+ testids added)
+- [x] Implement chat-style bubbles for transcript reviewer (ChatBubble component with WhatsApp-style layout)
+- [x] Add audio timestamp sync — click segment to play from that timestamp (audioRef linked, parseTime helper)
 
 Major fixes:
-- [ ] Implement "Select All" checkbox and bulk action dropdown for inbox items
-- [ ] Add "Apply to All" buttons for bulk date/domain application
+- [x] Implement "Select All" checkbox and bulk action dropdown for inbox items
+- [x] Add "Apply to All" buttons for bulk date/domain/client application
 - [ ] Implement client-scoped tag filtering (Global + This Client tags only)
-- [ ] Increase button touch targets to 44px minimum (currently ~24px)
+- [x] Increase button touch targets to 44px minimum (min-h-[44px] on all buttons)
 - [ ] Add right-click context menu for speaker rename (currently input-based)
 - [ ] Implement conversational memory for assistant (currently single Q&A)
 
@@ -64,7 +64,7 @@ Minor fixes:
 - [ ] Align font sizes with design tokens (text-lg→20pt, text-sm→15pt)
 - [ ] Add upload progress percentage
 - [ ] Implement keyboard shortcuts (/ to focus search)
-- [ ] Add ARIA labels to tab navigation, drop zone, action buttons
+- [x] Add ARIA labels to tab navigation, drop zone, action buttons
 
 Backend tasks (unchanged):
 - Backend ingest/reviewer: `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` — integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
