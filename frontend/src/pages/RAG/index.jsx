@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { detectApiBase, getStoredApiBase } from '../../utils/apiBase.js'
 import { md5FirstMb } from '../../lib/md5.js'
 
-const SectionCard = React.forwardRef(function SectionCard({ title, subtitle, helper, children, footer }, ref) {
+const SectionCard = React.forwardRef(function SectionCard({ title, subtitle, helper, children, footer, testId }, ref) {
   return (
-    <section ref={ref} className="card space-y-4">
+    <section ref={ref} className="card space-y-4" data-testid={testId}>
       <header className="space-y-1">
         <h2 className="text-lg font-semibold text-petrol">{title}</h2>
         {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
@@ -26,14 +26,83 @@ function LabeledField({ label, helper, children }) {
   )
 }
 
-function StatusPill({ tone = 'info', children }) {
+function StatusPill({ tone = 'info', children, testId }) {
   const toneMap = {
     info: 'bg-blue-50 text-blue-700 border border-blue-100',
     success: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
     warning: 'bg-amber-50 text-amber-700 border border-amber-100',
     danger: 'bg-rose-50 text-rose-700 border border-rose-100',
   }
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneMap[tone]}`}>{children}</span>
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${toneMap[tone]}`} data-testid={testId}>{children}</span>
+}
+
+// Chat bubble component for transcript segments (WhatsApp-style per PRD)
+function ChatBubble({ segment, index, isEven, onTextChange, onSpeakerChange, onDelete, onPlayFromTimestamp, audioRef }) {
+  const parseTime = (timeStr) => {
+    if (!timeStr) return 0
+    const parts = timeStr.split(':').map(Number)
+    if (parts.length === 2) return parts[0] * 60 + parts[1]
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    return 0
+  }
+
+  const handleClick = () => {
+    if (segment.start && audioRef?.current) {
+      const seconds = parseTime(segment.start)
+      audioRef.current.currentTime = seconds
+      audioRef.current.play()
+    }
+  }
+
+  return (
+    <div
+      className={`flex ${isEven ? 'justify-start' : 'justify-end'} mb-3`}
+      data-testid={`rag.reviewer.segment.${index}`}
+    >
+      <div
+        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm cursor-pointer transition-all hover:shadow-md ${
+          isEven
+            ? 'bg-white border border-slate-200 rounded-tl-sm'
+            : 'bg-petrol/10 border border-petrol/20 rounded-tr-sm'
+        }`}
+        onClick={handleClick}
+        title={segment.start ? `Click to play from ${segment.start}` : 'No timestamp'}
+        data-action="segment.play"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <input
+            className="text-xs font-semibold text-petrol bg-transparent border-b border-transparent hover:border-slate-300 focus:border-petrol focus:outline-none px-1 py-0.5 min-w-[60px]"
+            value={segment.speaker || ''}
+            onChange={(e) => onSpeakerChange(index, e.target.value)}
+            placeholder="Speaker"
+            onClick={(e) => e.stopPropagation()}
+            data-testid={`rag.reviewer.segment.${index}.speaker`}
+          />
+          {segment.start && (
+            <span className="text-xs text-slate-400">{segment.start}</span>
+          )}
+          <button
+            type="button"
+            className="ml-auto text-rose-500 hover:text-rose-700 p-1 min-h-[28px] min-w-[28px] flex items-center justify-center"
+            onClick={(e) => { e.stopPropagation(); onDelete(index) }}
+            title="Delete segment"
+            data-testid={`rag.reviewer.segment.${index}.delete`}
+            data-action="segment.delete"
+          >
+            ×
+          </button>
+        </div>
+        <textarea
+          className="w-full bg-transparent text-sm text-slate-700 resize-none focus:outline-none focus:ring-1 focus:ring-petrol/30 rounded px-1 py-1"
+          value={segment.text || ''}
+          onChange={(e) => onTextChange(index, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          rows={Math.max(2, Math.ceil((segment.text || '').length / 50))}
+          data-testid={`rag.reviewer.segment.${index}.text`}
+        />
+      </div>
+    </div>
+  )
 }
 
 function StatusBadge({ status }) {
@@ -93,10 +162,13 @@ export default function RAG() {
   const [uploading, setUploading] = useState(false)
   const [bulkDomain, setBulkDomain] = useState('')
   const [bulkDate, setBulkDate] = useState('')
+  const [bulkClient, setBulkClient] = useState('')
   const [reviewItem, setReviewItem] = useState(null)
   const [reviewSaving, setReviewSaving] = useState(false)
   const [renameFrom, setRenameFrom] = useState('')
   const [renameTo, setRenameTo] = useState('')
+  const [selectedItems, setSelectedItems] = useState(new Set())
+  const audioRef = useRef(null)
   const [assistantQ, setAssistantQ] = useState('')
   const [assistantClient, setAssistantClient] = useState('')
   const [assistantDomain, setAssistantDomain] = useState('all')
@@ -273,6 +345,79 @@ export default function RAG() {
   const inboxPending = useMemo(() => inboxItems.filter((i) => i.status !== 'ready'), [inboxItems])
   const inboxPublished = useMemo(() => inboxItems.filter((i) => i.status === 'ready'), [inboxItems])
 
+  // Select all / toggle selection
+  const toggleSelectItem = (itemId) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(itemId)) next.delete(itemId)
+      else next.add(itemId)
+      return next
+    })
+  }
+
+  const selectAllPending = () => {
+    const allIds = new Set(inboxPending.map((i) => i.id || i.hash))
+    setSelectedItems(allIds)
+  }
+
+  const clearSelection = () => setSelectedItems(new Set())
+
+  const isAllSelected = inboxPending.length > 0 && inboxPending.every((i) => selectedItems.has(i.id || i.hash))
+
+  // Bulk actions
+  const applyBulkMetadata = async (field, value) => {
+    if (!value || selectedItems.size === 0) return
+    const base = await ensureApiBase()
+    if (!base) return
+    for (const itemId of selectedItems) {
+      const item = inboxItems.find((i) => (i.id || i.hash) === itemId)
+      if (!item) continue
+      try {
+        const payload = { [field]: value }
+        await fetch(`${base}/api/rag/file/${item.id || item.hash}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    refreshInbox()
+    clearSelection()
+  }
+
+  const bulkDelete = async () => {
+    if (selectedItems.size === 0) return
+    if (!window.confirm(`Delete ${selectedItems.size} selected items?`)) return
+    const base = await ensureApiBase()
+    if (!base) return
+    for (const itemId of selectedItems) {
+      try {
+        await fetch(`${base}/api/rag/file/${itemId}`, { method: 'DELETE' })
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    refreshInbox()
+    clearSelection()
+  }
+
+  const bulkPublish = async () => {
+    if (selectedItems.size === 0) return
+    const base = await ensureApiBase()
+    if (!base) return
+    for (const itemId of selectedItems) {
+      try {
+        await fetch(`${base}/api/rag/publish/${itemId}`, { method: 'POST' })
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    refreshInbox()
+    clearSelection()
+  }
+
   const handleDelete = async (item) => {
     const base = await ensureApiBase()
     if (!base) return
@@ -331,13 +476,20 @@ export default function RAG() {
       const res = await fetch(`${base}/api/rag/reviewer/${item.id || item.hash}`)
       if (!res.ok) throw new Error('reviewer fetch failed')
       const data = await res.json()
+      const parsedFromRaw = () => {
+        const lines = (data.rawText || '')
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter(Boolean)
+        return lines.map((text) => ({ speaker: '', start: '', end: '', text }))
+      }
       setReviewItem({
         ...data,
         transcript: Array.isArray(data.parsedSegments)
           ? data.parsedSegments
-          : Array.isArray(data.transcript)
+          : Array.isArray(data.transcript) && data.transcript.length
             ? data.transcript
-            : [],
+            : parsedFromRaw(),
       })
     } catch (err) {
       console.error(err)
@@ -396,28 +548,31 @@ export default function RAG() {
           {activeTab === 'assistant' && (
             <SectionCard
               ref={assistantRef}
-              id="rag-assistant"
+              testId="rag.assistant"
               title="עוזר על בסיס תמלולים"
               subtitle="שאלות AI על בסיס קטעי תמלול מאושרים."
               helper="העוזר משתמש ב-RAG ובונה תשובה מקטעי מקור."
             >
-              <form className="space-y-4" onSubmit={handleAskAssistant}>
+              <form className="space-y-4" onSubmit={handleAskAssistant} data-testid="rag.assistant.form">
                 <LabeledField label="שאלה לעוזר" helper={'לדוגמה: "אילו התנגדויות עלו בשיחות האחרונות עם יעל כהן?"'}>
                   <textarea
                     dir="auto"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-petrol/30 min-h-[100px]"
                     placeholder="כתוב כאן שאלה"
                     value={assistantQ}
                     onChange={(e) => setAssistantQ(e.target.value)}
                     rows={4}
+                    data-testid="rag.assistant.question"
+                    aria-label="Question for AI assistant"
                   />
                 </LabeledField>
                 <div className="grid md:grid-cols-2 gap-4">
                   <LabeledField label="דומיין" helper="ברירת מחדל: הכל ללא פרסונלי">
                     <select
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 min-h-[44px] bg-white focus:outline-none focus:ring-2 focus:ring-petrol/30"
                       value={assistantDomain}
                       onChange={(e) => setAssistantDomain(e.target.value)}
+                      data-testid="rag.assistant.domain"
                     >
                       <option value="all">הכול</option>
                       <option value="Client_Work">Client_Work</option>
@@ -428,30 +583,33 @@ export default function RAG() {
                   <LabeledField label="לקוח (אופציונלי)">
                     <input
                       dir="auto"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-petrol/30"
                       placeholder="שם לקוח"
                       value={assistantClient}
                       onChange={(e) => setAssistantClient(e.target.value)}
+                      data-testid="rag.assistant.client"
                     />
                   </LabeledField>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
-                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <div className="space-y-2 border border-slate-200 rounded-lg px-3 py-3 bg-slate-50">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 min-h-[28px]">
                       <input
                         type="checkbox"
-                        className="h-4 w-4"
+                        className="h-5 w-5"
                         checked={assistantIncludeDrafts}
                         onChange={(e) => setAssistantIncludeDrafts(e.target.checked)}
+                        data-testid="rag.assistant.includeDrafts"
                       />
                       כולל טיוטות
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 min-h-[28px]">
                       <input
                         type="checkbox"
-                        className="h-4 w-4"
+                        className="h-5 w-5"
                         checked={assistantIncludePersonal}
                         onChange={(e) => setAssistantIncludePersonal(e.target.checked)}
+                        data-testid="rag.assistant.includePersonal"
                       />
                       כולל Personal
                     </label>
@@ -459,8 +617,10 @@ export default function RAG() {
                   <div className="flex items-end">
                     <button
                       type="submit"
-                      className="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full inline-flex justify-center items-center px-4 py-3 min-h-[44px] rounded-lg bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive disabled:opacity-60 disabled:cursor-not-allowed"
                       disabled={assistantStatus === 'loading'}
+                      data-testid="rag.assistant.submit"
+                      data-action="assistant.ask"
                     >
                       {assistantStatus === 'loading' ? 'מחפש...' : 'שאל את העוזר'}
                     </button>
@@ -518,6 +678,9 @@ export default function RAG() {
                 e.preventDefault()
                 handleDrop(Array.from(e.dataTransfer.files || []))
               }}
+              role="region"
+              aria-label="File drop zone"
+              data-testid="rag.dropzone"
             >
               <div className="text-sm text-slate-700">Drop files here or choose manually</div>
               <input
@@ -526,6 +689,8 @@ export default function RAG() {
                 className="block mx-auto text-sm text-slate-600"
                 onChange={(e) => handleDrop(Array.from(e.target.files || []))}
                 accept=".txt,.md,.pdf,.docx,.doc,.rtf,.m4a,.mp3,.wav,.mp4"
+                data-testid="rag.dropzone.fileInput"
+                aria-label="Choose files to upload"
               />
               <div className="flex flex-wrap justify-center gap-3 text-xs text-slate-500">
                 <LabeledField label="Bulk date (optional)">
@@ -554,28 +719,154 @@ export default function RAG() {
               )}
             </div>
 
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-slate-800">INBOX (pending)</div>
-                <div className="text-xs text-slate-500">Defaults for new uploads: date/domain</div>
+            <div className="mt-4 space-y-4" data-testid="rag.inbox.container">
+              {/* Inbox header with Select All and Bulk Actions */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm" data-testid="rag.inbox.selectAll">
+                    <input
+                      type="checkbox"
+                      className="accent-petrol w-5 h-5"
+                      checked={isAllSelected}
+                      onChange={() => isAllSelected ? clearSelection() : selectAllPending()}
+                      data-action="inbox.selectAll"
+                    />
+                    <span className="font-semibold text-slate-800">INBOX ({inboxPending.length})</span>
+                  </label>
+                  {selectedItems.size > 0 && (
+                    <span className="text-xs text-petrol">{selectedItems.size} selected</span>
+                  )}
+                </div>
+
+                {/* Bulk Actions Dropdown */}
+                {selectedItems.size > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap" data-testid="rag.inbox.bulkActions">
+                    <select
+                      className="border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[44px] bg-white"
+                      onChange={(e) => {
+                        if (e.target.value === 'delete') bulkDelete()
+                        else if (e.target.value === 'publish') bulkPublish()
+                        else if (e.target.value === 'applyDate' && bulkDate) applyBulkMetadata('date', bulkDate)
+                        else if (e.target.value === 'applyDomain' && bulkDomain) applyBulkMetadata('domain', bulkDomain)
+                        else if (e.target.value === 'applyClient' && bulkClient) applyBulkMetadata('client', bulkClient)
+                        e.target.value = ''
+                      }}
+                      defaultValue=""
+                      data-testid="rag.inbox.bulkActions.select"
+                      data-action="inbox.bulkAction"
+                    >
+                      <option value="" disabled>Bulk Actions…</option>
+                      <option value="publish">Publish Selected</option>
+                      <option value="delete">Delete Selected</option>
+                      {bulkDate && <option value="applyDate">Apply Date ({bulkDate})</option>}
+                      {bulkDomain && <option value="applyDomain">Apply Domain ({bulkDomain})</option>}
+                      {bulkClient && <option value="applyClient">Apply Client ({bulkClient})</option>}
+                    </select>
+                    <button
+                      type="button"
+                      className="px-3 py-2 min-h-[44px] text-sm text-slate-600 hover:text-slate-800"
+                      onClick={clearSelection}
+                      data-testid="rag.inbox.clearSelection"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
+
+              {/* Bulk metadata inputs with Apply buttons */}
+              <div className="flex flex-wrap gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={bulkDate}
+                    onChange={(e) => setBulkDate(e.target.value)}
+                    className="border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
+                    data-testid="rag.inbox.bulkDate"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 min-h-[44px] bg-petrol/10 text-petrol rounded hover:bg-petrol/20 text-sm disabled:opacity-50"
+                    onClick={() => applyBulkMetadata('date', bulkDate)}
+                    disabled={!bulkDate || selectedItems.size === 0}
+                    data-testid="rag.inbox.applyDate"
+                    data-action="inbox.applyDate"
+                  >
+                    Apply Date
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={bulkDomain}
+                    onChange={(e) => setBulkDomain(e.target.value)}
+                    className="border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px] w-32"
+                    placeholder="Domain"
+                    data-testid="rag.inbox.bulkDomain"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 min-h-[44px] bg-petrol/10 text-petrol rounded hover:bg-petrol/20 text-sm disabled:opacity-50"
+                    onClick={() => applyBulkMetadata('domain', bulkDomain)}
+                    disabled={!bulkDomain || selectedItems.size === 0}
+                    data-testid="rag.inbox.applyDomain"
+                    data-action="inbox.applyDomain"
+                  >
+                    Apply Domain
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={bulkClient}
+                    onChange={(e) => setBulkClient(e.target.value)}
+                    className="border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px] w-32"
+                    placeholder="Client"
+                    data-testid="rag.inbox.bulkClient"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 min-h-[44px] bg-petrol/10 text-petrol rounded hover:bg-petrol/20 text-sm disabled:opacity-50"
+                    onClick={() => applyBulkMetadata('client', bulkClient)}
+                    disabled={!bulkClient || selectedItems.size === 0}
+                    data-testid="rag.inbox.applyClient"
+                    data-action="inbox.applyClient"
+                  >
+                    Apply Client
+                  </button>
+                </div>
+              </div>
+
+              {/* Inbox items list */}
+              <div className="space-y-2" data-testid="rag.inbox.list">
                 {inboxPending.length === 0 && (
                   <div className="border border-dashed border-slate-200 rounded-lg p-3 text-sm text-slate-500">
                     אין קבצים ממתינים כרגע.
                   </div>
                 )}
-                {inboxPending.map((item) => (
-                  <article key={item.id || item.hash || item.fileName} className="flex items-center gap-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
-                    <input type="checkbox" className="accent-petrol" />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-800 flex items-center gap-2">
-                        <span role="img" aria-label="file">
-                          📄
-                        </span>
+                {inboxPending.map((item) => {
+                  const itemId = item.id || item.hash
+                  const isSelected = selectedItems.has(itemId)
+                  return (
+                  <article
+                    key={item.id || item.hash || item.fileName}
+                    className={`flex items-center gap-3 border rounded-lg px-3 py-3 bg-white transition-colors ${isSelected ? 'border-petrol bg-petrol/5' : 'border-slate-200'}`}
+                    data-testid={`rag.inbox.item.${itemId}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-petrol w-5 h-5 min-w-[20px]"
+                      checked={isSelected}
+                      onChange={() => toggleSelectItem(itemId)}
+                      data-testid={`rag.inbox.item.${itemId}.checkbox`}
+                      data-action="inbox.item.select"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-800 flex items-center gap-2 truncate">
+                        <span role="img" aria-label="file">📄</span>
                         {item.fileName || item.name || 'ללא שם'}
                       </div>
-                      <div className="text-xs text-slate-500 flex flex-wrap gap-2">
+                      <div className="text-xs text-slate-500 flex flex-wrap gap-2 mt-1">
                         <StatusBadge status={item.status} />
                         {item.note && <span>{item.note}</span>}
                         {item.client && <span>Client: {item.client}</span>}
@@ -583,34 +874,34 @@ export default function RAG() {
                         {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
-                        className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+                        className="px-3 py-2 min-h-[44px] bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
                         onClick={() => openReviewer(item)}
+                        data-testid={`rag.inbox.item.${itemId}.reviewer`}
+                        data-action="inbox.item.openReviewer"
                       >
-                        Open Reviewer
+                        Review
                       </button>
                       <button
-                        className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
-                        onClick={() => handleQuickEdit(item)}
-                      >
-                        Quick Edit
-                      </button>
-                      <button
-                        className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100"
+                        className="px-3 py-2 min-h-[44px] bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg hover:bg-emerald-100 text-sm"
                         onClick={() => handlePublish(item)}
+                        data-testid={`rag.inbox.item.${itemId}.publish`}
+                        data-action="inbox.item.publish"
                       >
                         Publish
                       </button>
                       <button
-                        className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded hover:bg-rose-100"
+                        className="px-3 py-2 min-h-[44px] bg-rose-50 text-rose-700 border border-rose-100 rounded-lg hover:bg-rose-100 text-sm"
                         onClick={() => handleDelete(item)}
+                        data-testid={`rag.inbox.item.${itemId}.delete`}
+                        data-action="inbox.item.delete"
                       >
                         Delete
                       </button>
                     </div>
                   </article>
-                ))}
+                )})}
               </div>
 
               <div className="pt-2 border-t border-slate-200 space-y-2">
@@ -643,23 +934,30 @@ export default function RAG() {
 
           {reviewItem && (
             <SectionCard
+              testId="rag.reviewer"
               title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
-              subtitle="Chat-style transcript preview (stub)"
+              subtitle="Click any chat bubble to play audio from that timestamp"
               footer={
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>Status: {reviewItem.status || 'draft'}</span>
                   <div className="flex gap-2">
                     <button
-                      className="px-3 py-1 rounded bg-petrol text-white text-xs"
+                      className="px-4 py-2 min-h-[44px] rounded-lg bg-petrol text-white text-sm hover:bg-petrol/90"
                       onClick={() => {
                         setReviewItem((prev) => ({ ...prev, status: 'ready' }))
                         saveReviewer()
                       }}
                       disabled={reviewSaving}
+                      data-testid="rag.reviewer.savePublish"
+                      data-action="reviewer.savePublish"
                     >
                       {reviewSaving ? 'Saving…' : 'Save & Publish'}
                     </button>
-                    <button className="px-3 py-1 rounded bg-slate-100 text-xs" onClick={() => setReviewItem(null)}>
+                    <button
+                      className="px-4 py-2 min-h-[44px] rounded-lg bg-slate-100 text-sm hover:bg-slate-200"
+                      onClick={() => setReviewItem(null)}
+                      data-testid="rag.reviewer.close"
+                    >
                       Close
                     </button>
                   </div>
@@ -667,64 +965,74 @@ export default function RAG() {
               }
             >
               <div className="grid md:grid-cols-[280px_1fr] gap-4">
-                <div className="space-y-2">
+                {/* Metadata sidebar */}
+                <div className="space-y-3" data-testid="rag.reviewer.metadata">
                   <LabeledField label="Date">
                     <input
                       type="date"
-                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
                       value={reviewItem.date || ''}
                       onChange={(e) => setReviewItem((prev) => ({ ...prev, date: e.target.value }))}
+                      data-testid="rag.reviewer.date"
                     />
                   </LabeledField>
                   <LabeledField label="Domain">
                     <input
-                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
                       value={reviewItem.domain || ''}
                       onChange={(e) => setReviewItem((prev) => ({ ...prev, domain: e.target.value }))}
                       placeholder="CLIENT_WORK / INTERNAL"
+                      data-testid="rag.reviewer.domain"
                     />
                   </LabeledField>
                   <LabeledField label="Client">
                     <input
-                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
                       value={reviewItem.client || ''}
                       onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
+                      data-testid="rag.reviewer.client"
                     />
                   </LabeledField>
                   <LabeledField label="Tags">
                     <input
-                      className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
                       value={reviewItem.tags || ''}
                       onChange={(e) => setReviewItem((prev) => ({ ...prev, tags: e.target.value }))}
                       placeholder="comma separated"
+                      data-testid="rag.reviewer.tags"
                     />
                   </LabeledField>
-                  <LabeledField label="Audio">
+                  <LabeledField label="Audio Player">
                     <audio
+                      ref={audioRef}
                       className="w-full"
                       controls
                       src={`${apiBase || ''}/api/rag/audio/${reviewItem.id}`}
+                      data-testid="rag.reviewer.audio"
                     >
                       Your browser does not support audio playback.
                     </audio>
+                    <p className="text-xs text-slate-400 mt-1">Click a bubble below to jump to timestamp</p>
                   </LabeledField>
                   <LabeledField label="Rename speaker (global)">
                     <div className="flex gap-2">
                       <input
-                        className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                        className="border border-slate-200 rounded px-2 py-2 text-sm flex-1 min-h-[44px]"
                         placeholder="From"
                         value={renameFrom}
                         onChange={(e) => setRenameFrom(e.target.value)}
+                        data-testid="rag.reviewer.renameFrom"
                       />
                       <input
-                        className="border border-slate-200 rounded px-2 py-1 text-sm flex-1"
+                        className="border border-slate-200 rounded px-2 py-2 text-sm flex-1 min-h-[44px]"
                         placeholder="To"
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
+                        data-testid="rag.reviewer.renameTo"
                       />
                       <button
                         type="button"
-                        className="px-2 py-1 bg-slate-100 rounded text-xs"
+                        className="px-3 py-2 min-h-[44px] bg-slate-100 rounded text-sm hover:bg-slate-200"
                         onClick={() => {
                           if (!renameFrom || !renameTo) return
                           const next = (reviewItem.transcript || []).map((seg) => ({
@@ -733,105 +1041,92 @@ export default function RAG() {
                           }))
                           setReviewItem((prev) => ({ ...prev, transcript: next }))
                         }}
+                        data-testid="rag.reviewer.renameApply"
+                        data-action="reviewer.renameSpeaker"
                       >
                         Apply
                       </button>
                     </div>
                   </LabeledField>
                 </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-slate-500">Segments</div>
-                      <div className="flex items-center gap-2">
-                        {reviewItem?.rawText && (
-                          <button
-                            type="button"
-                            className="text-xs text-slate-500 underline"
-                            onClick={() => {
-                              const lines = (reviewItem.rawText || '')
-                                .split(/\r?\n/)
-                                .map((l) => l.trim())
-                                .filter(Boolean)
-                              const segs = lines.map((text) => ({
-                                speaker: '',
-                                start: '',
-                                end: '',
-                                text,
-                              }))
-                              setReviewItem((prev) => ({ ...prev, transcript: segs }))
-                            }}
-                          >
-                            Load raw text
-                          </button>
-                        )}
+
+                {/* Chat-style transcript view */}
+                <div className="space-y-3" data-testid="rag.reviewer.transcript">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm font-medium text-slate-700">Transcript ({(reviewItem.transcript || []).length} segments)</div>
+                    <div className="flex items-center gap-2">
+                      {reviewItem?.rawText && (
                         <button
                           type="button"
-                          className="text-xs text-petrol underline"
-                          onClick={() =>
-                            setReviewItem((prev) => ({
+                          className="px-3 py-2 min-h-[44px] text-sm text-slate-600 hover:text-slate-800 bg-slate-50 rounded-lg"
+                          onClick={() => {
+                            const lines = (reviewItem.rawText || '')
+                              .split(/\r?\n/)
+                              .map((l) => l.trim())
+                              .filter(Boolean)
+                            const segs = lines.map((text) => ({
+                              speaker: '',
+                              start: '',
+                              end: '',
+                              text,
+                            }))
+                            setReviewItem((prev) => ({ ...prev, transcript: segs }))
+                          }}
+                          data-testid="rag.reviewer.loadRaw"
+                          data-action="reviewer.loadRaw"
+                        >
+                          Load raw text
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="px-3 py-2 min-h-[44px] text-sm text-petrol bg-petrol/10 rounded-lg hover:bg-petrol/20"
+                        onClick={() =>
+                          setReviewItem((prev) => ({
                             ...prev,
                             transcript: [...(prev?.transcript || []), { speaker: '', start: '', end: '', text: '' }],
                           }))
                         }
+                        data-testid="rag.reviewer.addSegment"
+                        data-action="reviewer.addSegment"
                       >
-                        Add segment
+                        + Add segment
                       </button>
                     </div>
+                  </div>
+
+                  {/* Chat bubbles container - WhatsApp style per PRD */}
+                  <div className="bg-gradient-to-b from-slate-50 to-slate-100 rounded-xl p-4 max-h-[600px] overflow-y-auto" data-testid="rag.reviewer.chatContainer">
+                    {(reviewItem.transcript || []).length === 0 && (
+                      <div className="text-center text-slate-500 py-8">
+                        No segments yet. Click "Add segment" or "Load raw text" to begin.
+                      </div>
+                    )}
                     {(reviewItem.transcript || []).map((seg, idx) => (
-                      <div key={idx} className="border border-slate-200 rounded-lg p-3 space-y-2">
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <input
-                            className="border border-slate-200 rounded px-2 py-1 text-xs"
-                          value={seg.speaker || ''}
-                          onChange={(e) => {
-                            const next = [...reviewItem.transcript]
-                            next[idx] = { ...next[idx], speaker: e.target.value }
-                            setReviewItem((prev) => ({ ...prev, transcript: next }))
-                          }}
-                        />
-                        <input
-                          className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
-                          value={seg.start || ''}
-                          onChange={(e) => {
-                            const next = [...reviewItem.transcript]
-                            next[idx] = { ...next[idx], start: e.target.value }
-                            setReviewItem((prev) => ({ ...prev, transcript: next }))
-                          }}
-                          placeholder="00:00"
-                        />
-                        <input
-                          className="border border-slate-200 rounded px-2 py-1 text-xs w-20"
-                          value={seg.end || ''}
-                            onChange={(e) => {
-                              const next = [...reviewItem.transcript]
-                              next[idx] = { ...next[idx], end: e.target.value }
-                              setReviewItem((prev) => ({ ...prev, transcript: next }))
-                            }}
-                            placeholder="00:05"
-                          />
-                          <button
-                            type="button"
-                            className="text-rose-600 underline ml-auto"
-                            onClick={() => {
-                              const next = [...(reviewItem.transcript || [])]
-                              next.splice(idx, 1)
-                              setReviewItem((prev) => ({ ...prev, transcript: next }))
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                        <textarea
-                          className="w-full border border-slate-200 rounded px-2 py-2 text-sm"
-                          value={seg.text || ''}
-                          onChange={(e) => {
-                          const next = [...reviewItem.transcript]
-                          next[idx] = { ...next[idx], text: e.target.value }
+                      <ChatBubble
+                        key={idx}
+                        segment={seg}
+                        index={idx}
+                        isEven={idx % 2 === 0}
+                        audioRef={audioRef}
+                        onTextChange={(i, text) => {
+                          const next = [...(reviewItem.transcript || [])]
+                          next[i] = { ...next[i], text }
+                          setReviewItem((prev) => ({ ...prev, transcript: next }))
+                        }}
+                        onSpeakerChange={(i, speaker) => {
+                          const next = [...(reviewItem.transcript || [])]
+                          next[i] = { ...next[i], speaker }
+                          setReviewItem((prev) => ({ ...prev, transcript: next }))
+                        }}
+                        onDelete={(i) => {
+                          const next = [...(reviewItem.transcript || [])]
+                          next.splice(i, 1)
                           setReviewItem((prev) => ({ ...prev, transcript: next }))
                         }}
                       />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -839,22 +1134,30 @@ export default function RAG() {
           </>
           )}
         </div>
-        <aside className="w-64 space-y-3">
+        <aside className="w-64 space-y-3" data-testid="rag.sidebar">
           <div className="text-sm font-semibold text-slate-700">ניווט</div>
-          <div className="space-y-2">
+          <nav className="space-y-2" role="tablist" aria-label="RAG navigation">
             <button
-              className={`w-full border rounded-lg px-3 py-2 text-sm ${activeTab === 'ingest' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700'}`}
+              role="tab"
+              aria-selected={activeTab === 'ingest'}
+              className={`w-full border rounded-lg px-4 py-3 text-sm min-h-[44px] transition-colors ${activeTab === 'ingest' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
               onClick={() => setActiveTab('ingest')}
+              data-testid="rag.tab.ingest"
+              data-action="tab.switch.ingest"
             >
               קליטה ואישור
             </button>
             <button
-              className={`w-full border rounded-lg px-3 py-2 text-sm ${activeTab === 'assistant' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700'}`}
+              role="tab"
+              aria-selected={activeTab === 'assistant'}
+              className={`w-full border rounded-lg px-4 py-3 text-sm min-h-[44px] transition-colors ${activeTab === 'assistant' ? 'border-petrol text-petrol bg-petrol/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
               onClick={() => setActiveTab('assistant')}
+              data-testid="rag.tab.assistant"
+              data-action="tab.switch.assistant"
             >
-              AI / עוזר
+              עוזר AI
             </button>
-          </div>
+          </nav>
         </aside>
       </div>
       {activeTab === 'assistant' && assistantAnswer === '' && assistantStatus === 'idle' && (

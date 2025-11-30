@@ -42,10 +42,33 @@ Last updated: 2025-11-04
 - Author final production texts in `docs/security_texts.he-IL.json`.
 - Update `docs/Testing_Episodic_Log.md` after each test round.
 
-Insights RAG — near‑term tasks (per PRD v2.0 “Inbox First”)
-- Frontend inbox/reviewer (current status: stubbed): drop-zone with MD5(first 1MB) dedupe, inbox list, publish/delete, quick-edit, reviewer panel with inline transcript edits. Next: add status polling UI, audio playback hooks, speaker rename, tag safety, bulk actions.
-- Backend ingest/reviewer (current status: stubbed): `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` save to `Transcripts/Inbox/Library` and manage manifest. Next: integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
-- Secrets: replace Gemini key with the new “Gemini 3” key in `secrets.local.json`, then validate model list and content generation; pick target model (e.g., `gemini-2.0-flash-001` or Gemini 3 equivalent) for transcription.
+Insights RAG — near‑term tasks (per PRD v2.0 "Inbox First")
+
+**UI/UX Audit (2024-11-30)** — Full report: `docs/reports/RAG_TAB_UI_UX_AUDIT_2024-11-30.md`
+
+Critical fixes (must do):
+- [ ] Add `data-testid` attributes to all interactive elements per COMPONENT_LIBRARY.md (zero testids currently)
+- [ ] Implement chat-style bubbles for transcript reviewer (currently uses segment cards, not WhatsApp-style per PRD)
+- [ ] Add audio timestamp sync — click segment to play from that timestamp (audio player exists but not linked)
+
+Major fixes:
+- [ ] Implement "Select All" checkbox and bulk action dropdown for inbox items
+- [ ] Add "Apply to All" buttons for bulk date/domain application
+- [ ] Implement client-scoped tag filtering (Global + This Client tags only)
+- [ ] Increase button touch targets to 44px minimum (currently ~24px)
+- [ ] Add right-click context menu for speaker rename (currently input-based)
+- [ ] Implement conversational memory for assistant (currently single Q&A)
+
+Minor fixes:
+- [ ] Extract SectionCard, StatusPill, LabeledField to shared components
+- [ ] Align font sizes with design tokens (text-lg→20pt, text-sm→15pt)
+- [ ] Add upload progress percentage
+- [ ] Implement keyboard shortcuts (/ to focus search)
+- [ ] Add ARIA labels to tab navigation, drop zone, action buttons
+
+Backend tasks (unchanged):
+- Backend ingest/reviewer: `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` — integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
+- Secrets: replace Gemini key with the new "Gemini 3" key in `secrets.local.json`, then validate model list and content generation; pick target model (e.g., `gemini-2.0-flash-001` or Gemini 3 equivalent) for transcription.
 - Auto-extraction: date from file creation/filename; client regex against registry; tag safety filtering to Global_Tags + Client_Tags.
 - QA/logging: log deletions/transcription failures; add smoke path (sample audio/text) to verify Inbox → Reviewer → Library; add tests for duplicate hash rejection and publish/delete flows.
 
