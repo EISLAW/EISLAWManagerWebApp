@@ -6,9 +6,16 @@ WORKDIR /app
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
+# Install dependencies from backend
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
+# Also install scoring_service deps for compatibility
 COPY scoring_service/requirements.txt /app/scoring_service/requirements.txt
 RUN pip install --no-cache-dir -r scoring_service/requirements.txt
 
+# Copy backend code (has RAG endpoints)
+COPY backend /app/backend
+# Also copy scoring_service for any shared utilities
 COPY scoring_service /app/scoring_service
 COPY config /app/config
 COPY tools /app/tools
@@ -20,4 +27,5 @@ ENV PORT=8799 \
 
 EXPOSE 8799
 
-CMD ["uvicorn", "scoring_service.main:app", "--host", "0.0.0.0", "--port", "8799"]
+# Run from backend/main.py which has the RAG endpoints
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8799"]
