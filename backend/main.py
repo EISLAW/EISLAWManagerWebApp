@@ -367,7 +367,33 @@ def rag_reviewer_get(item_id: str):
     item = find_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    return item
+    raw_text = None
+    path = item.get("filePath")
+    if path and Path(path).exists():
+        try:
+            raw_text = Path(path).read_text(encoding="utf-8", errors="ignore")
+        } except Exception:
+            raw_text = None
+    # If transcript is missing/one-stub and raw_text exists, attempt a simple parse of "Speaker: text" lines
+    parsed = []
+    if raw_text and (not item.get("transcript") or len(item.get("transcript")) <= 1):
+        for line in raw_text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            speaker = "Speaker 1"
+            text = line
+            if ":" in line:
+                parts = line.split(":", 1)
+                speaker = parts[0].strip() or speaker
+                text = parts[1].strip()
+            parsed.append({"speaker": speaker, "start": "", "end": "", "text": text})
+    payload = {**item}
+    if raw_text is not None:
+        payload["rawText"] = raw_text
+    if parsed:
+        payload["parsedSegments"] = parsed
+    return payload
 
 
 @app.patch("/api/rag/reviewer/{item_id}")
