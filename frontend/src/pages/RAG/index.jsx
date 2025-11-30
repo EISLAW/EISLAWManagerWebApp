@@ -742,11 +742,33 @@ export default function RAG() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-slate-500">Segments</div>
-                      <button
-                        type="button"
-                        className="text-xs text-petrol underline"
-                        onClick={() =>
-                          setReviewItem((prev) => ({
+                      <div className="flex items-center gap-2">
+                        {reviewItem?.rawText && (
+                          <button
+                            type="button"
+                            className="text-xs text-slate-500 underline"
+                            onClick={() => {
+                              const lines = (reviewItem.rawText || '')
+                                .split(/\r?\n/)
+                                .map((l) => l.trim())
+                                .filter(Boolean)
+                              const segs = lines.map((text) => ({
+                                speaker: '',
+                                start: '',
+                                end: '',
+                                text,
+                              }))
+                              setReviewItem((prev) => ({ ...prev, transcript: segs }))
+                            }}
+                          >
+                            Load raw text
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-xs text-petrol underline"
+                          onClick={() =>
+                            setReviewItem((prev) => ({
                             ...prev,
                             transcript: [...(prev?.transcript || []), { speaker: '', start: '', end: '', text: '' }],
                           }))
