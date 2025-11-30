@@ -9,7 +9,7 @@ import shutil
 from typing import Optional, List
 import os
 import base64
-import fixtures
+from backend import fixtures
 import httpx
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
@@ -372,7 +372,7 @@ def rag_reviewer_get(item_id: str):
     if path and Path(path).exists():
         try:
             raw_text = Path(path).read_text(encoding="utf-8", errors="ignore")
-        } except Exception:
+        except Exception:
             raw_text = None
     # If transcript is missing/one-stub and raw_text exists, attempt a simple parse of "Speaker: text" lines
     parsed = []
