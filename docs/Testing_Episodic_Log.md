@@ -607,6 +607,37 @@ How to Verify
 - Lesson: dashboard "Graph/SharePoint offline" and empty Clients/Privacy can be caused by CORS missing the active frontend host. Added VM host to `DEV_CORS_ORIGINS` in compose and set `/graph/check` to use app creds; add CORS host checklist to runbooks to avoid recurrence.
 - Notes/Next: Wire GitHub Action for container builds/push + slot swap; add Application Insights exporter verification inside the container.
 
+## 2025-12-03 – crypto.randomUUID() failure in non-secure context (HTTP on external IP)
+- **Symptom:** "Add Task" button did nothing when accessing the app via `http://20.217.86.4:5173`. No error visible in UI, but browser console showed `crypto.randomUUID is not a function`.
+- **Root cause:** `crypto.randomUUID()` is a **secure context** API. It only works in:
+  - HTTPS connections
+  - `localhost` / `127.0.0.1` (treated as secure even over HTTP)
+  - File URLs
+
+  When accessing via external IP over HTTP (`http://20.217.86.4:5173`), the browser considers this an **insecure context** and `crypto.randomUUID` is undefined.
+- **Discovery method:** Used Playwright test (`test_add_task4.js`) to directly call `createTask()` via `page.evaluate()` and captured the browser console error.
+- **Fix:** Added `generateUUID()` polyfill in `frontend/src/lib/tasks.js`:
+  ```javascript
+  function generateUUID() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    // Fallback for non-secure contexts
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  }
+  ```
+- **Lesson learned:** When using browser crypto APIs, always check if they exist and provide fallbacks. Other secure-context-only APIs include:
+  - `navigator.clipboard` (partial)
+  - `navigator.geolocation`
+  - Service Workers
+  - Web Bluetooth, Web USB
+  - Some Web Authentication features
+- **Verification:** Playwright test confirmed POST request now sent to `/api/tasks` and task created successfully.
+
 ## 2025-12-03 – SharePoint integration + Graph API lessons
 - **Scope:** Add SharePoint folder linking to client cards; fix email search for Hebrew client names.
 - **Key lessons learned:**

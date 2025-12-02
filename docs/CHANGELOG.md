@@ -9,6 +9,9 @@ Lightweight, dated notes for significant changes. Keep entries short (1–3 bull
 
 ## 2025-12-03
 - **Backend/Tasks**: Fixed critical bug - tasks storage path was pointing to read-only `/app/backend/data` in Docker container; moved to `~/.eislaw/store/tasks.json` (same location as clients registry) with writable fallback detection.
+- **Frontend/Tasks**: Fixed `crypto.randomUUID()` failure when accessing app via external IP (HTTP). Added `generateUUID()` polyfill in `tasks.js` that falls back to Math.random-based UUID generation when `crypto.randomUUID()` is unavailable (non-secure contexts like `http://20.217.86.4:5173`).
+- **Frontend/API**: Fixed API base detection for VM access - added auto-detection of VM IP (`20.217.86.4`) in `apiBase.js` so frontend correctly targets local API when accessed from external IP.
+- **DevEx/HMR**: Added `vite.config.js` with increased file polling interval (1000ms instead of 100ms) to reduce false auto-refreshes when using Docker volume mounts. The frequent page reloads were caused by Chokidar polling detecting phantom file changes.
 - **Backend/SharePoint**: Added SharePoint integration via Microsoft Graph API:
   - `GET /api/sharepoint/sites` - Lists all available SharePoint sites
   - `GET /api/sharepoint/search?name=<client>` - Searches for client folder in SharePoint

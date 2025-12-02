@@ -30,6 +30,13 @@ export async function detectApiBase(preferred = []) {
     const norm = normalize(value)
     if (norm && !unique.includes(norm)) unique.push(norm)
   }
+
+  // Auto-detect: if we're on the VM (20.217.86.4), use VM API first
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : ''
+  if (currentHost === '20.217.86.4') {
+    push('http://20.217.86.4:8799')
+  }
+
   // Preferred fixed ports first
   push('http://127.0.0.1:8080')
   push('http://localhost:8080')
@@ -42,6 +49,8 @@ export async function detectApiBase(preferred = []) {
   push('http://localhost:8788')
   push('http://127.0.0.1:8799')
   push('http://localhost:8799')
+  // VM external IP (Azure dev)
+  push('http://20.217.86.4:8799')
   push('https://eislaw-api-01.azurewebsites.net')
 
   for (const base of unique) {

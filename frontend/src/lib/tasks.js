@@ -1,6 +1,20 @@
 import { lsGet, lsSet, nowIso, hoursSince } from './storage'
 import { getStoredApiBase, detectApiBase } from '../utils/apiBase'
 
+// UUID generator that works in non-secure contexts (HTTP)
+function generateUUID() {
+  // Use crypto.randomUUID if available (secure context)
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback for non-secure contexts (HTTP on external IP)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 const KEY = 'eislaw.tasks.v1'
 const KEY_ARCH = 'eislaw.taskArchive.v1'
 const MIGRATION_KEY = 'eislaw.tasks.migrated'
@@ -214,7 +228,7 @@ export async function fetchTasksSummary() {
 
 export function createTask(input) {
   const t = {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     title: input.title?.trim() || 'New Task',
     desc: input.desc || '',
     status: 'new',
