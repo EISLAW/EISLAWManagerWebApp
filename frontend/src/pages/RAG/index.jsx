@@ -179,6 +179,12 @@ export default function RAG() {
   const [assistantStatus, setAssistantStatus] = useState('idle')
   const [assistantError, setAssistantError] = useState('')
 
+  // Zoom transcripts state
+  const [zoomTranscripts, setZoomTranscripts] = useState([])
+  const [zoomStatus, setZoomStatus] = useState("idle")
+  const [zoomPreview, setZoomPreview] = useState(null)
+  const [zoomImporting, setZoomImporting] = useState(false)
+
   useEffect(() => {
     const init = async () => {
       const detected = await detectApiBase([ENV_API])
@@ -206,6 +212,13 @@ export default function RAG() {
     }
     if (activeTab === 'assistant' && assistantRef.current) {
       assistantRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab])
+
+  // Load Zoom transcripts when ingest tab is active
+  useEffect(() => {
+    if (activeTab === ingest) {
+      refreshZoomTranscripts()
     }
   }, [activeTab])
 
@@ -284,7 +297,74 @@ export default function RAG() {
     }
   }
 
-  const handleDrop = async (fileList) => {
+  // Zoom transcripts functions
+  const refreshZoomTranscripts = async () => {
+    setZoomStatus("loading")
+    const base = await ensureApiBase()
+    if (!base) {
+      setZoomStatus("idle")
+      return
+    }
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      setZoomTranscripts(Array.isArray(data.transcripts) ? data.transcripts : [])
+      setZoomStatus("ready")
+    } catch (err) {
+      setZoomStatus("idle")
+      console.error("Failed to fetch Zoom transcripts:", err)
+    }
+  }
+
+  const previewZoomTranscript = async (transcript) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      setZoomPreview({ ...transcript, content: data.content })
+    } catch (err) {
+      console.error("Failed to preview transcript:", err)
+    }
+  }
+
+  const importZoomToRag = async (transcript) => {
+    setZoomImporting(true)
+    const base = await ensureApiBase()
+    if (!base) {
+      setZoomImporting(false)
+      return
+    }
+    try {
+      // Extract client name from filename (format: date_clientname_uuid.txt)
+      const parts = transcript.filename.replace(".txt", "").split("_")
+      const clientName = parts.length > 2 ? parts.slice(1, -1).join(" ") : ""
+      const dateStr = parts[0] || ""
+      
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: clientName,
+          domain: "Client_Work",
+          date: dateStr
+        })
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      await refreshInbox()
+      setZoomPreview(null)
+      alert("תמלול יובא בהצלחה לאינבוקס!")
+    } catch (err) {
+      console.error("Failed to import transcript:", err)
+      alert("שגיאה בייבוא התמלול")
+    } finally {
+      setZoomImporting(false)
+    }
+  }
+
+    const handleDrop = async (fileList) => {
     if (!fileList || !fileList.length) return
     setUploading(true)
     const base = await ensureApiBase()
@@ -930,6 +1010,100 @@ export default function RAG() {
                 ))}
               </div>
             </div>
+
+              {/* Zoom Transcripts Section */}
+              <div className="pt-4 border-t border-slate-200 space-y-2" data-testid="rag.zoomTranscripts">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-slate-800">תמלולי זום אחרונים</div>
+                  <button
+                    type="button"
+                    onClick={refreshZoomTranscripts}
+                    className="px-3 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs"
+                    disabled={zoomStatus === "loading"}
+                    data-testid="rag.zoomTranscripts.refresh"
+                  >
+                    {zoomStatus === "loading" ? "טוען..." : "רענן"}
+                  </button>
+                </div>
+                {zoomStatus === "loading" && (
+                  <div className="text-xs text-slate-500">טוען תמלולי זום...</div>
+                )}
+                {zoomTranscripts.length === 0 && zoomStatus !== "loading" && (
+                  <div className="text-xs text-slate-500">לא נמצאו תמלולי זום.</div>
+                )}
+                {zoomTranscripts.map((transcript) => (
+                  <div
+                    key={transcript.id}
+                    className="flex items-center justify-between text-sm border border-blue-200 rounded-lg px-3 py-2 bg-blue-50/50"
+                    data-testid={`rag.zoomTranscripts.item.${transcript.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-800 flex items-center gap-2 truncate">
+                        <span role="img" aria-label="zoom">📹</span>
+                        {transcript.filename}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {transcript.modified && new Date(transcript.modified).toLocaleDateString("he-IL")}
+                        {transcript.size && ` · ${Math.round(transcript.size / 1024)} KB`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-sm"
+                        onClick={() => previewZoomTranscript(transcript)}
+                        data-testid={`rag.zoomTranscripts.item.${transcript.id}.preview`}
+                      >
+                        תצוגה מקדימה
+                      </button>
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
+                        onClick={() => importZoomToRag(transcript)}
+                        disabled={zoomImporting}
+                        data-testid={`rag.zoomTranscripts.item.${transcript.id}.import`}
+                      >
+                        {zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Zoom Preview Modal */}
+              {zoomPreview && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setZoomPreview(null)}>
+                  <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                      <div className="font-semibold text-slate-800">{zoomPreview.filename}</div>
+                      <button
+                        className="text-slate-500 hover:text-slate-700 text-xl"
+                        onClick={() => setZoomPreview(null)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="p-4 overflow-y-auto max-h-[60vh]">
+                      <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed" dir="rtl">
+                        {zoomPreview.content}
+                      </pre>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-slate-200">
+                      <button
+                        className="px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
+                        onClick={() => setZoomPreview(null)}
+                      >
+                        סגור
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
+                        onClick={() => importZoomToRag(zoomPreview)}
+                        disabled={zoomImporting}
+                      >
+                        {zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
           </SectionCard>
 
           {reviewItem && (

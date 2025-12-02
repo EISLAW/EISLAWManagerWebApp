@@ -40,7 +40,16 @@ Entries
 - Mitigation/next time:
   - Confirm working tree and repo before UI work; avoid editing the archived tree.
   - Keep env/version badges visible on all layouts to distinguish local/dev/staging.
-  - Pin dev server port when possible to avoid confusion from auto-bumped ports.
+  - Pin dev server port when possible to avoid confusion from auto-bumped ports. Added fixed port policy (frontend 3000, backend 8080, tools 900x) and doc `docs/DEV_PORTS.md`; ensure frontend CORS/auto-detect include those.
+
+## 2025-11-29 - RAG reviewer raw text missing, UX validation gap
+- Symptom: Reviewer showed only Gemini stub text for TXT uploads and lacked “Load raw text” in UI, because backend reviewer endpoint had a syntax error and wasn’t returning `rawText`. Users couldn’t see or edit the actual transcript.
+- Fixes:
+  - Backend reviewer endpoint fixed (try/except syntax) and now returns `rawText` plus parsed segments for TXT lines (`Speaker: text` or plain lines).
+  - Frontend reviewer parses `rawText` as fallback, adds segment editor controls (Add/Delete), and shows “Load raw text” to reload original TXT.
+  - Playwright check added for Published Edit flow; port policy enforced (frontend 3000, backend 8080).
+- Mitigation:
+  - Always run Playwright validation before claiming UI changes; ensure `/health` and API base are correct; verify raw TXT visibility after ingest.
 
 ## 2025-11-12 - Client email sync trigger + UI button
 - Scope: Backend endpoint to invoke the Graph ingestion worker per client + Client Card Emails tab CTA so ops can pull new mail for סיון בנימיני (and others) without leaving the app.
@@ -595,5 +604,43 @@ How to Verify
 - Built Docker image via `Dockerfile.api` and pushed to new Azure Container Registry `eislawacr` (tag `privacy-api:2025-11-20`).
 - Switched App Service `eislaw-api-01` to run the container (`linuxFxVersion=DOCKER|eislawacr.azurecr.io/privacy-api:2025-11-20`) and set `WEBSITES_PORT=8799`.
 - `curl https://eislaw-api-01.azurewebsites.net/health` → 200.
-- Lesson: dashboard “Graph/SharePoint offline” and empty Clients/Privacy can be caused by CORS missing the active frontend host. Added VM host to `DEV_CORS_ORIGINS` in compose and set `/graph/check` to use app creds; add CORS host checklist to runbooks to avoid recurrence.
+- Lesson: dashboard "Graph/SharePoint offline" and empty Clients/Privacy can be caused by CORS missing the active frontend host. Added VM host to `DEV_CORS_ORIGINS` in compose and set `/graph/check` to use app creds; add CORS host checklist to runbooks to avoid recurrence.
 - Notes/Next: Wire GitHub Action for container builds/push + slot swap; add Application Insights exporter verification inside the container.
+
+## 2025-12-03 – SharePoint integration + Graph API lessons
+- **Scope:** Add SharePoint folder linking to client cards; fix email search for Hebrew client names.
+- **Key lessons learned:**
+  1. **Graph API `$filter` + `$search` limitation:** Cannot use both together. When searching emails, must use search syntax only (e.g., `$search="from:{email} AND received>=2025-01-01"`) without `$filter` parameter.
+  2. **Hebrew encoding in Graph API:** Hebrew names arrive corrupted (`???? ???????`) when sent via POST body to `$search`. Solution: Search by email addresses instead of client names – first look up the client in the local registry to get their emails, then search using `from:{email} OR to:{email}`.
+  3. **SharePoint site targeting:** The `get_sharepoint_site_id()` function must specifically look for "EISLAW OFFICE" / "EISLAWTEAM" site (where client folders live), not just any site with "eislaw" in the name.
+  4. **Field name mapping (frontend/backend):** Frontend expects `sharepoint_url`, `airtable_id`, `folder`; registry stores `sharepoint_url`, `airtable_id`, `folder`. The `find_local_client_by_name()` helper must return these exact field names.
+  5. **Badge logic:** `sharepointLinked` should check `sharepoint_url` (SharePoint web URL), not `folder` (local Windows path). Fixed in `ClientOverview.jsx:59`.
+- **New endpoints added:**
+  - `GET /api/sharepoint/sites` – Lists all SharePoint sites
+  - `GET /api/sharepoint/search?name=<client>` – Searches for client folder
+  - `POST /api/sharepoint/link_client` – Links folder and updates registry with `sharepoint_url`
+  - `GET /api/client/summary` – Returns client with correct field names for frontend
+  - `GET /email/by_client` – Returns emails for EmailsWidget
+- **Verification:** סיון בנימיני now has:
+  - 11 emails found (searching by `sivan@thepowerskill.com` and `sisivani@gmail.com`)
+  - SharePoint folder linked: `https://eislaw.sharepoint.com/sites/EISLAWTEAM/Shared%20Documents/לקוחות%20משרד/סיון%20בנימיני`
+  - Both badges (Airtable + SharePoint) show green in UI
+- **Files modified:**
+  - `backend/main.py` – Added SharePoint endpoints, fixed email search, added `/api/client/summary` and `/email/by_client`
+  - `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx` – Changed `sharepointLinked` logic, updated `openFolderKpi()` and `ensureLocations()`
+
+## 2025-12-01 – User preference: Always use hot-reload development mode
+- **Preference:** User wants to always work in hot-reload mode during development (never rebuild containers for code changes).
+- **Setup:**
+  - Use `docker-compose -f docker-compose.dev.yml up -d` on the Azure VM (`20.217.86.4`).
+  - Frontend runs on port **5173** (Vite dev server with HMR).
+  - API runs on port **8799** with `--reload` flag (auto-restarts on file changes).
+  - Code is volume-mounted, so edits on the VM apply immediately.
+- **CORS requirement:** Must include `http://20.217.86.4:5173` and `http://20.217.86.4:8080` in `backend/main.py` origins list for external browser access.
+- **Access URLs:**
+  - Frontend: `http://20.217.86.4:5173`
+  - API: `http://20.217.86.4:8799`
+- **Key files:**
+  - `docker-compose.dev.yml` – hot-reload stack config
+  - `backend/main.py` – CORS origins list
+- **Lesson:** When switching to dev mode, always verify CORS includes the VM's external IP + port, otherwise browser requests will fail silently.
