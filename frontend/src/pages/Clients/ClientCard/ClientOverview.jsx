@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useLocation } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import Card from '../../../components/Card.jsx'
 import KPI from '../../../components/KPI.jsx'
 import StagePills from '../../../components/StagePills.jsx'
 import TabNav from '../../../components/TabNav.jsx'
 import TasksPanel from '../../../components/TasksPanel.jsx'
 import TaskBoard from '../../../features/tasksNew/TaskBoard.jsx'
+import TasksWidget from '../../../components/TasksWidget.jsx'
+import EmailsWidget from '../../../components/EmailsWidget.jsx'
 import AddClientModal from '../../../components/AddClientModal.jsx'
 import LinkAirtableModal from '../../../components/LinkAirtableModal.jsx'
 import { addClientTask, updateTaskFields } from '../../../features/tasksNew/TaskAdapter.js'
-import { Loader2, RefreshCcw, Paperclip } from 'lucide-react'
+import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight } from 'lucide-react'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../../utils/apiBase.js'
 
 // Simple in-memory cache for client summaries during the session to avoid re-fetch on tab switches
@@ -19,6 +21,7 @@ export default function ClientOverview(){
   const decodedName = useMemo(() => decodeURIComponent(name), [name])
   const encodedName = useMemo(() => encodeURIComponent(decodedName), [decodedName])
   const loc = useLocation()
+  const navigate = useNavigate()
   const params = new URLSearchParams(loc.search)
   const tab = params.get('tab') || 'overview'
   const base = `/clients/${encodedName}`
@@ -54,9 +57,18 @@ export default function ClientOverview(){
   const [airtableLinkModal, setAirtableLinkModal] = useState({ open: false, afterSync: false })
   const [creatingTaskId, setCreatingTaskId] = useState(null)
   const pendingSyncAfterLinkRef = useRef(false)
-  const sharepointLinked = Boolean(summary.client?.folder)
+  const sharepointLinked = Boolean(summary.client?.sharepoint_url)
   const airtableLinked = Boolean(summary.client?.airtable_id)
   const [emailSinceDays, setEmailSinceDays] = useState(90)
+  const [lastAutoSync, setLastAutoSync] = useState(null)
+  const autoSyncAttemptedRef = useRef(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000)
+  }
+  const moreMenuRef = useRef(null)
 
   // Load summary before hooks that depend on it to avoid TDZ errors
   const loadSummary = useCallback(async (opts = {}) => {
@@ -154,6 +166,102 @@ export default function ClientOverview(){
     }
   }, [tab, encodedName, summary, API, emailRefreshKey])
 
+  // Auto-sync emails when visiting the emails tab for the first time per client session
+  // Only auto-syncs if:
+  // 1. We're on the emails tab
+  // 2. Client has email addresses configured
+  // 3. Haven't auto-synced for this client in the current session
+  // 4. Not already syncing
+  useEffect(() => {
+    if (tab !== 'emails') return
+    if (autoSyncAttemptedRef.current) return
+    if (syncingEmails) return
+
+    const clientEmails = summary.client?.emails || []
+    const contactEmails = (summary.client?.contacts || []).map(c => c?.email).filter(Boolean)
+    const hasEmails = clientEmails.length > 0 || contactEmails.length > 0
+    if (!hasEmails) return
+
+    // Check localStorage for last sync time for this client
+    const storageKey = `eislaw.email.lastSync.${encodedName}`
+    try {
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        const lastSync = new Date(stored)
+        const now = new Date()
+        const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
+        // Skip auto-sync if synced within the last 2 hours
+        if (hoursSinceSync < 2) {
+          autoSyncAttemptedRef.current = true
+          setLastAutoSync(lastSync)
+          return
+        }
+      }
+    } catch {}
+
+    // Mark as attempted to prevent re-running
+    autoSyncAttemptedRef.current = true
+
+    // Trigger background sync
+    ;(async () => {
+      const windowDays = 45 // Use a shorter window for auto-sync
+      setSyncingEmails(true)
+      setSyncStatus('סנכרון אוטומטי...')
+      try {
+        const r = await fetch(`${API}/email/sync_client`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: decodedName, since_days: windowDays })
+        })
+        if (r.ok) {
+          const data = await r.json()
+          const summary = data?.summary || {}
+          const insertedRaw = summary?.inserted_or_updated ?? summary?.updated ?? summary?.inserted ?? summary?.count ?? null
+          const inserted = Number.isFinite(Number(insertedRaw)) ? Number(insertedRaw) : null
+          const now = new Date()
+          setLastAutoSync(now)
+          try {
+            localStorage.setItem(storageKey, now.toISOString())
+          } catch {}
+          setSyncResult({
+            inserted,
+            participants: Array.isArray(data?.participants) ? data.participants.filter(Boolean) : [],
+            sinceDays: data?.since_days || windowDays,
+            at: now.toISOString()
+          })
+          setSyncStatus(inserted !== null ? `סונכרנו ${inserted} אימיילים` : 'סנכרון אוטומטי הושלם')
+          await loadSummary()
+          setEmailRefreshKey(v => v + 1)
+        }
+      } catch (err) {
+        console.warn('Auto email sync failed:', err)
+        setSyncStatus('')
+      } finally {
+        setSyncingEmails(false)
+        setTimeout(() => setSyncStatus(''), 4000)
+      }
+    })()
+  }, [tab, encodedName, summary.client?.emails, summary.client?.contacts, syncingEmails, API, decodedName, loadSummary])
+
+  // Reset auto-sync flag when client changes
+  useEffect(() => {
+    autoSyncAttemptedRef.current = false
+    setLastAutoSync(null)
+  }, [encodedName])
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setShowMoreMenu(false)
+      }
+    }
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMoreMenu])
+
   const primaryEmail = useMemo(() => (summary.client?.emails||[])[0] || '', [summary])
   const phoneDigits = useMemo(() => (summary.client?.phone||'').replace(/\D/g,''), [summary])
   const filteredIdxItems = useMemo(() => {
@@ -188,6 +296,21 @@ export default function ClientOverview(){
       return ''
     }
   }, [syncResult])
+
+  // Relative time label for last sync (auto or manual)
+  const relativeTimeSinceSync = useMemo(() => {
+    const syncTime = syncResult?.at ? new Date(syncResult.at) : lastAutoSync
+    if (!syncTime) return null
+    const now = new Date()
+    const diffMs = now.getTime() - syncTime.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    if (diffMinutes < 1) return 'עכשיו'
+    if (diffMinutes < 60) return `לפני ${diffMinutes} דקות`
+    const diffHours = Math.floor(diffMinutes / 60)
+    if (diffHours < 24) return `לפני ${diffHours} שעות`
+    const diffDays = Math.floor(diffHours / 24)
+    return `לפני ${diffDays} ימים`
+  }, [syncResult?.at, lastAutoSync])
   const isRtl = useCallback((txt='') => /[\u0590-\u05FF]/.test(txt), [])
   const syncParticipantsMeta = useMemo(() => {
     if(!Array.isArray(syncResult?.participants)) return { items: [], extra: 0 }
@@ -229,7 +352,7 @@ export default function ClientOverview(){
 
   const openClientCardModal = () => {
     if(!modalClient){
-      alert('Client summary not ready yet. Please try again shortly.')
+      alert('נתוני הלקוח עדיין לא מוכנים. נסה שוב בעוד רגע.')
       return
     }
     setClientModalKey(v => v + 1)
@@ -245,7 +368,7 @@ export default function ClientOverview(){
 
   async function syncClientCard(clientData){
     if(!clientData){
-      alert('Client summary not ready yet.')
+      alert('נתוני הלקוח עדיין לא מוכנים.')
       return
     }
     if(!clientData.airtable_id){
@@ -254,7 +377,7 @@ export default function ClientOverview(){
     }
     const emails = Array.isArray(clientData.emails) ? clientData.emails : []
     if(!emails.length){
-      alert('Client is missing an email address. Please add one first.')
+      alert('ללקוח חסרת כתובת אימייל. יש להוסיף אחת קודם.')
       return
     }
     setSyncingClientCard(true)
@@ -288,10 +411,10 @@ export default function ClientOverview(){
         body: JSON.stringify(registryPayload)
       })
       await loadSummary()
-      alert('Client synced successfully.')
+      alert('הלקוח סונכרן בהצלחה.')
     }catch(err){
       console.error('syncClientCard', err)
-      alert('Failed to sync client. Check console for details.')
+      alert('סנכרון הלקוח נכשל. בדוק את הקונסול לפרטים.')
     }finally{
       setSyncingClientCard(false)
     }
@@ -301,7 +424,7 @@ export default function ClientOverview(){
     const count = Number(item?.attachments_count || 0)
     const hasAtt = Boolean(item?.has_attachments || count > 0)
     if(!hasAtt) return <span className="inline-block w-4" aria-hidden="true" />
-    const label = count > 0 ? `${count} attachments` : 'Attachments included'
+    const label = count > 0 ? `${count} קבצים מצורפים` : 'כולל קבצים מצורפים'
     return (
       <span
         className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
@@ -415,12 +538,17 @@ export default function ClientOverview(){
         if(res.ok) return
       }catch{}
     }
-    // Fallback to SharePoint link
+    // Try stored SharePoint URL first (most reliable)
+    if(summary.client?.sharepoint_url){
+      window.open(summary.client.sharepoint_url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    // Fallback to SharePoint API lookup
     try{
-      const resp = await fetch(`${API}/client/sharepoint_link?name=${encodeURIComponent(decodedName)}`)
+      const resp = await fetch(`${API}/api/sharepoint/search?name=${encodeURIComponent(decodedName)}`)
       if(resp.ok){
         const j = await resp.json()
-        if(j.webUrl){ window.open(j.webUrl, '_blank', 'noopener,noreferrer'); return }
+        if(j.found && j.folder?.webUrl){ window.open(j.folder.webUrl, '_blank', 'noopener,noreferrer'); return }
       }
     }catch{}
     // As last resort, try local folder path if present
@@ -441,6 +569,12 @@ export default function ClientOverview(){
 
   async function ensureLocations(){
     if(locations) return locations
+    // First check if we have SharePoint URL from client summary
+    if(summary.client?.sharepoint_url){
+      const data = { localFolder: summary.client?.folder||'', sharepointUrl: summary.client.sharepoint_url }
+      setLocations(data)
+      return data
+    }
     const r = await fetch(`${API}/api/client/locations?name=${encodedName}`)
     if(r.ok){
       const data = await r.json(); setLocations(data); return data
@@ -458,8 +592,8 @@ export default function ClientOverview(){
     }
     // Fallbacks
     if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer'); return }
-    if(p){ navigator.clipboard?.writeText(p); alert(`Folder path copied to clipboard:\n${p}`); return }
-    alert('No folder mapping available yet')
+    if(p){ navigator.clipboard?.writeText(p); alert(`נתיב התיקייה הועתק:\n${p}`); return }
+    alert('עדיין אין מיפוי תיקייה')
   }
 
   async function openSharePoint(){
@@ -469,7 +603,7 @@ export default function ClientOverview(){
       if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer') }
       else { throw new Error('not found') }
     }catch(err){
-      alert('Could not resolve SharePoint folder. We can configure mapping if needed.')
+      alert('לא ניתן למצוא את תיקיית SharePoint. ניתן להגדיר מיפוי אם צריך.')
     }finally{
       setSpBusy(false)
     }
@@ -520,7 +654,7 @@ export default function ClientOverview(){
     }catch(err){
       console.error('syncEmails', err)
       setSyncStatus('הסנכרון נכשל')
-      alert('Email sync failed. See console for details.')
+      alert('סנכרון האימיילים נכשל. בדוק את הקונסול לפרטים.')
     }finally{
       setSyncingEmails(false)
       setTimeout(() => setSyncStatus(''), 6000)
@@ -528,276 +662,289 @@ export default function ClientOverview(){
   }
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="heading">{decodedName}</h1>
-          <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2">
-            <button data-testid="edit-client" onClick={()=>setEdit(v=>!v)} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition">{edit? 'Close Edit' : 'Edit'}</button>
-            <button
-              data-testid="open-client-card"
-              onClick={openClientCardModal}
-              className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition"
-            >
-              Client Card
-            </button>
-            <button
-              data-testid="airtable-sync"
-                className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition disabled:opacity-50"
-                disabled={syncingClientCard || !modalClient}
-                onClick={() => {
-                  if (!modalClient?.airtable_id) {
-                    openLinkModal(true)
-                    return
-                  }
-                  syncClientCard(modalClient)
-                }}
-              >
-                {syncingClientCard ? 'Syncing…' : 'Sync Airtable'}
-            </button>
-            <button
-              className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition"
-              onClick={()=>window.location.assign(`/clients/${encodedName}?tab=tasks`)}
-            >
-              View Tasks
-            </button>
-          </div>
+      {/* Simplified Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/clients')}
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+            title="חזרה לרשימת הלקוחות"
+          >
+            <ArrowRight className="w-5 h-5 text-slate-600" />
+          </button>
+          <h1 className="heading text-2xl font-bold text-slate-800">{decodedName}</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm">
-            {(!HIDE_OUTLOOK && primaryEmail) && (
-              <button data-testid="open-emails" className="rounded-full bg-petrol px-3 py-1 text-xs font-semibold text-white hover:bg-petrolHover" onClick={()=>openOutlookFor(primaryEmail)}>
-                Open Emails
-              </button>
+
+        <div className="flex items-center gap-2">
+          {/* Primary actions - always visible */}
+          {primaryEmail && (
+            <a
+              href={`mailto:${primaryEmail}`}
+              data-testid="send-email"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              שלח מייל
+            </a>
+          )}
+
+          <button
+            data-testid="open-client-card"
+            onClick={openClientCardModal}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            כרטיס לקוח
+          </button>
+
+          {/* More menu */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              onClick={() => setShowMoreMenu(v => !v)}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              aria-label="פעולות נוספות"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showMoreMenu && (
+              <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg z-50 py-1">
+                <button
+                  data-testid="edit-client"
+                  onClick={() => { setEdit(v => !v); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  {edit ? 'סגור עריכה' : 'ערוך לקוח'}
+                </button>
+
+                <button
+                  data-testid="airtable-sync"
+                  disabled={syncingClientCard || !modalClient}
+                  onClick={() => {
+                    setShowMoreMenu(false)
+                    if (!modalClient?.airtable_id) {
+                      openLinkModal(true)
+                      return
+                    }
+                    syncClientCard(modalClient)
+                  }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  {syncingClientCard ? 'מסנכרן...' : 'סנכרן Airtable'}
+                </button>
+
+                {summary.client?.folder && (
+                  <button
+                    onClick={() => { openFolderKpi(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    פתח תיקייה
+                  </button>
+                )}
+
+                {!HIDE_OUTLOOK && primaryEmail && (
+                  <button
+                    data-testid="open-emails"
+                    onClick={() => { openOutlookFor(primaryEmail); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    פתח ב-Outlook
+                  </button>
+                )}
+
+                {phoneDigits && (
+                  <a
+                    data-testid="open-whatsapp"
+                    href={`https://wa.me/${phoneDigits}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                )}
+
+                <div className="border-t border-slate-100 my-1" />
+
+                <button
+                  onClick={() => { window.location.assign(`/clients/${encodedName}?tab=tasks`); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  הצג משימות
+                </button>
+
+                <button
+                  onClick={() => { gotoIndexedEmails(); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  הצג אימיילים
+                </button>
+              </div>
             )}
-            {!HIDE_OUTLOOK && primaryEmail && (
-              <a data-testid="send-email" className="rounded-full bg-petrol/80 px-3 py-1 text-xs font-semibold text-white" href={`mailto:${primaryEmail}`} target="_blank" rel="noreferrer">
-                Send Email
-              </a>
-            )}
-            {phoneDigits && (
-              <a data-testid="open-whatsapp" className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white" href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer">
-                WhatsApp
-              </a>
-            )}
-          </div>
-          <div className="inline-flex flex-wrap items-center gap-2">
-            {airtableLinked ? (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Airtable: Linked
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                onClick={() => openLinkModal(false)}
-              >
-                Airtable: Missing (Link)
-              </button>
-            )}
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${sharepointLinked ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-              SharePoint: {sharepointLinked ? 'Folder linked' : 'Not linked'}
-            </span>
           </div>
         </div>
       </div>
 
       <div>
         <TabNav base={base} current={tab} tabs={[
-          {key:'overview', label:'Overview'},
-          {key:'files', label:'Files'},
-          {key:'emails', label:'Emails'},
-          {key:'tasks', label:'Tasks'},
-          {key:'rag', label:'RAG'},
-          {key:'privacy', label:'Privacy (soon)'}
+          {key:'overview', label:'סקירה'},
+          {key:'files', label:'קבצים'},
+          {key:'emails', label:'אימיילים'},
+          {key:'tasks', label:'משימות'},
+          // {key:'rag', label:'RAG'}, // Hidden until implemented
+          // {key:'privacy', label:'פרטיות (בקרוב)'} // Hidden until implemented
         ]}/>
       </div>
 
             {tab==='overview' && (
-        <div className="grid gap-6 md:grid-cols-[2fr,minmax(260px,1fr)]">
-          <div className="space-y-6">
-            {edit && (
-              <Card title="Edit Client">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <label className="text-sm">Email<input value={editForm.email} onChange={e=>setEditForm({...editForm, email:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
-                  <label className="text-sm">Phone<input value={editForm.phone} onChange={e=>setEditForm({...editForm, phone:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
-                </div>
-                <div className="mt-3">
-                  <button data-testid="save-client" className="px-3 py-1 rounded bg-success text-white" onClick={async ()=>{
-                    const nm = decodedName
-                    const email = editForm.email.trim(); const phone = editForm.phone.trim()
-                    try{
-                      await fetch(`${API}/registry/clients`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ display_name: nm, email: email? [email]: [], phone }) })
-                      if(email){ await fetch(`${API}/airtable/clients_upsert`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: nm, email }) }) }
-                      alert('Saved')
-                      const encoded = encodeURIComponent(nm)
-                      const r = await fetch(`${API}/api/client/summary?name=${encoded}&limit=10`)
-                      if(r.ok){ setSummary(await r.json()) }
-                      setEdit(false)
-                    }catch(e){ alert('Save failed') }
-                  }}>Save</button>
-                </div>
-              </Card>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <KPI testId="kpi-primary-email" label="Primary Email" value={primaryEmail || '-'} href={primaryEmail ? `mailto:${primaryEmail}` : undefined} />
-              <KPI testId="kpi-folder" label="Folder" value={summary.client?.folder ? 'Available' : '-'} onClick={summary.client?.folder ? ()=>openFolderKpi() : undefined} />
-              <KPI testId="kpi-files" label="Files" value={summary.files?.length || 0} />
-              <KPI testId="kpi-recent-emails" label="Recent Emails" value={(summary.emails?.length || 0) + (online.emails?.length || 0)} onClick={gotoIndexedEmails} />
-            </div>
-            <Card title="SFU">
-              <StagePills phase={'analysis'} />
-            </Card>
-            <Card title="Email Shortcuts">
-              <div className="text-sm text-slate-700 mb-2">Open Outlook for any address or all at once.</div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {(summary.client?.emails||[]).map(e => (
-                  <button key={e} className="px-2 py-1 rounded bg-petrol/10 text-petrol" onClick={()=>openOutlookFor(e)}>{e}</button>
-                ))}
-                {((summary.client?.contacts)||[]).filter(c=>c?.email).map(c => (
-                  <button key={c.email} className="px-2 py-1 rounded bg-petrol/10 text-petrol" onClick={()=>openOutlookFor(c.email)}>{c.name? `${c.name} <${c.email}>` : c.email}</button>
-                ))}
-                <button className="px-2 py-1 rounded bg-petrol text-white" onClick={openEmailsAll}>Open All</button>
-              </div>
-            </Card>
-          </div>
-          <aside className="space-y-4">
-            <Card title="Word Templates">
-              {!showWord && (
-                <button
-                  data-testid="word-templates"
-                  onClick={async()=>{
-                    setWordStatus('')
-                    // Try interactive folder picker first
-                    const picked = await pickFolderDialog()
-                    if(picked) return
-                    // Fallback: open templates folder directly
-                    const opened = await openLocalPath(TEMPLATE_DIR)
-                    if(opened) return
-                    // fallback to in-app list if explorer open fails
-                    setShowWord(true)
-                    try{
-                      const r = await fetch(`${API}/word/templates`)
-                      const j = await r.json()
-                      setWordList(j.templates||[])
-                    }catch{
-                      setWordList([])
-                      setWordStatus('Unable to load templates list')
-                    }
-                  }}
-                  className="px-3 py-1 rounded bg-petrol/80 text-white"
-                >Browse templates…</button>
-              )}
-              {showWord && (
-                <>
-                  <div className="text-sm text-slate-600 mb-2">Choose a template to generate a DOCX in the client folder.</div>
-                  <div className="grid grid-cols-1 gap-2 max-h-60 overflow-auto">
-                    {wordList.map(t => (
-                      <button key={t.path} className="text-left px-3 py-2 rounded border hover:bg-cardGrey" onClick={async()=>{
-                        setWordStatus('Generating…')
-                        try{
-                          const r = await fetch(`${API}/word/generate`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ client_name: decodedName, template_path: t.path }) })
-                          if(r.ok){
-                            const j = await r.json()
-                            const statusMsg = 'Created: ' + ((j.webUrl && 'SharePoint') || j.path || '')
-                            setWordStatus(statusMsg)
-                            if(j.path){
-                              await openLocalPath(j.path)
-                              await openClientFolder()
-                            }
-                            if(j.webUrl){ try{ window.open(j.webUrl, '_blank', 'noopener,noreferrer') }catch{} }
-                          } else {
-                            const txt = await r.text()
-                            setWordStatus('Failed to generate: ' + (txt || r.statusText))
-                          }
-                        }catch(err){ setWordStatus('Failed to generate: ' + (err?.message||err)) }
-                      }}>{t.name}</button>
-                    ))}
-                    {wordList.length===0 && <div className="text-sm text-slate-500">No templates found</div>}
-                  </div>
-                  <div className="mt-2 text-sm">{wordStatus}</div>
-                  <div className="mt-2 flex justify-between">
-                    <button className="px-3 py-1 rounded bg-slate-300" onClick={()=>setShowWord(false)}>Close</button>
-                  </div>
-                </>
-              )}
-            </Card>
-            <Card title="Add Contact">
-              <div className="text-sm text-slate-700 mb-2">Add additional contacts linked to this client.</div>
-              <div className="grid grid-cols-1 gap-2">
-                <input data-testid="add-contact-name" placeholder="Name" value={newContact.name} onChange={e=>setNewContact({...newContact, name:e.target.value})} className="border rounded px-2 py-1"/>
-                <input data-testid="add-contact-email" placeholder="Email" value={newContact.email} onChange={e=>setNewContact({...newContact, email:e.target.value})} className="border rounded px-2 py-1"/>
-                <input data-testid="add-contact-phone" placeholder="Phone" value={newContact.phone} onChange={e=>setNewContact({...newContact, phone:e.target.value})} className="border rounded px-2 py-1"/>
-                <input data-testid="add-contact-role-desc" placeholder="Role Description" value={newContact.role_desc} onChange={e=>setNewContact({...newContact, role_desc:e.target.value})} className="border rounded px-2 py-1"/>
-                <input data-testid="add-contact-address" placeholder="Address" value={newContact.address} onChange={e=>setNewContact({...newContact, address:e.target.value})} className="border rounded px-2 py-1"/>
-                <input data-testid="add-contact-id" placeholder="ID Number" value={newContact.id_number} onChange={e=>setNewContact({...newContact, id_number:e.target.value})} className="border rounded px-2 py-1"/>
+        <div className="space-y-6">
+          {/* Edit panel - only shown when edit mode is active */}
+          {edit && (
+            <Card title="עריכת לקוח">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className="text-sm">אימייל<input value={editForm.email} onChange={e=>setEditForm({...editForm, email:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
+                <label className="text-sm">טלפון<input value={editForm.phone} onChange={e=>setEditForm({...editForm, phone:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
               </div>
               <div className="mt-3">
-                <button data-testid="add-contact-submit" className="px-3 py-1 rounded bg-success text-white w-full" onClick={async()=>{
+                <button data-testid="save-client" className="px-3 py-1 rounded bg-success text-white" onClick={async ()=>{
                   const nm = decodedName
-                  const nc = { ...newContact }
-                  if(!nc.email){ alert('Contact email required'); return }
-                  if(!nc.name){ alert('Contact name required'); return }
+                  const email = editForm.email.trim(); const phone = editForm.phone.trim()
                   try{
-                    const current = (summary.client?.contacts)||[]
-                    const updated = [...current, nc]
-                    const emails = summary.client?.emails || []
-                    const basePayload = { method:'POST', headers:{'Content-Type':'application/json'} }
-
-                    // Update registry with the new contact list
-                    const regRes = await fetch(`${API}/registry/clients`, {
-                      ...basePayload,
-                      body: JSON.stringify({
-                        display_name: nm,
-                        email: emails,
-                        phone: summary.client?.phone||'',
-                        contacts: updated
-                      })
-                    })
-                    if(!regRes.ok){
-                      const msg = await regRes.text()
-                      throw new Error(msg || 'Registry update failed')
-                    }
-
-                    // Upsert into Airtable contacts with linkage to client
-                    const contactsRes = await fetch(`${API}/airtable/contacts_upsert`, {
-                      ...basePayload,
-                      body: JSON.stringify({
-                        client_name: nm,
-                        client_airtable_id: summary.client?.airtable_id || '',
-                        contacts: [nc]
-                      })
-                    })
-                    if(!contactsRes.ok){
-                      const msg = await contactsRes.text()
-                      throw new Error(msg || 'Airtable contacts upsert failed')
-                    }
-
+                    await fetch(`${API}/registry/clients`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ display_name: nm, email: email? [email]: [], phone }) })
+                    if(email){ await fetch(`${API}/airtable/clients_upsert`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: nm, email }) }) }
+                    showToast('נשמר', 'success')
                     const encoded = encodeURIComponent(nm)
                     const r = await fetch(`${API}/api/client/summary?name=${encoded}&limit=10`)
                     if(r.ok){ setSummary(await r.json()) }
-                    setNewContact({ name:'', email:'', phone:'', role_desc:'', address:'', id_number:'' })
-                    alert('Contact added')
-                  }catch(err){
-                    console.error('add contact', err)
-                    alert(err?.message || 'Failed to add contact')
-                  }
-                }}>Add Contact</button>
+                    setEdit(false)
+                  }catch(e){ showToast('שמירה נכשלה', 'error') }
+                }}>שמור</button>
               </div>
             </Card>
-          </aside>
+          )}
+
+          {/* Two-column layout: Tasks + Emails side by side */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <TasksWidget clientName={decodedName} limit={5} />
+            <EmailsWidget clientName={decodedName} clientEmails={summary.client?.emails || []} limit={5} />
+          </div>
+
+          {/* Quick contact info */}
+          {(primaryEmail || phoneDigits) && (
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-sm text-slate-600 font-medium">יצירת קשר מהירה:</span>
+              {primaryEmail && (
+                <a
+                  href={`mailto:${primaryEmail}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-700 hover:border-petrol hover:text-petrol transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  {primaryEmail}
+                </a>
+              )}
+              {phoneDigits && (
+                <>
+                  <a
+                    href={`tel:${phoneDigits}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-700 hover:border-petrol hover:text-petrol transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    {summary.client?.phone}
+                  </a>
+                  <a
+                    href={`https://wa.me/${phoneDigits}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm hover:bg-emerald-600 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Contacts list (if any) */}
+          {(summary.client?.contacts || []).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b px-4 py-3">
+                <h3 className="font-semibold text-slate-800">אנשי קשר</h3>
+              </div>
+              <div className="divide-y">
+                {(summary.client?.contacts || []).map((c, i) => (
+                  <div key={c.email || i} className="px-4 py-2.5 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-slate-700">{c.name}</div>
+                      <div className="text-xs text-slate-500">{c.role_desc || c.email}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="p-1.5 rounded text-slate-400 hover:text-petrol hover:bg-slate-100">
+                          <Mail className="w-4 h-4" />
+                        </a>
+                      )}
+                      {c.phone && (
+                        <a href={`tel:${c.phone.replace(/\D/g,'')}`} className="p-1.5 rounded text-slate-400 hover:text-petrol hover:bg-slate-100">
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Integration status badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            {airtableLinked ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Airtable מקושר
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                onClick={() => openLinkModal(false)}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                Airtable לא מקושר
+              </button>
+            )}
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${sharepointLinked ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${sharepointLinked ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              {sharepointLinked ? 'SharePoint מקושר' : 'SharePoint לא מקושר'}
+            </span>
+          </div>
         </div>
       )}\n{tab==='files' && (
-        <Card title="Files">
-          <div className="text-sm text-slate-600 mb-2">Local files (top-level):</div>
-          <ul className="list-disc pl-6 text-sm">
-            {(summary.files||[]).map(f => (
-              <li key={f.path}>{f.name}</li>
-            ))}
-          </ul>
+        <Card title="קבצים">
+          {(summary.files||[]).length === 0 ? (
+            <div className="text-sm text-slate-500 text-center py-4">
+              אין קבצים עדיין
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
+              <ul className="list-disc pl-6 text-sm">
+                {(summary.files||[]).map(f => (
+                  <li key={f.path}>{f.name}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </Card>
       )}
       {tab==='emails' && (
-        <Card title="Emails">
+        <Card title="אימיילים">
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <button
               type="button"
@@ -824,6 +971,11 @@ export default function ClientOverview(){
               />
             </label>
             {syncStatus && <span className="text-xs text-slate-500" data-testid="emails-sync-status">{syncStatus}</span>}
+            {!syncStatus && relativeTimeSinceSync && (
+              <span className="text-xs text-slate-500 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700" data-testid="emails-last-sync">
+                עודכן {relativeTimeSinceSync}
+              </span>
+            )}
             {syncResult && (
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500" data-testid="emails-sync-meta">
                 {typeof syncResult.inserted === 'number' && !Number.isNaN(syncResult.inserted) && (
@@ -909,7 +1061,7 @@ export default function ClientOverview(){
                   <li key={e.id}><span className="text-slate-500">{e.received?.slice(0,10)}:</span> {e.subject}</li>
                 ))}
               </ul>
-              <div className="text-sm text-slate-600">Latest (Graph): {online.loading ? 'loading…' : ''}</div>
+              <div className="text-sm text-slate-600">אחרונים (Graph): {online.loading ? 'טוען…' : ''}</div>
               <ul className="list-disc pl-6 text-sm">
                 {(online.emails||[]).map(e => (
                   <li key={e.id}><span className="text-slate-500">{e.received?.slice(0,10)}:</span> {e.subject}</li>
@@ -918,32 +1070,32 @@ export default function ClientOverview(){
             </>
           )}
           <div className="mt-4">
-            <div className="text-sm text-slate-600 mb-2 flex items-center gap-2">Emails (Indexed){idx.loading? ' – loading…' : ` — ${idx.total||0}`}
+            <div className="text-sm text-slate-600 mb-2 flex items-center gap-2">אימיילים (מאונדקסים){idx.loading? ' – טוען…' : ` — ${idx.total||0}`}
               {idx.mode && (
                 <span className={`text-xs px-1.5 py-0.5 rounded border ${idx.mode==='search' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                  Mode: {idx.mode==='search' ? 'Search fallback' : 'Indexed'}
+                  מצב: {idx.mode==='search' ? 'חיפוש' : 'מאונדקס'}
                 </span>
               )}
             </div>
             <div className="border rounded divide-y">
               {idx.items.length === 0 && !idx.loading && (
-                <div className="p-3 text-sm text-slate-500">No indexed emails yet.</div>
+                <div className="p-3 text-sm text-slate-500">אין אימיילים מאונדקסים עדיין.</div>
               )}
               {idx.items.length > 0 && filteredIdxItems.length === 0 && (
-                <div className="p-3 text-sm text-slate-500">No emails match the current filters.</div>
+                <div className="p-3 text-sm text-slate-500">אין אימיילים התואמים את המסננים.</div>
               )}
               {filteredIdxItems.map(it => (
                 <div key={it.id} data-testid="indexed-email-row" className="p-1">
                   <button className="w-full text-left p-2 rounded hover:bg-slate-50 cursor-pointer" onClick={()=> setSel(sel && sel.id===it.id ? null : it)}>
                     <div className="flex items-center gap-2 text-sm text-slate-700">
                       {attachIndicator(it)}
-                      <span className="font-semibold truncate max-w-[40%]">{(it.from||'').split(/[<]/)[0].trim() || 'Unknown sender'}</span>
-                      <span className="text-slate-500 truncate">— {it.subject||'(no subject)'}</span>
+                      <span className="font-semibold truncate max-w-[40%]">{(it.from||'').split(/[<]/)[0].trim() || 'שולח לא ידוע'}</span>
+                      <span className="text-slate-500 truncate">— {it.subject||'(ללא נושא)'}</span>
                       <span className="ml-auto text-xs text-slate-400">{(it.received||'').slice(0,16)}</span>
                     </div>
                     {!(sel && sel.id===it.id) && (
                       <div className={`text-xs text-slate-600 line-clamp-2 whitespace-pre-wrap ${isRtl(it.preview||it.subject||it.from) ? 'text-right' : 'text-left'}`}>
-                        {(it.preview||'').trim() || 'No preview available.'}
+                        {(it.preview||'').trim() || 'אין תצוגה מקדימה.'}
                       </div>
                     )}
                   </button>
@@ -955,7 +1107,7 @@ export default function ClientOverview(){
                         {it.has_attachments && (
                           <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                             <Paperclip className="w-3 h-3" />
-                            <span>{it.attachments_count ? `${it.attachments_count} קבצים מצורפים` : 'Contains attachments'}</span>
+                            <span>{it.attachments_count ? `${it.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}</span>
                           </div>
                         )}
                         <div className="mt-2 flex gap-3 flex-wrap items-center">
@@ -990,7 +1142,7 @@ export default function ClientOverview(){
       )}
       {tab==='tasks' && (
         <div className="space-y-3">
-          <Card title="Tasks for this client">
+          <Card title="משימות ללקוח">
             {(() => {
               const qs = new URLSearchParams(loc.search)
               const qDisable = qs.get('tasks_new') === '0'
@@ -1003,30 +1155,21 @@ export default function ClientOverview(){
               const useNew = !(qDisable || lsDisable || envDisable)
               return useNew
                 ? <TaskBoard clientName={decodedName} />
-                : <TasksPanel title={`Tasks — ${decodedName}`} scope="all" clientFilter={decodedName} limit={0} />
+                : <TasksPanel title={`משימות — ${decodedName}`} scope="all" clientFilter={decodedName} limit={0} />
             })()}
           </Card>
         </div>
       )}
-      {tab==='rag' && (
-        <Card title="RAG Insights">
-          <div className="text-sm text-slate-600">Search and snippets – placeholder</div>
-        </Card>
-      )}
-      {tab==='privacy' && (
-        <Card title="Privacy">
-          <div className="text-sm text-slate-600">Coming soon – will integrate PrivacyExpress.</div>
-        </Card>
-      )}
+      {/* RAG and Privacy tabs hidden until implemented */}
       {viewer.open && (
         <div className="fixed inset-0 z-50 bg-black/40 px-4 py-6 flex items-start justify-center overflow-auto">
           <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div>
-                <div className="text-base font-semibold text-petrol">{viewer.meta.subject || 'Email'}</div>
+                <div className="text-base font-semibold text-petrol">{viewer.meta.subject || 'אימייל'}</div>
                 <div className="text-xs text-slate-500">
-                  {viewer.meta.from && <span>From: {viewer.meta.from}</span>}
-                  {viewer.meta.received && <span className="ml-2">Received: {viewer.meta.received}</span>}
+                  {viewer.meta.from && <span>מאת: {viewer.meta.from}</span>}
+                  {viewer.meta.received && <span className="ml-2">התקבל: {viewer.meta.received}</span>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -1041,15 +1184,15 @@ export default function ClientOverview(){
                     }
                   }}
                 >
-                  Open in Outlook
+                  פתח ב-Outlook
                 </button>
-                <button className="rounded-full bg-slate-100 px-3 py-1 text-sm" onClick={closeViewer}>Close</button>
+                <button className="rounded-full bg-slate-100 px-3 py-1 text-sm" onClick={closeViewer}>סגור</button>
               </div>
             </div>
             <div className="p-4 min-h-[400px]">
               {viewer.loading && (
                 <div className="flex items-center justify-center text-slate-500 gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading email…
+                  <Loader2 className="w-4 h-4 animate-spin" /> טוען אימייל…
                 </div>
               )}
               {!viewer.loading && viewer.error && (
@@ -1057,7 +1200,7 @@ export default function ClientOverview(){
               )}
               {!viewer.loading && !viewer.error && (
                 <iframe
-                  title="Email body"
+                  title="תוכן האימייל"
                   className="w-full h-[70vh] border rounded"
                   sandbox=""
                   srcDoc={viewer.html}
@@ -1087,6 +1230,14 @@ export default function ClientOverview(){
           onLinked={handleLinkCompleted}
         />
       )}
+      
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={"fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all " +
+          (toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500') + ' text-white'}>
+          {toast.message}
+        </div>
+      )}
     </div>
   )
   async function openEmailInOutlook(item){
@@ -1097,13 +1248,13 @@ export default function ClientOverview(){
         return
       }
       if(data?.link){
-        alert('Opening Outlook directly was blocked. Use “Copy Outlook Link” to paste the URL manually.')
+        showToast('פתיחה ישירה ב-Outlook נחסמה', 'error')
       }else{
-        alert('Unable to resolve the Outlook link for this email.')
+        showToast('לא ניתן למצוא קישור Outlook', 'error')
       }
     }catch(err){
       console.error('openEmailInOutlook', err)
-      alert('Failed to contact the server to open this email.')
+      showToast('נכשל ביצירת קשר עם השרת', 'error')
     }
   }
 
@@ -1114,13 +1265,13 @@ export default function ClientOverview(){
       const link = data?.link || ''
       if(link){
         const ok = await copyEmailLinkToClipboard(link)
-        alert(ok ? 'Email link copied to clipboard.' : 'Copy blocked by browser. Please allow clipboard access.')
+        showToast(ok ? 'הועתק ללוח' : 'ההעתקה נחסמה', ok ? 'success' : 'error')
       } else {
-        alert('No Outlook link available yet. Try again after syncing.')
+        showToast('עדיין אין קישור Outlook', 'error')
       }
     }catch(err){
       console.error('copyOutlookLink', err)
-      alert('Failed to copy the Outlook link.')
+      alert('העתקת קישור ה-Outlook נכשלה.')
     }
   }
 
@@ -1248,10 +1399,10 @@ export default function ClientOverview(){
         console.error('tasks/create_or_get_folder', err)
       }
       window.dispatchEvent(new CustomEvent('tasks:refresh', { detail: { client: decodedName } }))
-      alert('Task created from email. Open the Tasks tab to continue working on it.')
+      alert('משימה נוצרה מהאימייל. עבור לטאב המשימות כדי להמשיך לעבוד עליה.')
     }catch(err){
       console.error('createTaskFromEmail', err)
-      alert('Failed to create a task from this email.')
+      alert('יצירת משימה מהאימייל נכשלה.')
     }finally{
       setCreatingTaskId(null)
     }
