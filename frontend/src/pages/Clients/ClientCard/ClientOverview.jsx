@@ -62,6 +62,11 @@ export default function ClientOverview(){
   const [lastAutoSync, setLastAutoSync] = useState(null)
   const autoSyncAttemptedRef = useRef(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000)
+  }
   const moreMenuRef = useRef(null)
 
   // Load summary before hooks that depend on it to avoid TDZ errors
@@ -782,8 +787,8 @@ export default function ClientOverview(){
           {key:'files', label:'קבצים'},
           {key:'emails', label:'אימיילים'},
           {key:'tasks', label:'משימות'},
-          {key:'rag', label:'RAG'},
-          {key:'privacy', label:'פרטיות (בקרוב)'}
+          // {key:'rag', label:'RAG'}, // Hidden until implemented
+          // {key:'privacy', label:'פרטיות (בקרוב)'} // Hidden until implemented
         ]}/>
       </div>
 
@@ -803,12 +808,12 @@ export default function ClientOverview(){
                   try{
                     await fetch(`${API}/registry/clients`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ display_name: nm, email: email? [email]: [], phone }) })
                     if(email){ await fetch(`${API}/airtable/clients_upsert`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: nm, email }) }) }
-                    alert('נשמר')
+                    showToast('נשמר', 'success')
                     const encoded = encodeURIComponent(nm)
                     const r = await fetch(`${API}/api/client/summary?name=${encoded}&limit=10`)
                     if(r.ok){ setSummary(await r.json()) }
                     setEdit(false)
-                  }catch(e){ alert('שמירה נכשלה') }
+                  }catch(e){ showToast('שמירה נכשלה', 'error') }
                 }}>שמור</button>
               </div>
             </Card>
@@ -912,12 +917,20 @@ export default function ClientOverview(){
         </div>
       )}\n{tab==='files' && (
         <Card title="קבצים">
-          <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
-          <ul className="list-disc pl-6 text-sm">
-            {(summary.files||[]).map(f => (
-              <li key={f.path}>{f.name}</li>
-            ))}
-          </ul>
+          {(summary.files||[]).length === 0 ? (
+            <div className="text-sm text-slate-500 text-center py-4">
+              אין קבצים עדיין
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
+              <ul className="list-disc pl-6 text-sm">
+                {(summary.files||[]).map(f => (
+                  <li key={f.path}>{f.name}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </Card>
       )}
       {tab==='emails' && (
@@ -1137,16 +1150,7 @@ export default function ClientOverview(){
           </Card>
         </div>
       )}
-      {tab==='rag' && (
-        <Card title="תובנות RAG">
-          <div className="text-sm text-slate-600">חיפוש וקטעים – בקרוב</div>
-        </Card>
-      )}
-      {tab==='privacy' && (
-        <Card title="פרטיות">
-          <div className="text-sm text-slate-600">בקרוב – ישולב עם PrivacyExpress.</div>
-        </Card>
-      )}
+      {/* RAG and Privacy tabs hidden until implemented */}
       {viewer.open && (
         <div className="fixed inset-0 z-50 bg-black/40 px-4 py-6 flex items-start justify-center overflow-auto">
           <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200">
@@ -1216,6 +1220,14 @@ export default function ClientOverview(){
           onLinked={handleLinkCompleted}
         />
       )}
+      
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={"fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all " +
+          (toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500') + ' text-white'}>
+          {toast.message}
+        </div>
+      )}
     </div>
   )
   async function openEmailInOutlook(item){
@@ -1226,13 +1238,13 @@ export default function ClientOverview(){
         return
       }
       if(data?.link){
-        alert('פתיחה ישירה ב-Outlook נחסמה. השתמש ב"העתק קישור Outlook" כדי להדביק את הכתובת ידנית.')
+        showToast('פתיחה ישירה ב-Outlook נחסמה', 'error')
       }else{
-        alert('לא ניתן למצוא את קישור ה-Outlook לאימייל זה.')
+        showToast('לא ניתן למצוא קישור Outlook', 'error')
       }
     }catch(err){
       console.error('openEmailInOutlook', err)
-      alert('נכשל ביצירת קשר עם השרת לפתיחת האימייל.')
+      showToast('נכשל ביצירת קשר עם השרת', 'error')
     }
   }
 
@@ -1243,9 +1255,9 @@ export default function ClientOverview(){
       const link = data?.link || ''
       if(link){
         const ok = await copyEmailLinkToClipboard(link)
-        alert(ok ? 'קישור האימייל הועתק ללוח.' : 'ההעתקה נחסמה ע"י הדפדפן. יש לאפשר גישה ללוח.')
+        showToast(ok ? 'הועתק ללוח' : 'ההעתקה נחסמה', ok ? 'success' : 'error')
       } else {
-        alert('עדיין אין קישור Outlook. נסה שוב לאחר סנכרון.')
+        showToast('עדיין אין קישור Outlook', 'error')
       }
     }catch(err){
       console.error('copyOutlookLink', err)

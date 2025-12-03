@@ -56,87 +56,85 @@ export default function TaskBoard({ clientName, showClientBadge = false, allowGl
   }
   const activeParents = items.parents.filter(t => t.status !== 'done')
   const doneParents = items.parents.filter(t => t.status === 'done')
-  const finishedPoolLabel = useMemo(() => clientName ? `משימות שבוצעו (${clientName})` : 'Finished tasks pool', [clientName])
+  const finishedPoolLabel = useMemo(() => `משימות שבוצעו${clientName ? ` (${clientName})` : ''}`, [clientName])
 
   return (
-    <div className="space-y-3">
-      {/* Two-column layout: left = active tasks, right = details/completed */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left: active tasks and composer */}
-        <div className="space-y-3">
-          {allowCreate ? (
-            <div className="flex flex-wrap gap-2 items-end">
-              <label className="text-sm flex-1 min-w-[200px]">New task
-                <input className="mt-1 w-full border rounded px-2 py-1" value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder={`Do X for ${clientName || 'client'}`} />
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="task-board">
+      {/* Task creation form */}
+      {allowCreate ? (
+        <div className="border-b px-4 py-3">
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-sm flex-1 min-w-[200px]">משימה חדשה
+              <input className="mt-1 w-full border rounded px-2 py-1" value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="תאר את המשימה..." />
+            </label>
+            {allowGlobalCreate && (
+              <label className="text-sm min-w-[180px]">לקוח
+                <select className="mt-1 w-full border rounded px-2 py-1" value={newTaskClient} onChange={e=>setNewTaskClient(e.target.value)}>
+                  <option value="">ללא לקוח</option>
+                  {clientOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
               </label>
-              {allowGlobalCreate && (
-                <label className="text-sm min-w-[180px]">Client
-                  <select className="mt-1 w-full border rounded px-2 py-1" value={newTaskClient} onChange={e=>setNewTaskClient(e.target.value)}>
-                    <option value="">Unlinked</option>
-                    {clientOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </label>
-              )}
-              <button className="inline-flex items-center gap-1 px-3 py-2 rounded bg-petrol text-white disabled:opacity-50" onClick={add} disabled={!newTitle.trim()}>
-                <Plus className="w-4 h-4" /> Create task
-              </button>
-            </div>
-          ) : (
-            <div className="rounded border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 bg-white">
-              Select a client to add new tasks. Dashboard view is read-only.
-            </div>
-          )}
-          <div className="border rounded divide-y">
-            {items.parents.length===0 && <div className="p-3 text-sm text-slate-600">No tasks yet.</div>}
-            {activeParents.map(t => (
-              <div key={t.id}>
-                <TaskCard
-                  task={t}
-                  subtasks={items.byParent[t.id]||[]}
-                  onUpdate={handleUpdate}
-                  onAddSubtask={(pid, title)=>{ addClientSubtask(pid, title, clientName); refresh() }}
-                  onAttach={(id,a)=>{ attach(id,a); refresh() }}
-                  onToggle={(tt)=>{ setTaskDone(tt.id, !(tt.status==='done')); refresh() }}
-                  onOpen={(tt)=> setOpenId(tt.id)}
-                  showClientBadge={showClientBadge}
-                  clientOptions={clientOptions}
-                />
-              </div>
-            ))}
+            )}
+            <button className="inline-flex items-center gap-1 px-3 py-2 rounded bg-petrol text-white disabled:opacity-50" onClick={add} disabled={!newTitle.trim()}>
+              <Plus className="w-4 h-4" /> צור משימה
+            </button>
           </div>
         </div>
+      ) : (
+        <div className="border-b px-4 py-3 text-sm text-slate-500">
+          בחר לקוח כדי להוסיף משימות. תצוגת הדשבורד היא לקריאה בלבד.
+        </div>
+      )}
 
-        {/* Right: Completed section */}
-        <div className="space-y-2">
-          {doneParents.length > 0 && (
-            <div className="mt-1 border rounded">
-              <button className="w-full flex items-center justify-between px-3 py-2 text-sm" onClick={()=> setShowCompleted(v=>!v)}>
-                <span className="font-medium">{finishedPoolLabel}</span>
-                <span>{showCompleted ? '▾' : '▸'}</span>
-              </button>
-              {showCompleted && (
-                <div className="divide-y">
-                  {doneParents.map(t => (
-                    <div key={t.id}>
-                      <TaskCard
-                        task={t}
-                        subtasks={items.byParent[t.id]||[]}
-                        onUpdate={handleUpdate}
-                        onAddSubtask={(pid, title)=>{ addClientSubtask(pid, title, clientName); refresh() }}
-                        onAttach={(id,a)=>{ attach(id,a); refresh() }}
-                        onToggle={(tt)=>{ setTaskDone(tt.id, !(tt.status==='done')); refresh() }}
-                        onOpen={(tt)=> setOpenId(tt.id)}
-                        showClientBadge={showClientBadge}
-                        clientOptions={clientOptions}
-                      />
-                    </div>
-                  ))}
+      {/* Active tasks list */}
+      <div className="divide-y">
+        {items.parents.length===0 && <div className="px-4 py-3 text-sm text-slate-500">אין משימות עדיין.</div>}
+        {activeParents.map(t => (
+          <div key={t.id} className="hover:bg-slate-50 transition-colors">
+            <TaskCard
+              task={t}
+              subtasks={items.byParent[t.id]||[]}
+              onUpdate={handleUpdate}
+              onAddSubtask={(pid, title)=>{ addClientSubtask(pid, title, clientName); refresh() }}
+              onAttach={(id,a)=>{ attach(id,a); refresh() }}
+              onToggle={(tt)=>{ setTaskDone(tt.id, !(tt.status==='done')); refresh() }}
+              onOpen={(tt)=> setOpenId(tt.id)}
+              showClientBadge={showClientBadge}
+              clientOptions={clientOptions}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Completed tasks section */}
+      {doneParents.length > 0 && (
+        <div className="border-t">
+          <button className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 transition-colors" onClick={()=> setShowCompleted(v=>!v)}>
+            <span className="font-medium text-slate-700">{finishedPoolLabel}</span>
+            <span className="text-slate-400">{showCompleted ? '▾' : '▸'}</span>
+          </button>
+          {showCompleted && (
+            <div className="divide-y border-t">
+              {doneParents.map(t => (
+                <div key={t.id} className="hover:bg-slate-50 transition-colors">
+                  <TaskCard
+                    task={t}
+                    subtasks={items.byParent[t.id]||[]}
+                    onUpdate={handleUpdate}
+                    onAddSubtask={(pid, title)=>{ addClientSubtask(pid, title, clientName); refresh() }}
+                    onAttach={(id,a)=>{ attach(id,a); refresh() }}
+                    onToggle={(tt)=>{ setTaskDone(tt.id, !(tt.status==='done')); refresh() }}
+                    onOpen={(tt)=> setOpenId(tt.id)}
+                    showClientBadge={showClientBadge}
+                    clientOptions={clientOptions}
+                  />
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
-      </div>
+      )}
+
       {openId && (()=>{
         const task = items.parents.find(p=>p.id===openId) || items.byParent[openId]?.[0]
         const subs = items.byParent[openId] || []
