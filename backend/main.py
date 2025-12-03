@@ -11,8 +11,12 @@ import os
 import base64
 try:
     from backend import fixtures
+    from backend import fillout_integration
+    from backend import privacy_db
 except ImportError:
     import fixtures
+    import fillout_integration
+    import privacy_db
 import httpx
 import msal
 
@@ -97,6 +101,8 @@ def load_local_clients():
                 "airtableId": c.get("airtable_id", ""),
                 "contacts": c.get("contacts", []),
                 "createdAt": c.get("created_at"),
+                "active": c.get("active", True),
+                "archivedAt": c.get("archived_at"),
             })
         return result
     except Exception as e:
@@ -142,6 +148,8 @@ def find_local_client_by_name(name: str):
                     "sharepoint_id": c.get("sharepoint_id", ""),
                     "contacts": c.get("contacts", []),
                     "created_at": c.get("created_at"),
+                    "active": c.get("active", True),
+                    "archived_at": c.get("archived_at"),
                 }
     except Exception as e:
         print(f"Error finding client by name: {e}")
@@ -475,13 +483,27 @@ def auth_me():
 
 
 @app.get("/api/clients")
-def get_clients():
-    """Return local client registry from ~/.eislaw/store/clients.json."""
+def get_clients(status: str = "active"):
+    """
+    Return local client registry from ~/.eislaw/store/clients.json.
+
+    Query params:
+        status: "active" | "archived" | "all"
+               Default: "active" (backward compatible)
+    """
     clients = load_local_clients()
-    if clients:
-        return clients
-    # Fall back to fixtures if no local registry
-    return fixtures.clients()
+    if not clients:
+        # Fall back to fixtures if no local registry
+        clients = fixtures.clients()
+
+    # Filter by status
+    if status == "active":
+        clients = [c for c in clients if c.get("active", True)]
+    elif status == "archived":
+        clients = [c for c in clients if not c.get("active", True)]
+    # else: "all" - return all clients
+
+    return clients
 
 
 @app.get("/api/clients/{cid}")
@@ -493,6 +515,51 @@ def get_client(cid: str):
     # Fall back to fixtures
     c = fixtures.client_detail(cid)
     return c or {"error": "not found"}
+
+
+@app.patch("/api/clients/{client_name}/archive")
+def archive_client(client_name: str):
+    """
+    Archive a client (set active=False).
+
+    Returns:
+        {"success": true} on success
+
+    Errors:
+        404 if client not found
+    """
+    import urllib.parse
+    decoded_name = urllib.parse.unquote(client_name)
+
+    archived_at = datetime.utcnow().isoformat() + "Z"
+    result = update_client_active_status(decoded_name, active=False, archived_at=archived_at)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return {"success": True, "archived_at": archived_at}
+
+
+@app.patch("/api/clients/{client_name}/restore")
+def restore_client(client_name: str):
+    """
+    Restore an archived client (set active=True).
+
+    Returns:
+        {"success": true} on success
+
+    Errors:
+        404 if client not found
+    """
+    import urllib.parse
+    decoded_name = urllib.parse.unquote(client_name)
+
+    result = update_client_active_status(decoded_name, active=True, archived_at=None)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return {"success": True}
 
 
 @app.get("/api/client/summary")
@@ -1579,6 +1646,34 @@ def update_client_sharepoint_url(client_name: str, sharepoint_url: str, sharepoi
         return False
 
 
+def update_client_active_status(client_name: str, active: bool, archived_at: str = None):
+    """Update client active status for archive/restore functionality."""
+    clients_path = get_clients_store_path()
+    if not clients_path.exists():
+        return None
+
+    try:
+        data = json.loads(clients_path.read_text("utf-8"))
+        clients = data.get("clients", [])
+
+        updated_client = None
+        for c in clients:
+            if c.get("display_name", "").lower() == client_name.lower():
+                c["active"] = active
+                c["archived_at"] = archived_at
+                updated_client = c
+                break
+
+        if updated_client:
+            data["clients"] = clients
+            clients_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        return updated_client
+    except Exception as e:
+        print(f"Error updating client active status: {e}")
+        return None
+
+
 @app.get("/api/sharepoint/search")
 def sharepoint_search_folder(name: str):
     """
@@ -1689,3 +1784,174 @@ def list_sharepoint_sites():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list sites: {str(e)}")
+
+
+# ─────────────────────────────────────────────────────────────
+# Privacy MVP Endpoints (SQLite-based)
+# ─────────────────────────────────────────────────────────────
+import time
+from fastapi import Request
+
+@app.post("/api/privacy/webhook")
+async def privacy_webhook(request: Request):
+    """
+    Receive webhook from Fillout when form is submitted.
+    Scores the submission and saves to SQLite.
+    """
+    start_time = time.time()
+
+    try:
+        payload = await request.json()
+    except Exception as e:
+        privacy_db.log_activity(
+            event_type="webhook_error",
+            details={"error": "Invalid JSON", "message": str(e)},
+            success=False
+        )
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # Extract submission info from Fillout payload
+    submission_id = payload.get("submissionId")
+    form_id = payload.get("formId", "unknown")
+    submitted_at = payload.get("submissionTime", "")
+
+    if not submission_id:
+        privacy_db.log_activity(
+            event_type="webhook_error",
+            details={"error": "Missing submissionId"},
+            success=False
+        )
+        raise HTTPException(status_code=400, detail="Missing submissionId")
+
+    # Map Fillout questions to our format
+    questions = payload.get("questions", [])
+    answers = {}
+    contact_name = None
+    contact_email = None
+    contact_phone = None
+    business_name = None
+
+    for q in questions:
+        q_name = q.get("name", "").lower()
+        q_value = q.get("value")
+
+        if q_value is None:
+            continue
+
+        # Extract contact info (Hebrew field names)
+        if "שם ממלא" in q.get("name", "") or q_name == "שם":
+            contact_name = q_value
+        elif "דוא" in q.get("name", "") or "email" in q_name:
+            contact_email = q_value
+        elif "טלפון" in q.get("name", "") or "phone" in q_name:
+            contact_phone = str(q_value)
+        elif "שם העסק" in q.get("name", "") or "business" in q_name:
+            business_name = q_value
+
+        # Store answer with normalized key
+        answers[q.get("name", q.get("id", ""))] = q_value
+
+    # Map Fillout question IDs to scoring keys
+    id_to_key = {
+        "1v44": "ppl",
+        "1ZwV": "sensitive_people",
+        "pWDs": "sensitive_types",
+        "i983": "biometric_100k",
+        "kgeV": "transfer",
+        "1CHH": "directmail_biz",
+        "fxeW": "directmail_self",
+        "v7hP": "monitor_1000",
+        "gfpv": "processor",
+        "3T6X": "processor_large_org",
+        "gDyJ": "employees_exposed",
+        "sXuG": "cameras",
+        "uZie": "owners",
+        "e6gk": "access",
+        "68Yz": "ethics",
+    }
+    
+    # Build scoring answers from question IDs
+    scoring_answers = {}
+    for q in questions:
+        q_id = q.get("id", "")
+        q_value = q.get("value")
+        if q_id in id_to_key and q_value is not None:
+            scoring_answers[id_to_key[q_id]] = q_value
+    
+    # Run scoring algorithm
+    try:
+        score = fillout_integration.run_scoring(scoring_answers)
+    except Exception as e:
+        score = {"level": "basic", "dpo": False, "reg": False, "requirements": []}
+
+    # Save to SQLite
+    is_new = privacy_db.save_submission(
+        submission_id=submission_id,
+        form_id=form_id,
+        submitted_at=submitted_at,
+        contact_name=contact_name,
+        contact_email=contact_email,
+        contact_phone=contact_phone,
+        business_name=business_name,
+        answers=answers,
+        score=score
+    )
+
+    duration_ms = int((time.time() - start_time) * 1000)
+
+    # Log activity
+    privacy_db.log_activity(
+        event_type="webhook_received" if is_new else "webhook_duplicate",
+        submission_id=submission_id,
+        details={
+            "level": score.get("level"),
+            "is_new": is_new,
+            "business_name": business_name
+        },
+        duration_ms=duration_ms,
+        success=True
+    )
+
+    return {
+        "status": "ok",
+        "submission_id": submission_id,
+        "is_new": is_new,
+        "level": score.get("level"),
+        "color": privacy_db.LEVEL_TO_COLOR.get(score.get("level"), "yellow"),
+        "duration_ms": duration_ms
+    }
+
+
+@app.get("/api/privacy/public-results/{submission_id}")
+def get_public_privacy_results(submission_id: str):
+    """
+    Get public-safe results for a submission.
+    Called by WordPress results page.
+    """
+    results = privacy_db.get_public_results(submission_id)
+
+    if not results:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    return results
+
+
+@app.get("/api/privacy/activity")
+def get_privacy_activity(limit: int = 50):
+    """Get recent activity log for monitoring"""
+    activities = privacy_db.get_activity(limit=limit)
+    return {"activities": activities}
+
+
+@app.get("/api/privacy/stats")
+def get_privacy_stats():
+    """Get statistics for monitoring dashboard"""
+    stats = privacy_db.get_stats()
+    return stats
+
+
+@app.get("/api/privacy/db-submissions")
+def get_db_submissions(limit: int = 50, status: Optional[str] = None):
+    """Get submissions from SQLite database"""
+    submissions = privacy_db.get_submissions(limit=limit, status=status)
+    return {"submissions": submissions}

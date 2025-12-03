@@ -184,6 +184,10 @@ export default function RAG() {
   const [zoomStatus, setZoomStatus] = useState("idle")
   const [zoomPreview, setZoomPreview] = useState(null)
   const [zoomImporting, setZoomImporting] = useState(false)
+  const [importedZoomIds, setImportedZoomIds] = useState(new Set())
+  const [zoomImportMeta, setZoomImportMeta] = useState({ client: "", date: "", domain: "Client_Work" })
+  const [availableClients, setAvailableClients] = useState([])
+  const [clientsLoading, setClientsLoading] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -217,7 +221,7 @@ export default function RAG() {
 
   // Load Zoom transcripts when ingest tab is active
   useEffect(() => {
-    if (activeTab === ingest) {
+    if (activeTab === 'ingest') {
       refreshZoomTranscripts()
     }
   }, [activeTab])
@@ -320,10 +324,17 @@ export default function RAG() {
   const previewZoomTranscript = async (transcript) => {
     const base = await ensureApiBase()
     if (!base) return
+    // Load clients list for dropdown
+    loadAvailableClients()
     try {
       const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`)
       if (!res.ok) throw new Error(`Status ${res.status}`)
       const data = await res.json()
+      // Initialize metadata from filename (format: date_clientname_uuid.txt)
+      const parts = transcript.filename.replace(".txt", "").split("_")
+      const dateStr = parts[0] || ""
+      const clientName = parts.length > 2 ? parts.slice(1, -1).join(" ") : ""
+      setZoomImportMeta({ client: clientName, date: dateStr, domain: "Client_Work" })
       setZoomPreview({ ...transcript, content: data.content })
     } catch (err) {
       console.error("Failed to preview transcript:", err)
@@ -347,15 +358,15 @@ export default function RAG() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          client: clientName,
-          domain: "Client_Work",
-          date: dateStr
+          client: zoomImportMeta.client,
+          domain: zoomImportMeta.domain,
+          date: zoomImportMeta.date
         })
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
       await refreshInbox()
       setZoomPreview(null)
-      alert("תמלול יובא בהצלחה לאינבוקס!")
+      setImportedZoomIds(prev => new Set([...prev, transcript.id]))
     } catch (err) {
       console.error("Failed to import transcript:", err)
       alert("שגיאה בייבוא התמלול")
@@ -364,7 +375,42 @@ export default function RAG() {
     }
   }
 
-    const handleDrop = async (fileList) => {
+  const downloadZoomTranscript = async (transcript) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      const blob = new Blob([data.content], { type: "text/plain;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = transcript.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to download transcript:", err)
+      alert("שגיאה בהורדת התמלול")
+    }
+  }
+const deleteZoomTranscript = async (transcript) => {
+    if (!window.confirm(`למחוק את התמלול ${transcript.filename}?`)) return
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`, { method: "DELETE" })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      setZoomTranscripts(prev => prev.filter(t => t.id !== transcript.id))
+    } catch (err) {
+      console.error("Failed to delete transcript:", err)
+      alert("שגיאה במחיקת התמלול")
+    }
+  }
+
+  const handleDrop = async (fileList) => {
     if (!fileList || !fileList.length) return
     setUploading(true)
     const base = await ensureApiBase()
@@ -1039,7 +1085,7 @@ export default function RAG() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-slate-800 flex items-center gap-2 truncate">
-                        <span role="img" aria-label="zoom">📹</span>
+                        {importedZoomIds.has(transcript.id) && <span className="text-green-600">✓</span>}<span role="img" aria-label="zoom">📹</span>
                         {transcript.filename}
                       </div>
                       <div className="text-xs text-slate-500">
@@ -1048,6 +1094,20 @@ export default function RAG() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-sm"
+                        onClick={() => downloadZoomTranscript(transcript)}
+                        title="הורד קובץ"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-rose-200 rounded-lg hover:bg-rose-50 text-rose-600 text-sm"
+                        onClick={() => deleteZoomTranscript(transcript)}
+                        title="מחק תמלול"
+                      >
+                        🗑️
+                      </button>
                       <button
                         className="px-3 py-2 min-h-[36px] bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-sm"
                         onClick={() => previewZoomTranscript(transcript)}
@@ -1081,25 +1141,82 @@ export default function RAG() {
                         ×
                       </button>
                     </div>
-                    <div className="p-4 overflow-y-auto max-h-[60vh]">
-                      <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed" dir="rtl">
-                        {zoomPreview.content}
-                      </pre>
+                    <div className="grid md:grid-cols-[250px_1fr] gap-4 p-4">
+                      {/* Metadata fields */}
+                      <div className="space-y-3 border-l border-slate-200 pl-4" dir="rtl">
+                        <div className="text-sm font-semibold text-slate-700">פרטי ייבוא</div>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">לקוח:</span>
+                          <div className="mt-1 relative">
+                            <input
+                              type="text"
+                              list="clients-list"
+                              className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                              value={zoomImportMeta.client}
+                              onChange={(e) => setZoomImportMeta(prev => ({...prev, client: e.target.value}))}
+                              placeholder={clientsLoading ? "טוען לקוחות..." : "בחר או הקלד שם לקוח"}
+                            />
+                            <datalist id="clients-list">
+                              {availableClients.map((name, idx) => (
+                                <option key={idx} value={name} />
+                              ))}
+                            </datalist>
+                          </div>
+                          {availableClients.length > 0 && (
+                            <span className="text-xs text-slate-400">{availableClients.length} לקוחות זמינים</span>
+                          )}
+                        </label>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">תאריך:</span>
+                          <input
+                            type="date"
+                            className="mt-1 w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                            value={zoomImportMeta.date}
+                            onChange={(e) => setZoomImportMeta(prev => ({...prev, date: e.target.value}))}
+                          />
+                        </label>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">דומיין:</span>
+                          <select
+                            className="mt-1 w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                            value={zoomImportMeta.domain}
+                            onChange={(e) => setZoomImportMeta(prev => ({...prev, domain: e.target.value}))}
+                          >
+                            <option value="Client_Work">Client_Work</option>
+                            <option value="Business_Ops">Business_Ops</option>
+                            <option value="Personal">Personal</option>
+                          </select>
+                        </label>
+                      </div>
+                      {/* Transcript content */}
+                      <div className="overflow-y-auto max-h-[50vh]">
+                        <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed" dir="rtl">
+                          {zoomPreview.content}
+                        </pre>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200">
                       <button
                         className="px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
-                        onClick={() => setZoomPreview(null)}
+                        onClick={() => downloadZoomTranscript(zoomPreview)}
                       >
-                        סגור
+                        הורד קובץ
                       </button>
-                      <button
-                        className="px-4 py-2 bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
-                        onClick={() => importZoomToRag(zoomPreview)}
-                        disabled={zoomImporting}
-                      >
-                        {zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          className="px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
+                          onClick={() => setZoomPreview(null)}
+                        >
+                          סגור
+                        </button>
+                        <button
+                          className="px-4 py-2 bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
+                          onClick={() => importZoomToRag(zoomPreview)}
+                          disabled={zoomImporting || importedZoomIds.has(zoomPreview.id)}
+                        >
+                          {importedZoomIds.has(zoomPreview.id) ? "✓ יובא" : zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
