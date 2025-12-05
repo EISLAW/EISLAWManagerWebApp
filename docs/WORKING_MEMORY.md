@@ -1,69 +1,180 @@
-<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
 # Working Memory (Current State)
 
-Working copy: use `/mnt/c/Coding Projects/EISLAW System Clean` (clean clone of `github.com/EISLAW/EISLAWManagerWebApp`). The older `EISLAW System` folder is archive/reference only.
+**Last Updated:** 2025-12-05
 
-Last updated: 2025-11-06
+> **Development Environment:** Azure VM at `20.217.86.4`
+> SSH: `ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4`
 
-Context snapshot
-- Privacy module is live with: rules JSON, evaluator, FastAPI webhook, Fillout API pull, hidden-field mapping, Word review flow, and email composer.
-- Hidden field mapping matches formId `t9nJNoMdBgus` (see `docs/fillout_field_mapping.json`).
-- One new submission fetched and scored successfully; older pre-hidden submission is intentionally ignored.
-- Infra live in Azure (Israel Central):
-  - Backend Web App: `https://eislaw-api-01.azurewebsites.net` (FastAPI docs at `/docs`)
-  - Static website (frontend): `https://eislawstweb.z39.web.core.windows.net`
-  - App Insights wired via connection string
-- Local dev interface ready (self-contained):
-  - Launchers: `start_dev.bat`, `smoke_dev.bat`
-  - Scripts: `tools/dev_start.ps1`, `tools/dev_env.ps1`, `tools/dev_smoke.ps1`
-  - Native folder open (optional): `tools/install_open_protocol.ps1` — protocol `eislaw-open://<path>`
-- Client page actions wired (Sivan example): Open Files, SharePoint, Open Emails, Send Email, WhatsApp, Sync (Graph).
-- Clients UX updates:
-  - Outlook opens in a dedicated named window (no more replacing the app tab). Edge app-window warm-up endpoint available in local mode.
-  - "Open Files" now uses the backend helper first; falls back to SharePoint/open path copy.
-- New buttons: "Airtable Search" (opens record/clients view) and "Sync Airtable".
-  - UX/UI Controls Map available at `docs/UX_UI/Controls_Map.md` (authoritative button/action list used for tests).
+---
 
-Decisions
-- DPO thresholds and couplings are encoded (reg/report/monitor_1000/sensitive_people>=1000).
-- Lone requires ppl < 10k; high via ppl >= 100k (any personal data) and other triggers.
-- Outsourcing: processor_large_org → High + DPO; processor (regular) → mid floor + consultation when needed.
-- Review UX: Word checkbox flow confirmed (macro works). Airtable review queue planned next.
+## Context Snapshot
 
-Where things are
-- Scoring rules: `config/security_scoring_rules.json`
-- Evaluator (CLI): `tools/security_scoring_eval.py`
-- Webhook: `scoring_service/main.py` (+ `README.md`)
-- Fillout fetch: `tools/fillout_fetch_and_score.py`
-- Mapping (hidden IDs): `docs/fillout_field_mapping.json`
-- Word review scripts: `tools/make_word_review_example.ps1`, `tools/word_apply_selection.ps1`
-- Email composer: `tools/security_email_compose.py` + texts `docs/security_texts.he-IL.json`
-- Episodic test log: `docs/Testing_Episodic_Log.md`
-- Infra + deploy scripts: `infra/azuredeploy.bicep`, `infra/package_backend.ps1`, `infra/grant_sp_roles.ps1`, `infra/README.md`
+### Infrastructure
+- **VM**: Ubuntu 22.04, Israel Central (20.217.86.4)
+- **Containers**: docker-compose-v2 with hot-reload
+- **Services Running**:
+  - Frontend prod (8080), dev (5173)
+  - API (8799)
+  - Meilisearch (7700)
+  - Monitoring stack (Grafana/Prometheus/Loki)
 
-Open items / blockers
-- Airtable schema bootstrap added (Meta API). Save Review and Approve & Publish write successfully to `PRIVACY_REVIEWS`.
-- UI polish: fix Hebrew labels in `#/privacy`; style email CTA button.
-- "Send" step not wired yet (Outlook COM or Graph).
-- Policy: for any NEW external integration or scope (Graph, Fillout, Airtable schema writes, etc.), always run a 60-second preflight test and ask for approval if consent/permissions are required. Record the outcome in `docs/Testing_Episodic_Log.md`.
-- Cloud backend redeploy needs to include latest routes (`/api/client/locations`, SharePoint fuzzy search) and finalize `SP_DRIVE_NAME` if default library isn't used.
-- Local UI: scrollbar jump fixed by reserving vertical scrollbar space (see `frontend/src/styles.css`).
-- Test client created: "??? ????" (folder + registry + Airtable upsert) for email/SP checks.
+### Recent Session Activity (2025-12-04)
+1. **Zoom Cloud Recordings** - Full integration complete
+   - Sync from Zoom API, audio/video filters
+   - Transcript editing with speaker names
+   - Bulk download with queue status
 
-What we paused on
-- Outlook/Graph send helper and PDF export wiring.
-- Optional per-change audit table (`Review_Audit`) wiring.
-- Clients list: optional multi-address email search (client view already supports it).
+2. **Quote Templates UI** - Complete at /settings/quotes
+   - CRUD for categories and templates
+   - Preview modal, duplication, keyboard shortcuts
 
-Pointers to resume
-- If continuing Word path: use `tools/word_apply_selection.ps1` with a score/answers JSON to pre-check and compose quickly.
-- If continuing API pull: use `tools/fillout_fetch_and_score.py --form-id t9nJNoMdBgus --limit 3` to fetch and score.
-- Airtable is configured in `secrets.local.json`; run `python tools/airtable_add_fields.py` to ensure schema, then use the UI Save Review.
-- To redeploy backend quickly: `pwsh infra/package_backend.ps1` — `az webapp deploy -g EISLAW-Dashboard -n eislaw-api-01 --src-path build/webapp_package.zip --type zip`
-- To upload frontend (AAD): `az storage blob upload-batch -s frontend/dist -d '$web' --account-name eislawstweb --auth-mode login --overwrite`
-- Local dev quick smoke: `pwsh tools/dev_smoke.ps1 -ClientName "???? ???????"`
+3. **Archive Feature** - Production ready
+   - Status filters, archive/restore
+   - Open tasks warning, toast notifications
+   - E2E tests passing (16/16)
 
-What we paused on (2025-11-01)
-- "Open Files" behavior: native protocol (`eislaw-open://`) available; API fallback works when started via launcher; verify on your desktop and roll into CI docs.
-- SharePoint mapping: resolver works; confirm library display name (`SP_DRIVE_NAME`) in prod and redeploy.
-- Next features: Airtable Tasks + Contact edit (read/write), CI deploy workflow.
+4. **Email Integration** - Working
+   - Graph sync per client
+   - "Open in Outlook" fixed
+   - Increased limit from 5 to 100
+
+---
+
+## Active Development
+
+### Priority 1: Clients UX Sprint
+**PRD:** docs/reports/CLIENTS_SECTION_COMPREHENSIVE_AUDIT_2025-12-03.md
+
+Tasks:
+- [ ] Hebrew labels in TaskBoard (replace English)
+- [ ] Unify TaskBoard/TasksWidget styling
+- [ ] Hide placeholder tabs (RAG, Privacy)
+- [ ] Add ARIA roles to TabNav
+- [ ] Add empty state to Files tab
+- [ ] Replace alert() with toast
+
+### Priority 2: Privacy QA Redesign
+**PRD:** docs/PRD_PRIVACY_QA_REDESIGN.md
+
+Tasks:
+- [ ] RTL layout fix
+- [ ] "נכון" one-click validation button
+- [ ] Status icons in list (○/✓/✗)
+- [ ] Collapsible override section
+- [ ] Auto-advance after validation
+
+### Priority 3: Privacy Purchase Flow
+**PRD:** docs/PRD_PRIVACY_PURCHASE_FLOW.md
+
+Tasks:
+- [ ] WooCommerce product creation
+- [ ] WordPress results page
+- [ ] Fillout redirect configuration
+- [ ] Payment webhook handler
+- [ ] PDF report generation
+
+---
+
+## Key Paths
+
+### Configuration
+| Item | Path |
+|------|------|
+| Secrets | secrets.local.json (NOT committed) |
+| Scoring Rules | config/security_scoring_rules.json |
+| Field Mapping | docs/fillout_field_mapping.json |
+| Email Sync Config | config/email_sync.json |
+
+### Frontend
+| Component | Path |
+|-----------|------|
+| App Entry | frontend/src/App.jsx |
+| Clients List | frontend/src/pages/Clients/ClientsList.jsx |
+| Client Overview | frontend/src/pages/Clients/ClientCard/ClientOverview.jsx |
+| Privacy Page | frontend/src/pages/Privacy/index.jsx |
+| RAG Page | frontend/src/pages/RAG/index.jsx |
+| TaskBoard | frontend/src/features/tasksNew/TaskBoard.jsx |
+
+### Backend
+| Endpoint Group | Location |
+|----------------|----------|
+| Main API | backend/main.py |
+| Health | GET /health |
+| Clients | /api/clients, /registry/clients |
+| Email | /email/sync_client, /email/by_client |
+| Privacy | /privacy/*, /r/{token} |
+| RAG | /api/rag/* |
+| Zoom | /api/zoom/* |
+| Templates | /api/templates/quotes |
+
+---
+
+## Decisions Made
+
+### Architecture
+- **SQLite for Privacy** - Replace Airtable for reliability at 3-4 submissions/min
+- **Local Registry** - Clients stored in ~/.eislaw/store/clients.json
+- **Hot-Reload** - Both frontend (Vite) and backend (uvicorn) support instant changes
+
+### UX
+- **Toast over Alert** - All notifications use toast pattern
+- **Hebrew Labels** - All UI text in Hebrew
+- **RTL Layout** - Privacy tab needs fix
+
+### Operations
+- **VM Development** - Preferred over local
+- **docker-compose-v2** - Required (old version has bugs)
+- **VS Code Remote SSH** - Best editing experience
+
+---
+
+## Open Items / Blockers
+
+1. **TaskBoard English Labels** - Need Hebrew translation (6+ strings)
+2. **Privacy RTL** - Layout broken, needs swap
+3. **SQLite Migration** - Not started, blocks stress test
+4. **WooCommerce Setup** - Waiting for product creation
+
+---
+
+## Quick Resume Commands
+
+### Connect to VM
+```bash
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+```
+
+### Start Dev Services
+```bash
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+```
+
+### View Logs
+```bash
+/usr/local/bin/docker-compose-v2 logs -f api      # Backend
+/usr/local/bin/docker-compose-v2 logs -f web-dev  # Frontend
+```
+
+### Rebuild After Changes
+```bash
+# Only needed for new dependencies or Dockerfile changes
+/usr/local/bin/docker-compose-v2 up -d --build api
+```
+
+### Access Monitoring
+```bash
+# From WSL - creates SSH tunnel for Grafana
+ssh -i ~/.ssh/eislaw-dev-vm.pem -L 3000:localhost:3000 -N azureuser@20.217.86.4
+# Then open http://localhost:3000 (admin/eislaw2024)
+```
+
+---
+
+## What We Paused On
+
+- PDF export for privacy reports
+- Outlook COM sender script
+- Per-change audit table (Review_Audit)
+- Mobile responsiveness
+- SFU/Stage workflow

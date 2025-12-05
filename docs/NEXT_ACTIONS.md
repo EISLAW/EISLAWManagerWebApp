@@ -1,438 +1,180 @@
-<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
+<!-- Project: EISLAW | Full Context: docs/System_Definition.md -->
 # Next Actions (Short Queue)
 
 Working copy: use the clean clone at `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). Older `EISLAW System` tree is archive/reference only.
 
-## Current Focus (2025-11-20)
-- **State**: CI deploy workflow now builds/pushes the backend image, deploys to a staging slot, runs /health + smoke tests, and can swap into production. App Insights connection string is applied when present and a heartbeat is emitted during deploy. Frontend still ships to Azure Storage static site.
-- **Next fixes**:
-  1. Validate App Insights ingestion in Azure (traces/logs) and add alerts for health failures/container restarts.
-  2. Tune smoke test cadence (count/timeout) and ensure Fillout/Airtable quotas are respected; add a dry-run toggle if secrets are missing.
-  3. Containerized frontend path added (Dockerfile.web + optional Web App input) — decide target Web App/slot and cut over from static if desired.
-  4. Enforce tagging discipline: every deploy should set `release_tag` in the workflow and update `docs/CHANGELOG.md` with the tag/image references.
-- **Notes**: Kudu credentials stored under `azure_kudu` in `secrets.local.json`. Deployment history lives in `docs/DEPLOY_RUNBOOK.md`.
+## Current Focus (2025-12-05)
 
-Owner: You
-Last updated: 2025-11-04
+### Active Sprint: SQLite Database Migration
+**PRD:** `docs/PRD_SQLITE_MIGRATION.md`
+**Status:** Phase 0 Complete (Privacy), Phase 1 Ready to Start
 
-- Clients module parity and UX fixes (done)
-  - Named Outlook window (EISLAW-OWA) for all opens.
-  - “Open Files” now uses server helper first; protocol removed to avoid prompts.
-  - “Word Templates…” modal and DOCX generation wired.
-  - SharePoint link resolves exact client folder from registry.
+**Completed:**
+- ✅ Privacy SQLite backend (`backend/privacy_db.py`) - Fully implemented
+- ✅ Privacy API endpoints live: `/api/privacy/submissions`, `/api/privacy/stats`, `/api/privacy/webhook`
+- ✅ 18 submissions synced from Fillout to SQLite
+- ✅ PRD created with 5-week timeline
 
-- New: Airtable buttons (added)
-  - “Airtable Search” opens the matching record or Clients view in Airtable.
-  - “Sync Airtable” upserts the client (name/email) via API.
+**Next Steps (Week 1):**
+- [ ] Phase 0: Audit privacy_db.py (file size, growth rate, issues)
+- [ ] Phase 1: Create unified `db.py` module for clients/tasks
+- [ ] Phase 1: Add backup automation to Azure Blob
 
-- Owner workflow (in progress)
-  - Await Figma delivery for owner pill + popover + modal (prompt issued 2025-11-15).
-  - Implement shared owners store (backend + Airtable Clients view) and refactor TaskCard/TaskModal to use the new UX.
-  - Extend Playwright coverage: assign owner, verify chip updates across Dashboard, Clients tab, and Task Modal.
-
-- Azure platform hardening (in progress)
-  - Backend now runs as custom container. Next up: wire automated builds (GitHub Action) that runs `az acr build` + deploy, so we don’t copy contexts manually.
-  - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the container.
-  - Once CI is live, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
-  - Keep using `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to monitor containers during each deploy.
-
-- Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
-- Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
-- Optional: add PDF export in the Word compose step and attach.
-- Author final production texts in `docs/security_texts.he-IL.json`.
-- Update `docs/Testing_Episodic_Log.md` after each test round.
+**Timeline:**
+```
+Week 1 (Dec 9-13): Foundation + Audit existing
+Week 2 (Dec 16-20): Clients migration
+Week 3 (Dec 23-27): Tasks migration
+Week 4 (Dec 30-Jan 3): Airtable import
+Week 5 (Jan 6-10): Meilisearch integration
+Week 6+: Marketing module merge (optional)
+```
 
 ---
 
-## UX/UI Fix Sprint: Clients Section (2025-12-03)
+## Clients Module
 
-**Audit Report:** `docs/reports/CLIENTS_SECTION_COMPREHENSIVE_AUDIT_2025-12-03.md`
-**Priority:** CRITICAL - Visual inconsistencies and language mixing break user experience
+### UX Sprint (2025-12-03)
+**Audit:** `docs/reports/CLIENTS_SECTION_COMPREHENSIVE_AUDIT_2025-12-03.md`
+**Status:** Ready for implementation
 
-### Background (Read This First)
-The Clients section has two different task display components that look completely different:
-1. **TasksWidget** (file: `frontend/src/components/TasksWidget.jsx`) - Shows on Overview tab, clean card design
-2. **TaskBoard** (file: `frontend/src/features/tasksNew/TaskBoard.jsx`) - Shows on Tasks tab, different styling + ENGLISH labels
+| Task | Priority | Status |
+|------|----------|--------|
+| Hebrew labels in TaskBoard | CRITICAL | ☐ Pending |
+| Unify TaskBoard/TasksWidget styling | HIGH | ☐ Pending |
+| Hide placeholder tabs (RAG, Privacy) | MEDIUM | ☐ Pending |
+| Add ARIA roles to TabNav | MEDIUM | ☐ Pending |
+| Add empty state to Files tab | LOW | ☐ Pending |
+| Replace alert() with toast | LOW | ☐ Pending |
 
-Users see TasksWidget on Overview, click "הצג הכל", and get a completely different UI with English text.
-
----
-
-### Task 1: Fix Hebrew Labels in TaskBoard (CRITICAL)
-**File:** `frontend/src/features/tasksNew/TaskBoard.jsx`
-**Time estimate:** 15-30 minutes
-
-**What to change:**
-
-| Line | Current (English) | Change to (Hebrew) |
-|------|-------------------|-------------------|
-| 69 | `New task` | `משימה חדשה` |
-| 70 | `placeholder="Do X for ${clientName}"` | `placeholder="תאר את המשימה..."` |
-| 73 | `Client` | `לקוח` |
-| 75 | `Unlinked` | `ללא לקוח` |
-| 81 | `Create task` | `צור משימה` |
-| 86 | `Select a client to add new tasks. Dashboard view is read-only.` | `בחר לקוח כדי להוסיף משימות. תצוגת הדשבורד היא לקריאה בלבד.` |
-| 90 | `No tasks yet.` | `אין משימות עדיין.` |
-| 59 | `Finished tasks pool` | Keep Hebrew part only: `משימות שבוצעו` |
-
-**How to verify:**
-1. Open `http://20.217.86.4:5173/#/clients/סיון%20בנימיני?tab=tasks`
-2. All labels should be in Hebrew
-3. RTL layout should not break
-
----
-
-### Task 2: Unify TaskBoard Visual Style with TasksWidget (HIGH)
-**Files:**
+**Files to modify:**
 - `frontend/src/features/tasksNew/TaskBoard.jsx`
-- `frontend/src/components/TasksWidget.jsx` (reference only)
+- `frontend/src/components/TabNav.jsx`
+- `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
 
-**Current problem:** TaskBoard has no container styling, TasksWidget has clean card.
+### Archive Feature ✅ COMPLETE
+- Status filters working (active/archived/all)
+- Toast notifications instead of alerts
+- Open tasks warning before archive
+- E2E tests passing (16/16)
 
-**TasksWidget styling (reference - DO NOT CHANGE THIS FILE):**
-```jsx
-// Line 94 - Container
-<div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-// Line 95 - Header
-<div className="flex items-center justify-between border-b px-4 py-3">
-// Line 119 - Task row
-<div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors">
-```
-
-**Changes to TaskBoard:**
-
-**Step 1:** Wrap the main content in a card container (around line 61-62):
-```jsx
-// BEFORE:
-return (
-  <div className="space-y-3">
-
-// AFTER:
-return (
-  <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-```
-
-**Step 2:** Style the task creation form section (around line 67-88):
-```jsx
-// BEFORE:
-{allowCreate ? (
-  <div className="flex flex-wrap gap-2 items-end">
-
-// AFTER:
-{allowCreate ? (
-  <div className="border-b px-4 py-3">
-    <div className="flex flex-wrap gap-2 items-end">
-    ...
-    </div>
-  </div>
-```
-
-**Step 3:** Style the tasks list container (around line 89):
-```jsx
-// BEFORE:
-<div className="border rounded divide-y">
-
-// AFTER:
-<div className="divide-y">
-```
-
-**Step 4:** Remove outer card from completed section (around line 112):
-```jsx
-// BEFORE:
-<div className="mt-1 border rounded">
-
-// AFTER:
-<div className="border-t">
-```
-
-**How to verify:**
-1. Compare TasksWidget on Overview with TaskBoard on Tasks tab
-2. Both should have same white card background, same border radius
-3. Both should have similar padding and spacing
+### Quote Templates ✅ COMPLETE
+- Full CRUD at /settings/quotes
+- Category management
+- Template preview with client substitution
 
 ---
 
-### Task 3: Add ARIA Roles to Tab Navigation (MEDIUM)
-**File:** `frontend/src/components/TabNav.jsx`
+## Privacy Module
 
-**Current problem:** No accessibility roles on tabs.
+### SQLite Backend ✅ COMPLETE
+**File:** `backend/privacy_db.py`
 
-**Find the component and add these attributes:**
+Endpoints live:
+- GET `/api/privacy/submissions` - List with optional Fillout sync
+- GET `/api/privacy/submissions/{id}` - Single submission details
+- POST `/api/privacy/webhook` - Fillout webhook receiver
+- POST `/api/privacy/review` - Save QA review status
+- GET `/api/privacy/activity` - Activity log for monitoring
+- GET `/api/privacy/stats` - Dashboard statistics
+- GET `/api/privacy/public-results/{id}` - Public results for WordPress
 
-```jsx
-// On the container element, add:
-role="tablist"
+### QA Redesign (Pending)
+**PRD:** `docs/PRD_PRIVACY_QA_REDESIGN.md`
 
-// On each tab link/button, add:
-role="tab"
-aria-selected={current === tab.key}
-data-testid={`tab-${tab.key}`}
-```
+| Phase | Task | Status |
+|-------|------|--------|
+| 1 | RTL layout fix | ☐ Pending |
+| 2 | Algorithm Decision Card | ☐ Pending |
+| 3 | Key Inputs Display | ☐ Pending |
+| 4 | Collapsible Override Section | ☐ Pending |
+| 5 | List status icons (○/✓/✗) | ☐ Pending |
+| 6 | Polish + data-testid | ☐ Pending |
 
-**Example structure:**
-```jsx
-<nav role="tablist" className="...">
-  {tabs.map(tab => (
-    <Link
-      key={tab.key}
-      role="tab"
-      aria-selected={current === tab.key}
-      data-testid={`tab-${tab.key}`}
-      to={`${base}?tab=${tab.key}`}
-      className={...}
-    >
-      {tab.label}
-    </Link>
-  ))}
-</nav>
-```
-
-**How to verify:**
-1. Open browser DevTools > Elements
-2. Find the tab navigation
-3. Confirm `role="tablist"` on container
-4. Confirm `role="tab"` and `aria-selected` on each tab
+### Purchase Flow (Blocked)
+**PRD:** `docs/PRD_PRIVACY_PURCHASE_FLOW.md`
+**Blocked by:** QA validation must confirm >90% accuracy first
 
 ---
 
-### Task 4: Hide Placeholder Tabs (MEDIUM)
-**File:** `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
+## RAG Module
 
-**Current problem:** RAG and Privacy tabs are clickable but show empty content.
+### Completed Features
+- ✅ Zoom Cloud Recordings sync (32+ recordings)
+- ✅ Audio/Video filter buttons
+- ✅ Bulk download with queue status
+- ✅ Transcript editing with speaker names (chat-bubble format)
+- ✅ Meilisearch integration
+- ✅ Inbox/Published workflow
 
-**Find line ~780-787 and comment out placeholder tabs:**
-```jsx
-// BEFORE:
-<TabNav base={base} current={tab} tabs={[
-  {key:'overview', label:'סקירה'},
-  {key:'files', label:'קבצים'},
-  {key:'emails', label:'אימיילים'},
-  {key:'tasks', label:'משימות'},
-  {key:'rag', label:'RAG'},
-  {key:'privacy', label:'פרטיות (בקרוב)'}
-]}/>
-
-// AFTER:
-<TabNav base={base} current={tab} tabs={[
-  {key:'overview', label:'סקירה'},
-  {key:'files', label:'קבצים'},
-  {key:'emails', label:'אימיילים'},
-  {key:'tasks', label:'משימות'},
-  // Hidden until implemented:
-  // {key:'rag', label:'RAG'},
-  // {key:'privacy', label:'פרטיות (בקרוב)'}
-]}/>
-```
-
-**Also remove the tab content blocks (around lines 1140-1148):**
-```jsx
-// Comment out or delete these blocks:
-{tab==='rag' && (
-  <Card title="תובנות RAG">
-    <div className="text-sm text-slate-600">חיפוש וקטעים – בקרוב</div>
-  </Card>
-)}
-{tab==='privacy' && (
-  <Card title="פרטיות">
-    <div className="text-sm text-slate-600">בקרוב – ישולב עם PrivacyExpress.</div>
-  </Card>
-)}
-```
-
-**How to verify:**
-1. Open any client page
-2. Only 4 tabs should be visible: סקירה, קבצים, אימיילים, משימות
+### Pending
+- [ ] Conversational memory for assistant
+- [ ] Client-scoped tag filtering
+- [ ] Whisper fallback for transcription
 
 ---
 
-### Task 5: Add Empty State to Files Tab (LOW)
-**File:** `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
+## Infrastructure
 
-**Find the files tab section (around line 913-922) and add empty state:**
+### Azure VM (20.217.86.4)
+- ✅ Docker containers running (api, web-dev, meili)
+- ✅ Hot-reload enabled (backend + frontend)
+- ✅ Monitoring stack (Grafana/Prometheus/Loki)
 
-```jsx
-// BEFORE:
-{tab==='files' && (
-  <Card title="קבצים">
-    <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
-    <ul className="list-disc pl-6 text-sm">
-      {(summary.files||[]).map(f => (
-        <li key={f.path}>{f.name}</li>
-      ))}
-    </ul>
-  </Card>
-)}
-
-// AFTER:
-{tab==='files' && (
-  <Card title="קבצים">
-    {(summary.files||[]).length === 0 ? (
-      <div className="text-sm text-slate-500 text-center py-4">
-        אין קבצים עדיין
-      </div>
-    ) : (
-      <>
-        <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
-        <ul className="list-disc pl-6 text-sm">
-          {(summary.files||[]).map(f => (
-            <li key={f.path}>{f.name}</li>
-          ))}
-        </ul>
-      </>
-    )}
-  </Card>
-)}
-```
-
-**How to verify:**
-1. Open a client with no files
-2. Should show "אין קבצים עדיין" instead of empty list
+### Pending
+- [ ] Automated GitHub Actions deploy
+- [ ] App Insights integration validation
+- [ ] Reliable log streaming (Kudu 502 issues)
 
 ---
 
-### Task 6: Replace alert() with Toast (LOW)
-**File:** `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
+## Documentation Updates (2025-12-05)
 
-**Find usages of `alert()` and replace with a toast notification:**
+**Updated today:**
+- ✅ README.md - Quick start with VM details
+- ✅ PROJECT_STATUS.md - December 2025 status
+- ✅ WORKING_MEMORY.md - Current context
+- ✅ TECHNICAL_OVERVIEW.md - Full technical docs
+- ✅ PROJECTS_COMPENDIUM.md - Project index
+- ✅ PRD_SQLITE_MIGRATION.md - NEW: Database migration plan
 
-Lines to change (search for `alert(`):
-- Line ~806: `alert('נשמר')`
-- Line ~811: `alert('שמירה נכשלה')`
-- Line ~1229: `alert('פתיחה ישירה...')`
-- Line ~1231: `alert('לא ניתן למצוא...')`
-- Line ~1235: `alert('נכשל ביצירת קשר...')`
-- Line ~1246: `alert(ok ? '...' : '...')`
-- Line ~1248: `alert('עדיין אין קישור...')`
-
-**Option A (Quick fix):** Add a toast state and component:
-```jsx
-// Add to state declarations (around line 33):
-const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
-
-// Add toast component before the closing </div> of the main return:
-{toast.show && (
-  <div className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg ${
-    toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'
-  } text-white`}>
-    {toast.message}
-  </div>
-)}
-
-// Replace alert() calls:
-// BEFORE: alert('נשמר')
-// AFTER: setToast({ show: true, message: 'נשמר', type: 'success' }); setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000)
-```
-
-**Option B (Better long-term):** Create a shared Toast component and context.
+**Pending updates:**
+- [ ] CHANGELOG.md - Add SQLite migration entry
+- [ ] DEV_SETUP.md - Review for accuracy
+- [ ] DEPLOY_RUNBOOK.md - Review for accuracy
 
 ---
 
-### Testing Checklist
+## Deferred / Out of Scope
 
-After completing all tasks, verify:
-
-- [ ] Open `http://20.217.86.4:5173/#/clients` - clients list loads
-- [ ] Click on any client - Overview tab shows TasksWidget + EmailsWidget
-- [ ] Click "הצג הכל" in TasksWidget - Tasks tab opens
-- [ ] **Tasks tab has ALL HEBREW labels** (no English text)
-- [ ] Tasks tab visual style matches Overview TasksWidget (white card, same borders)
-- [ ] Only 4 tabs visible (סקירה, קבצים, אימיילים, משימות)
-- [ ] Files tab shows "אין קבצים עדיין" when empty
-- [ ] Tab navigation has `role="tablist"` in HTML
-- [ ] Add a task from Tasks tab - works without errors
-
----
-
-### Files Modified Summary
-1. `frontend/src/features/tasksNew/TaskBoard.jsx` - Hebrew labels + styling
-2. `frontend/src/components/TabNav.jsx` - ARIA roles
-3. `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx` - Hide tabs + empty state + toasts
-
----
-
-## Clients + Dashboard Work Plan (2025-12-01)
-**Full Plan:** `docs/WORKPLAN_CLIENTS_AND_DASHBOARD.md`
-**Audits:** `docs/reports/CLIENTS_TAB_UI_UX_AUDIT_2025-12-01.md`, `docs/PRD_DASHBOARD_REDESIGN.md`
-
-**Priority:** Clients first → Dashboard second (Dashboard depends on Clients data)
-
-### Sprint 1: Foundation (CRITICAL - do first)
-- [ ] **Tasks Backend Migration** — Move tasks from localStorage to backend API
-  - Create `/api/tasks` endpoints (CRUD)
-  - Add due_date, priority, client_id fields
-  - Migrate TaskAdapter.js to use API
-- [ ] **Email Auto-Sync** — Sync emails on client page load (not manual button)
-  - Store last_sync_at per client
-  - Show "עודכן לפני X דקות"
-- [ ] **Task Card Due Dates** — Add 🔴 באיחור / 📅 היום / 📅 מחר badges
-
-### Sprint 2: Client Page Redesign
-- [ ] **Unified Overview** — Show Tasks + Emails on single screen (no tabs needed)
-  - Tasks widget: 5 recent with due dates
-  - Emails widget: 5 recent with unread indicator (●)
-  - Activity timeline: "פעילות אחרונה"
-- [ ] **Header Simplification** — 2-3 primary buttons + overflow menu (⋮)
-- [ ] **Email List Improvements** — Relative time, unread dot, attachment count
-
-### Sprint 3: Polish & List Page
-- [ ] **Hebrew Localization** — All labels in Hebrew (tabs, buttons, filters, empty states)
-- [ ] **Contacts Form** — Collapse by default, only שם+אימייל required
-- [ ] **Client List Search** — Type-to-filter by name or email
-- [ ] **Client List Badges** — 🔴 overdue tasks, 📧 new emails per row
-
-### Sprint 4: Email Deep + Dashboard Start
-- [ ] **Task↔Email Full Loop** — Task shows email source, email shows "משימה נוצרה"
-- [ ] **Filter Bar** — Collapse by default, Hebrew labels
-- [ ] **Dashboard Data** — Fetch overdue/today tasks from new API
-- [ ] **Dynamic Focus Card** — Urgency-based card (red if overdue, orange if today, etc.)
-
-### Sprint 5: Dashboard Complete
-- [ ] **Client Activity Section** — Clients with new emails or tasks
-- [ ] **Quick Actions** — Inline task completion, quick add task
-- [ ] **All-Clear State** — 🎉 celebration when no urgent items
-
-### Out of Scope (Deferred)
 - Mobile responsiveness
 - SFU/Stage workflow
 - Matter/Case hierarchy
 - Reply to email from app
-- File browser improvements
+- PDF export for privacy reports
+- Outlook COM sender script
 
 ---
 
-Insights RAG — near‑term tasks (per PRD v2.0 "Inbox First")
+## Quick Reference
 
-**UI/UX Audit (2024-11-30)** — Full report: `docs/reports/RAG_TAB_UI_UX_AUDIT_2024-11-30.md`
+### VM Connection
+```bash
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+```
 
-Critical fixes (must do):
-- [x] Add `data-testid` attributes to all interactive elements per COMPONENT_LIBRARY.md (30+ testids added)
-- [x] Implement chat-style bubbles for transcript reviewer (ChatBubble component with WhatsApp-style layout)
-- [x] Add audio timestamp sync — click segment to play from that timestamp (audioRef linked, parseTime helper)
+### Start Dev Services
+```bash
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+```
 
-Major fixes:
-- [x] Implement "Select All" checkbox and bulk action dropdown for inbox items
-- [x] Add "Apply to All" buttons for bulk date/domain/client application
-- [ ] Implement client-scoped tag filtering (Global + This Client tags only)
-- [x] Increase button touch targets to 44px minimum (min-h-[44px] on all buttons)
-- [ ] Add right-click context menu for speaker rename (currently input-based)
-- [ ] Implement conversational memory for assistant (currently single Q&A)
+### View Logs
+```bash
+/usr/local/bin/docker-compose-v2 logs -f api
+```
 
-Minor fixes:
-- [ ] Extract SectionCard, StatusPill, LabeledField to shared components
-- [ ] Align font sizes with design tokens (text-lg→20pt, text-sm→15pt)
-- [ ] Add upload progress percentage
-- [ ] Implement keyboard shortcuts (/ to focus search)
-- [x] Add ARIA labels to tab navigation, drop zone, action buttons
-
-Backend tasks (unchanged):
-- Backend ingest/reviewer: `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` — integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
-- Secrets: replace Gemini key with the new "Gemini 3" key in `secrets.local.json`, then validate model list and content generation; pick target model (e.g., `gemini-2.0-flash-001` or Gemini 3 equivalent) for transcription.
-- Auto-extraction: date from file creation/filename; client regex against registry; tag safety filtering to Global_Tags + Client_Tags.
-- QA/logging: log deletions/transcription failures; add smoke path (sample audio/text) to verify Inbox → Reviewer → Library; add tests for duplicate hash rejection and publish/delete flows.
-
-Local‑first parity tasks (up next)
-- Clients list: multi‑address email search (done).
-- UI tests: fix strict selector in `tests/client_update.spec.ts` per new chips.
-- Optional: add Edge app‑window launcher endpoint for Outlook (local convenience).
-
-
+### Access URLs
+- Frontend dev: http://20.217.86.4:5173
+- API: http://20.217.86.4:8799
+- API docs: http://20.217.86.4:8799/docs

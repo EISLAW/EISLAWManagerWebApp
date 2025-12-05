@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 import uuid
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
+import fcntl
 import json
 import shutil
 from typing import Optional, List
@@ -17,13 +18,30 @@ except ImportError:
     import fixtures
     import fillout_integration
     import privacy_db
+try:
+    from backend import templates_api, word_api
+except ImportError:
+    import templates_api
+    import word_api
+try:
+    from backend import ai_studio
+except ImportError:
+    import ai_studio
 import httpx
 import msal
+
+try:
+    from backend import db_api_helpers
+except ImportError:
+    import db_api_helpers
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
 # ─────────────────────────────────────────────────────────────
 # Secrets Loading (from secrets.local.json)
+
+# Include AI Studio router
+app.include_router(ai_studio.router)
 # ─────────────────────────────────────────────────────────────
 SECRETS_PATH = Path(__file__).resolve().parent.parent / "secrets.local.json"
 
@@ -77,6 +95,11 @@ def get_clients_store_path():
 
 def load_local_clients():
     """Load clients from local registry file."""
+    # Try SQLite first
+    result = db_api_helpers.load_clients_from_sqlite()
+    if result:
+        return result
+    # Fallback to JSON
     clients_path = get_clients_store_path()
     if not clients_path.exists():
         return []
@@ -112,6 +135,9 @@ def load_local_clients():
 
 def find_local_client(client_id: str):
     """Find a single client by ID from local registry."""
+    result = db_api_helpers.find_client_by_id(client_id)
+    if result:
+        return result
     clients = load_local_clients()
     for c in clients:
         if c.get("id") == client_id:
@@ -261,6 +287,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include templates API router
+app.include_router(templates_api.router)
+app.include_router(word_api.router)
+
 BASE_DIR = Path(__file__).resolve().parent
 TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
 INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
@@ -313,6 +343,11 @@ def ensure_dirs():
 # ─────────────────────────────────────────────────────────────
 
 def load_tasks():
+    # Try SQLite first
+    result = db_api_helpers.load_tasks_from_sqlite()
+    if result:
+        return result
+    # Fallback to JSON
     if not TASKS_PATH.exists():
         return []
     try:
@@ -322,8 +357,16 @@ def load_tasks():
 
 
 def save_tasks(tasks):
+    # Save to JSON as backup
     TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
     TASKS_PATH.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Sync new tasks to SQLite
+    try:
+        for t in tasks:
+            if not db_api_helpers.find_task_by_id(t.get("id", "")):
+                db_api_helpers.create_task_in_sqlite(t)
+    except Exception as e:
+        print(f"Error syncing to SQLite: {e}")
 
 
 def load_tasks_archive():
@@ -341,6 +384,9 @@ def save_tasks_archive(tasks):
 
 
 def find_task(task_id: str):
+    result = db_api_helpers.find_task_by_id(task_id)
+    if result:
+        return result
     for t in load_tasks():
         if t.get("id") == task_id:
             return t
@@ -514,7 +560,9 @@ def get_client(cid: str):
         return c
     # Fall back to fixtures
     c = fixtures.client_detail(cid)
-    return c or {"error": "not found"}
+    if c:
+        return c
+    raise HTTPException(status_code=404, detail="Client not found")
 
 
 @app.patch("/api/clients/{client_name}/archive")
@@ -766,6 +814,11 @@ def create_task(payload: dict = Body(...)):
     tasks = load_tasks()
     tasks.append(task)
     save_tasks(tasks)
+    # Also save to SQLite
+    try:
+        db_api_helpers.create_task_in_sqlite(task)
+    except Exception as e:
+        print(f"Error saving task to SQLite: {e}")
     return task
 
 
@@ -800,6 +853,11 @@ def update_task(task_id: str, payload: dict = Body(...)):
     task["updatedAt"] = now
     tasks[idx] = task
     save_tasks(tasks)
+    # Also update in SQLite
+    try:
+        db_api_helpers.update_task_in_sqlite(task_id, payload)
+    except Exception as e:
+        print(f"Error updating task in SQLite: {e}")
     return task
 
 
@@ -821,6 +879,11 @@ def delete_task(task_id: str, hard: bool = False):
         tasks[idx]["deletedAt"] = datetime.utcnow().isoformat() + "Z"
 
     save_tasks(tasks)
+    # Also delete from SQLite
+    try:
+        db_api_helpers.delete_task_from_sqlite(task_id)
+    except Exception as e:
+        print(f"Error deleting task from SQLite: {e}")
     return {"deleted": True, "id": task_id}
 
 
@@ -843,6 +906,11 @@ def mark_task_done(task_id: str, done: bool = True):
     tasks[idx]["updatedAt"] = now
 
     save_tasks(tasks)
+    # Also update in SQLite
+    try:
+        db_api_helpers.mark_task_done_in_sqlite(task_id, done)
+    except Exception as e:
+        print(f"Error marking task done in SQLite: {e}")
     return tasks[idx]
 
 
@@ -1950,8 +2018,799 @@ def get_privacy_stats():
     return stats
 
 
+
+@app.get("/api/privacy/labels")
+def get_privacy_labels():
+    """Get labels for privacy form fields - Hebrew"""
+    return {"labels": {
+        "ppl": "מספר אנשים במאגר",
+        "sensitive_people": "מס' אנשים שיש עליהם מידע רגיש",
+        "sensitive_types": "סוגי מידע רגיש",
+        "owners": "מספר בעלים",
+        "access": "מורשי גישה",
+        "ethics": "חובת סודיות ע''פ אתיקה או דין",
+        "transfer": "האם מעביר מידע לאחר כנגד תמורה?",
+        "directmail_biz": "דיוור ישיר למען אחר",
+        "directmail_self": "דיוור ישיר למען עצמך",
+        "processor": "האם מעבד מידע?",
+        "processor_large_org": "האם מעבד למען גוף גדול?",
+        "cameras": "מצלמות אבטחה",
+        "biometric_100k": "ביומטרי מעל 100K",
+        "monitor_1000": "ניטור שוטף מעל 1000",
+        "employees_exposed": "עובדים בעלי גישה למידע",
+        "sensitive": "האם יש מידע רגיש?",
+        "processor_sensitive_org": "האם מעבד למען גוף רגיש/ציבורי?",
+        "biometric_people": "מספר אנשים במאגר ביומטרי",
+    }}
+
+
 @app.get("/api/privacy/db-submissions")
 def get_db_submissions(limit: int = 50, status: Optional[str] = None):
     """Get submissions from SQLite database"""
     submissions = privacy_db.get_submissions(limit=limit, status=status)
     return {"submissions": submissions}
+
+
+# ─────────────────────────────────────────────────────────────
+# Zoom Transcripts API (Azure Blob Storage)
+# ─────────────────────────────────────────────────────────────
+
+def get_azure_blob_client():
+    """Get Azure Blob container client for zoom transcripts."""
+    from azure.storage.blob import BlobServiceClient
+    conn_str = os.environ.get("AZURE_BLOB_CONNECTION_STRING")
+    if not conn_str:
+        # Try from secrets file
+        secrets = load_secrets()
+        conn_str = secrets.get("azure_blob", {}).get("connection_string")
+    if not conn_str:
+        raise HTTPException(status_code=500, detail="Azure Blob connection not configured")
+    from azure.storage.blob import BlobServiceClient; blob_service = BlobServiceClient.from_connection_string(conn_str)
+    return blob_service.get_container_client("zoom-recordings")
+
+
+@app.get("/api/zoom/transcripts")
+def list_zoom_transcripts():
+    """List completed transcripts from Azure Blob Storage."""
+    try:
+        container = get_azure_blob_client()
+        transcripts = []
+        for blob in container.list_blobs(name_starts_with="completed/"):
+            if blob.name.endswith(".txt"):
+                transcripts.append({
+                    "id": blob.name,
+                    "filename": blob.name.replace("completed/", ""),
+                    "size": blob.size,
+                    "modified": blob.last_modified.isoformat() if blob.last_modified else None
+                })
+        # Sort by modified date descending
+        transcripts.sort(key=lambda x: x.get("modified") or "", reverse=True)
+        return {"transcripts": transcripts}
+    except Exception as e:
+        print(f"Error listing zoom transcripts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/zoom/transcripts/{blob_name:path}")
+def get_zoom_transcript(blob_name: str):
+    """Get content of a specific transcript."""
+    try:
+        container = get_azure_blob_client()
+        blob_client = container.get_blob_client(blob_name)
+        download_stream = blob_client.download_blob()
+        content = download_stream.readall().decode("utf-8")
+        return {"content": content, "id": blob_name}
+    except Exception as e:
+        print(f"Error getting zoom transcript: {e}")
+        raise HTTPException(status_code=404, detail="Transcript not found")
+
+
+@app.delete("/api/zoom/transcripts/{blob_name:path}")
+def delete_zoom_transcript(blob_name: str):
+    """Delete a transcript from Azure Blob Storage."""
+    try:
+        container = get_azure_blob_client()
+        blob_client = container.get_blob_client(blob_name)
+        blob_client.delete_blob()
+        return {"success": True, "deleted": blob_name}
+    except Exception as e:
+        print(f"Error deleting zoom transcript: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/zoom/transcripts/{blob_name:path}/import")
+def import_zoom_transcript(blob_name: str, body: dict = None):
+    """Import a transcript to the RAG inbox."""
+    body = body or {}
+    try:
+        container = get_azure_blob_client()
+        blob_client = container.get_blob_client(blob_name)
+        download_stream = blob_client.download_blob()
+        content = download_stream.readall().decode("utf-8")
+
+        # Get metadata from request or parse from filename
+        filename = blob_name.replace("completed/", "")
+        parts = filename.replace(".txt", "").split("_")
+        date_str = body.get("date") or (parts[0] if parts else "")
+        client_name = body.get("client") or (" ".join(parts[1:-1]) if len(parts) > 2 else "")
+        domain = body.get("domain") or "Client_Work"
+
+        # Generate unique ID
+        import hashlib
+        item_id = hashlib.md5(content[:1024].encode()).hexdigest()[:12]
+
+        # Create manifest entry
+        manifest_path = Path.home() / ".eislaw" / "store" / "rag-manifest.json"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        manifest = []
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text("utf-8"))
+            except:
+                manifest = []
+
+        # Save transcript file
+        rag_dir = Path.home() / ".eislaw" / "store" / "rag"
+        rag_dir.mkdir(parents=True, exist_ok=True)
+        transcript_file = rag_dir / f"{item_id}.txt"
+        transcript_file.write_text(content, encoding="utf-8")
+
+        # Add to manifest
+        new_item = {
+            "id": item_id,
+            "fileName": filename,
+            "client": client_name,
+            "domain": domain,
+            "date": date_str,
+            "status": "ready",
+            "hash": item_id,
+            "source": "zoom",
+            "transcript": [{"speaker": "", "text": line.strip()} for line in content.split("\n") if line.strip()][:50]
+        }
+        manifest.insert(0, new_item)
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        return {"success": True, "id": item_id, "status": "ready"}
+    except Exception as e:
+        print(f"Error importing zoom transcript: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────
+# Zoom Recordings Management API
+# ─────────────────────────────────────────────────────────────
+
+# Import zoom_manager at the top of main.py:
+# from backend import zoom_manager
+# Or inline the functions if preferred
+
+import json
+import threading
+from pathlib import Path
+import fcntl
+from datetime import datetime
+
+
+# Manifest helpers (inline version)
+ZOOM_MANIFEST_PATH = Path.home() / ".eislaw" / "store" / "zoom-manifest.json"
+ZOOM_MANIFEST_LOCK = Path.home() / ".eislaw" / "store" / "zoom-manifest.lock"
+NOTIFICATIONS_PATH = Path.home() / ".eislaw" / "store" / "notifications.json"
+
+
+def _load_zoom_manifest():
+    """Load manifest with shared (read) lock."""
+    ZOOM_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not ZOOM_MANIFEST_PATH.exists():
+        return {"recordings": [], "last_sync": None}
+    try:
+        with open(ZOOM_MANIFEST_PATH, 'r', encoding='utf-8') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_SH)  # Shared lock for reading
+            try:
+                return json.load(f)
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    except:
+        return {"recordings": [], "last_sync": None}
+
+
+def _save_zoom_manifest(manifest):
+    """Save manifest with exclusive (write) lock."""
+    ZOOM_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ZOOM_MANIFEST_LOCK.parent.mkdir(parents=True, exist_ok=True)
+    # Use a separate lock file for exclusive locking
+    with open(ZOOM_MANIFEST_LOCK, 'w') as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)  # Exclusive lock
+        try:
+            with open(ZOOM_MANIFEST_PATH, 'w', encoding='utf-8') as f:
+                json.dump(manifest, f, ensure_ascii=False, indent=2)
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _update_zoom_manifest(updater_func):
+    """Atomically read-modify-write the manifest with exclusive lock.
+
+    Args:
+        updater_func: A function that takes the manifest dict and modifies it in place.
+    Returns:
+        The updated manifest.
+    """
+    ZOOM_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ZOOM_MANIFEST_LOCK.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(ZOOM_MANIFEST_LOCK, 'w') as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)  # Exclusive lock
+        try:
+            # Read
+            if ZOOM_MANIFEST_PATH.exists():
+                try:
+                    with open(ZOOM_MANIFEST_PATH, 'r', encoding='utf-8') as f:
+                        manifest = json.load(f)
+                except:
+                    manifest = {"recordings": [], "last_sync": None}
+            else:
+                manifest = {"recordings": [], "last_sync": None}
+
+            # Modify
+            updater_func(manifest)
+
+            # Write
+            with open(ZOOM_MANIFEST_PATH, 'w', encoding='utf-8') as f:
+                json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+            return manifest
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+@app.get("/api/zoom/recordings")
+def list_zoom_recordings(status: str = None, participant: str = None):
+    """
+    List all recordings from manifest with optional filters.
+
+    Query params:
+        status: filter by status (in_zoom, pending, transcribing, completed, imported, skipped)
+        participant: filter by participant name (partial match)
+    """
+    manifest = _load_zoom_manifest()
+    recordings = manifest.get("recordings", [])
+
+    # Filter by status
+    if status:
+        recordings = [r for r in recordings if r.get("status") == status]
+
+    # Filter by participant
+    if participant:
+        participant_lower = participant.lower()
+        recordings = [r for r in recordings
+                     if any(participant_lower in p.lower() for p in r.get("participants", []))
+                     or participant_lower in r.get("topic", "").lower()]
+
+    return {
+        "recordings": recordings,
+        "total": len(recordings),
+        "last_sync": manifest.get("last_sync")
+    }
+
+
+@app.post("/api/zoom/sync")
+def sync_zoom_recordings():
+    """
+    Sync recordings from Zoom Cloud.
+    Fetches new recordings and updates manifest.
+    """
+    import base64
+    import requests
+    from datetime import timedelta
+
+    # Get credentials from secrets or env
+    secrets = load_secrets()
+    zoom_creds = secrets.get("zoom", {})
+
+    account_id = zoom_creds.get("account_id") or os.environ.get("ZOOM_ACCOUNT_ID")
+    client_id = zoom_creds.get("client_id") or os.environ.get("ZOOM_CLIENT_ID")
+    client_secret = zoom_creds.get("client_secret") or os.environ.get("ZOOM_CLIENT_SECRET")
+
+    if not all([account_id, client_id, client_secret]):
+        raise HTTPException(status_code=500, detail="Zoom credentials not configured")
+
+    try:
+        # Get access token
+        token_url = "https://zoom.us/oauth/token"
+        credentials = f"{client_id}:{client_secret}"
+        encoded_creds = base64.b64encode(credentials.encode()).decode()
+
+        token_resp = requests.post(
+            token_url,
+            headers={
+                "Authorization": f"Basic {encoded_creds}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            data={"grant_type": "account_credentials", "account_id": account_id},
+            timeout=30
+        )
+        token_resp.raise_for_status()
+        access_token = token_resp.json()["access_token"]
+
+        # Fetch recordings (last 30 days - API limit)
+        from_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        to_date = datetime.now().strftime('%Y-%m-%d')
+
+        rec_resp = requests.get(
+            "https://api.zoom.us/v2/users/me/recordings",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"from": from_date, "to": to_date, "page_size": 300},
+            timeout=60
+        )
+        rec_resp.raise_for_status()
+        data = rec_resp.json()
+
+        # Parse recordings
+        manifest = _load_zoom_manifest()
+        existing_ids = {r.get("zoom_id") for r in manifest.get("recordings", [])}
+        new_count = 0
+
+        for meeting in data.get("meetings", []):
+            topic = meeting.get("topic", "Untitled")
+            start_time = meeting.get("start_time", "")
+            duration = meeting.get("duration", 0)
+
+            # Extract participants from topic
+            participants = []
+            if " עם " in topic:
+                participants = [p.strip() for p in topic.split(" עם ")]
+            elif " and " in topic.lower():
+                participants = [p.strip().title() for p in topic.lower().split(" and ")]
+            else:
+                participants = [topic.strip()]
+
+            for file in meeting.get("recording_files", []):
+                file_type = file.get("file_type", "")
+                if file_type not in ["M4A", "MP4"]:
+                    continue
+
+                zoom_id = file.get("id")
+                if zoom_id in existing_ids:
+                    continue
+
+                manifest["recordings"].insert(0, {
+                    "zoom_id": zoom_id,
+                    "zoom_meeting_id": meeting.get("uuid"),
+                    "topic": topic,
+                    "date": start_time[:10] if start_time else "",
+                    "start_time": start_time,
+                    "duration_minutes": duration,
+                    "file_type": file_type,
+                    "file_size_mb": round(file.get("file_size", 0) / 1024 / 1024, 1),
+                    "download_url": file.get("download_url"),
+                    "participants": participants,
+                    "status": "in_zoom",
+                    "created_at": datetime.utcnow().isoformat() + "Z"
+                })
+                new_count += 1
+
+        # Sort by date
+        manifest["recordings"].sort(key=lambda x: x.get("start_time", ""), reverse=True)
+        manifest["last_sync"] = datetime.utcnow().isoformat() + "Z"
+        _save_zoom_manifest(manifest)
+
+        return {
+            "success": True,
+            "new_recordings": new_count,
+            "total_recordings": len(manifest["recordings"]),
+            "last_sync": manifest["last_sync"]
+        }
+
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Zoom API error: {str(e)}")
+
+
+@app.post("/api/zoom/download/{zoom_id}")
+def download_zoom_recording(zoom_id: str, background_tasks: BackgroundTasks):
+    """
+    Download a recording from Zoom to Azure and auto-start transcription.
+    """
+    manifest = _load_zoom_manifest()
+    rec = None
+    for r in manifest.get("recordings", []):
+        if r.get("zoom_id") == zoom_id:
+            rec = r
+            break
+
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    if rec.get("status") != "in_zoom":
+        return {"success": False, "message": f"Recording already processed (status: {rec.get('status')})"}
+
+    # Start download in background
+    background_tasks.add_task(_download_and_transcribe, zoom_id, rec)
+
+    # Update status immediately
+    rec["status"] = "downloading"
+    _save_zoom_manifest(manifest)
+
+    return {"success": True, "status": "downloading", "zoom_id": zoom_id}
+
+
+def _download_and_transcribe(zoom_id: str, rec: dict):
+    """Background task: download from Zoom, upload to Azure, start transcription."""
+    import base64
+    import requests
+    import subprocess
+
+    manifest = _load_zoom_manifest()
+
+    try:
+        # Get fresh access token
+        secrets = load_secrets()
+        zoom_creds = secrets.get("zoom", {})
+        account_id = zoom_creds.get("account_id") or os.environ.get("ZOOM_ACCOUNT_ID")
+        client_id = zoom_creds.get("client_id") or os.environ.get("ZOOM_CLIENT_ID")
+        client_secret = zoom_creds.get("client_secret") or os.environ.get("ZOOM_CLIENT_SECRET")
+
+        credentials = f"{client_id}:{client_secret}"
+        encoded_creds = base64.b64encode(credentials.encode()).decode()
+
+        token_resp = requests.post(
+            "https://zoom.us/oauth/token",
+            headers={
+                "Authorization": f"Basic {encoded_creds}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            data={"grant_type": "account_credentials", "account_id": account_id},
+            timeout=30
+        )
+        token_resp.raise_for_status()
+        access_token = token_resp.json()["access_token"]
+
+        # Download recording
+        download_url = rec.get("download_url")
+        if "?" in download_url:
+            download_url += f"&access_token={access_token}"
+        else:
+            download_url += f"?access_token={access_token}"
+
+        print(f"Downloading {zoom_id} from Zoom...")
+        response = requests.get(download_url, stream=True, timeout=600)
+        response.raise_for_status()
+
+        # Upload to Azure
+        date_str = rec.get("date", datetime.now().strftime('%Y-%m-%d'))
+        topic = rec.get("topic", "meeting").replace("/", "_").replace("\\", "_")[:50]
+        ext = rec.get("file_type", "m4a").lower()
+        blob_name = f"pending/{date_str}_{topic}_{zoom_id}.{ext}"
+
+        conn_str = secrets.get("azure_blob", {}).get("connection_string") or os.environ.get("AZURE_BLOB_CONNECTION_STRING")
+        from azure.storage.blob import BlobServiceClient; blob_service = BlobServiceClient.from_connection_string(conn_str)
+        container = blob_service.get_container_client("zoom-recordings")
+        blob_client = container.get_blob_client(blob_name)
+
+        print(f"Uploading to Azure: {blob_name}")
+        blob_client.upload_blob(response.content, overwrite=True)
+
+        # Update manifest
+        for r in manifest["recordings"]:
+            if r.get("zoom_id") == zoom_id:
+                r["status"] = "pending"
+                r["azure_blob"] = blob_name
+                r["downloaded_at"] = datetime.utcnow().isoformat() + "Z"
+                break
+        _save_zoom_manifest(manifest)
+
+        # Auto-start transcription
+        print(f"Starting transcription for {blob_name}")
+        _run_transcription(zoom_id, blob_name, rec.get("topic", "Recording"))
+
+    except Exception as e:
+        print(f"Download/transcribe failed for {zoom_id}: {e}")
+        for r in manifest["recordings"]:
+            if r.get("zoom_id") == zoom_id:
+                r["status"] = "in_zoom"
+                r["error"] = str(e)
+                break
+        _save_zoom_manifest(manifest)
+
+
+def _run_transcription(zoom_id: str, blob_name: str, topic: str):
+    """Run the transcription pipeline."""
+    import subprocess
+
+    manifest = _load_zoom_manifest()
+
+    # Update status to transcribing
+    for r in manifest["recordings"]:
+        if r.get("zoom_id") == zoom_id:
+            r["status"] = "transcribing"
+            r["transcription_started_at"] = datetime.utcnow().isoformat() + "Z"
+            break
+    _save_zoom_manifest(manifest)
+
+    try:
+        secrets = load_secrets()
+        env = os.environ.copy()
+        env["AZURE_BLOB_CONNECTION_STRING"] = secrets.get("azure_blob", {}).get("connection_string") or os.environ.get("AZURE_BLOB_CONNECTION_STRING", "")
+        env["GEMINI_API_KEY"] = secrets.get("llm", {}).get("api_keys", {}).get("gemini") or os.environ.get("GEMINI_API_KEY", "")
+
+        result = subprocess.run(
+            ["python3", "/app/zoom-import/pipeline.py", blob_name],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=1800  # 30 min max
+        )
+
+        if result.returncode == 0:
+            transcript_blob = blob_name.replace("pending/", "completed/").replace(".m4a", ".txt").replace(".mp4", ".txt")
+
+            for r in manifest["recordings"]:
+                if r.get("zoom_id") == zoom_id:
+                    r["status"] = "completed"
+                    r["transcript_blob"] = transcript_blob
+                    r["transcription_completed_at"] = datetime.utcnow().isoformat() + "Z"
+                    break
+            _save_zoom_manifest(manifest)
+
+            # Create notification
+            _create_zoom_notification(zoom_id, topic)
+            print(f"Transcription completed for {zoom_id}")
+        else:
+            raise Exception(f"Pipeline error: {result.stderr}")
+
+    except Exception as e:
+        print(f"Transcription failed for {zoom_id}: {e}")
+        for r in manifest["recordings"]:
+            if r.get("zoom_id") == zoom_id:
+                r["status"] = "pending"
+                r["error"] = str(e)
+                break
+        _save_zoom_manifest(manifest)
+
+
+def _create_zoom_notification(zoom_id: str, topic: str):
+    """Create notification for completed transcription."""
+    import hashlib
+
+    NOTIFICATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    notifications = []
+    if NOTIFICATIONS_PATH.exists():
+        try:
+            notifications = json.loads(NOTIFICATIONS_PATH.read_text("utf-8"))
+        except:
+            pass
+
+    notifications.insert(0, {
+        "id": hashlib.md5(f"{zoom_id}-{datetime.utcnow().isoformat()}".encode()).hexdigest()[:12],
+        "type": "transcription_complete",
+        "title": "תמלול הושלם",
+        "message": f"התמלול של '{topic}' הסתיים ומוכן לייבוא",
+        "zoom_id": zoom_id,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "read": False
+    })
+
+    notifications = notifications[:50]
+    NOTIFICATIONS_PATH.write_text(json.dumps(notifications, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@app.post("/api/zoom/skip/{zoom_id}")
+def skip_zoom_recording(zoom_id: str, reason: str = None):
+    """Mark a recording as skipped."""
+    manifest = _load_zoom_manifest()
+    found = False
+
+    for r in manifest.get("recordings", []):
+        if r.get("zoom_id") == zoom_id:
+            r["status"] = "skipped"
+            r["skipped_reason"] = reason
+            r["skipped_at"] = datetime.utcnow().isoformat() + "Z"
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    _save_zoom_manifest(manifest)
+    return {"success": True, "status": "skipped"}
+
+
+@app.get("/api/notifications")
+def get_notifications(unread_only: bool = False):
+    """Get notifications list."""
+    if not NOTIFICATIONS_PATH.exists():
+        return {"notifications": [], "unread_count": 0}
+
+    try:
+        notifications = json.loads(NOTIFICATIONS_PATH.read_text("utf-8"))
+        unread_count = sum(1 for n in notifications if not n.get("read"))
+
+        if unread_only:
+            notifications = [n for n in notifications if not n.get("read")]
+
+        return {"notifications": notifications, "unread_count": unread_count}
+    except:
+        return {"notifications": [], "unread_count": 0}
+
+
+@app.post("/api/notifications/{notification_id}/read")
+def mark_notification_read(notification_id: str):
+    """Mark a notification as read."""
+    if not NOTIFICATIONS_PATH.exists():
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    try:
+        notifications = json.loads(NOTIFICATIONS_PATH.read_text("utf-8"))
+        found = False
+
+        for n in notifications:
+            if n.get("id") == notification_id:
+                n["read"] = True
+                found = True
+                break
+
+        if not found:
+            raise HTTPException(status_code=404, detail="Notification not found")
+
+        NOTIFICATIONS_PATH.write_text(json.dumps(notifications, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"success": True}
+    except:
+        raise HTTPException(status_code=500, detail="Failed to update notification")
+
+
+@app.get("/api/zoom/queue")
+def get_transcription_queue():
+    """Get current transcription queue status."""
+    manifest = _load_zoom_manifest()
+
+    # Find recordings that are currently processing
+    downloading = [r for r in manifest.get("recordings", []) if r.get("status") == "downloading"]
+    transcribing = [r for r in manifest.get("recordings", []) if r.get("status") == "transcribing"]
+    pending = [r for r in manifest.get("recordings", []) if r.get("status") == "pending"]
+
+    return {
+        "downloading": [{"zoom_id": r["zoom_id"], "topic": r.get("topic")} for r in downloading],
+        "transcribing": [{"zoom_id": r["zoom_id"], "topic": r.get("topic")} for r in transcribing],
+        "pending_transcription": [{"zoom_id": r["zoom_id"], "topic": r.get("topic")} for r in pending],
+        "is_busy": len(downloading) > 0 or len(transcribing) > 0
+    }
+
+# ============ Marketing Leads & Attribution Endpoints ============
+from pathlib import Path as _Path
+
+_marketing_leads_path = _Path(__file__).parent / "marketing_leads_endpoints.py"
+if _marketing_leads_path.exists():
+    try:
+        exec(_marketing_leads_path.read_text("utf-8"), globals())
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to load marketing_leads_endpoints.py: {e}")
+
+# ============ Marketing Prompts Endpoints ============
+_marketing_prompts_path = _Path(__file__).parent / "marketing_prompts_endpoints.py"
+if _marketing_prompts_path.exists():
+    try:
+        exec(_marketing_prompts_path.read_text("utf-8"), globals())
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to load marketing_prompts_endpoints.py: {e}")
+
+# Voice sample path for speaker identification
+VOICE_SAMPLE_PATH = Path("/app/backend/eitan_voice_sample.m4a")
+
+def gemini_transcribe_with_speaker_id(file_path: str, topic: str = "", model: Optional[str] = None) -> List[dict]:
+    """
+    Transcribe audio with speaker identification using voice sample.
+    Uses Eitan voice sample to identify speakers.
+    Returns a list of transcript segments with speaker attribution.
+    """
+    key = require_env("GEMINI_API_KEY")
+    model_name = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+    
+    # Load the recording to transcribe
+    recording_data = Path(file_path).read_bytes()
+    recording_b64 = base64.b64encode(recording_data).decode("utf-8")
+    
+    # Build the parts list
+    parts = []
+    
+    # Check if voice sample exists
+    if VOICE_SAMPLE_PATH.exists():
+        voice_data = VOICE_SAMPLE_PATH.read_bytes()
+        voice_b64 = base64.b64encode(voice_data).decode("utf-8")
+        
+        # Extract client name from topic (format: "איתן עם [Client Name]")
+        client_name = ""
+        if topic:
+            import re
+            match = re.search(r"איתן עם (.+)", topic) or re.search(r"עם (.+)", topic)
+            if match:
+                client_name = match.group(1).strip()
+        
+        # Build prompt with voice context
+        prompt_text = """אתה מתמלל שיחה משפטית בעברית.
+
+הקובץ הראשון הוא דוגמת קול של עו"ד איתן שמיר - עורך דין ישראלי, גבר בן 48.
+הקובץ השני הוא ההקלטה לתמלול.
+
+הוראות:
+1. תמלל את כל השיחה מילה במילה
+2. זהה את הדוברים לפי הקול:
+   - עו"ד איתן שמיר (משתמש בדוגמת הקול לזיהוי)"""
+        
+        if client_name:
+            prompt_text += f"""
+   - {client_name} (הצד השני בשיחה)"""
+        else:
+            prompt_text += """
+   - לקוח (הצד השני בשיחה)"""
+            
+        prompt_text += """
+
+3. החזר את התמלול בפורמט JSON:
+[
+  {"speaker": "שם הדובר", "text": "הטקסט שנאמר"},
+  ...
+]
+
+החזר רק את ה-JSON, ללא הסברים נוספים."""
+        
+        parts = [
+            {"text": prompt_text},
+            {"inlineData": {"mimeType": "audio/mp4", "data": voice_b64}},
+            {"inlineData": {"mimeType": "audio/mp4", "data": recording_b64}},
+        ]
+    else:
+        # Fallback without voice sample
+        parts = [
+            {"text": "תמלל את ההקלטה הזו לעברית. זהה דוברים שונים אם יש. החזר JSON: [{\"speaker\": \"דובר\", \"text\": \"טקסט\"}]"},
+            {"inlineData": {"mimeType": "audio/mp4", "data": recording_b64}},
+        ]
+    
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"temperature": 0.1}
+    }
+    
+    with httpx.Client(timeout=300.0) as client:
+        resp = client.post(url, json=payload)
+        if resp.status_code != 200:
+            raise Exception(f"Gemini transcription failed: {resp.text}")
+        data = resp.json()
+    
+    text = ""
+    try:
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                text = parts[0].get("text", "")
+    except Exception:
+        pass
+    
+    if not text:
+        raise Exception("No transcript returned")
+    
+    # Try to parse as JSON
+    try:
+        import json
+        # Clean up the response (remove markdown code blocks if present)
+        clean_text = text.strip()
+        if clean_text.startswith("```json"):
+            clean_text = clean_text[7:]
+        if clean_text.startswith("```"):
+            clean_text = clean_text[3:]
+        if clean_text.endswith("```"):
+            clean_text = clean_text[:-3]
+        clean_text = clean_text.strip()
+        
+        segments = json.loads(clean_text)
+        if isinstance(segments, list):
+            return segments
+    except json.JSONDecodeError:
+        pass
+    
+    # Fallback: return as single segment
+    return [{"speaker": "דובר", "text": text.strip()}]

@@ -1,4 +1,5 @@
 import React from 'react'
+import ErrorBoundary from './components/ErrorBoundary'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import RoutesRoot from './routes.jsx'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from './utils/apiBase.js'
@@ -9,8 +10,10 @@ const NAV_LINKS = [
   { to: '/rag', label: 'RAG' },
   { to: '/marketing', label: 'Marketing' },
   { to: '/prompts', label: 'Prompts' },
+  { to: '/ai-studio', label: 'AI Studio' },
   { to: '/privacy', label: 'Privacy' },
   { to: '/settings', label: 'Settings' },
+  { to: '/settings/quotes', label: 'תבניות הצעות' },
 ]
 
 export default function App(){

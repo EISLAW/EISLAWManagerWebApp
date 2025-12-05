@@ -12,6 +12,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+# Structured logging
+from worker_logging import get_worker_logger
+logger = get_worker_logger("email_sync", "sync")
+
 
 
 def load_json(p: Path) -> dict:
@@ -403,7 +407,7 @@ def main(argv: list[str]) -> int:
 
     creds = graph_app_creds()
     if not creds:
-        print('Graph credentials missing in secrets.local.json', file=sys.stderr)
+        logger.error('Graph credentials missing in secrets.local.json')
         return 2
 
     dbp = email_index_path()
@@ -436,17 +440,17 @@ def main(argv: list[str]) -> int:
                     total += int(res.get('updated', 0))
                     if new_delta:
                         state.setdefault('mailboxes', {}).setdefault(upn, {})['deltaLink'] = new_delta
-                print(f'delta synced {len(changes)} changes for {upn}')
+                logger.info('Delta synced changes', upn=upn, change_count=len(changes))
             else:
                 msgs = graph_list_messages(creds, upn, since_iso, participants, top=50, max_pages=6)
                 total += upsert_messages(dbp, upn, msgs, regmap)
-                print(f'synced {len(msgs)} messages from {upn}')
+                logger.info('Synced messages', upn=upn, message_count=len(msgs))
         except Exception as e:
             errors.append(f'{upn}: {e}')
-            print(f'ERROR {upn}: {e}', file=sys.stderr)
+            logger.error('Sync failed for mailbox', upn=upn, error=str(e))
     if do_delta:
         save_state(state)
-    print(json.dumps({ 'ok': len(errors)==0, 'inserted_or_updated': total, 'errors': errors, 'delta': do_delta }, ensure_ascii=False))
+    logger.info('Email sync completed', ok=len(errors)==0, inserted_or_updated=total, error_count=len(errors), delta=do_delta)
     return 0 if not errors else 1
 
 

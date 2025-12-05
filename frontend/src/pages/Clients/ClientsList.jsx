@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { Search, X, Loader2, FolderOpen } from 'lucide-react'
 import AddClientModal from '../../components/AddClientModal.jsx'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../utils/apiBase.js'
 
@@ -12,19 +12,55 @@ export default function ClientsList(){
   const [initialModalQuery, setInitialModalQuery] = useState('')
   const [APIBase, setAPIBase] = useState(() => getStoredApiBase())
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('active')
+  const [archivedCount, setArchivedCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
   const ENV_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/,'')
   const MODE = (import.meta.env.VITE_MODE || '').toUpperCase()
   const HIDE_OUTLOOK = String(import.meta.env.VITE_HIDE_OUTLOOK||'').toLowerCase() === '1' || String(import.meta.env.VITE_HIDE_OUTLOOK||'').toLowerCase() === 'true'
+
+  // Normalize client data from API (handle field name variations)
+  const normalizeClient = (c) => {
+    // Handle email/emails field - API may return either
+    let emails = []
+    if (Array.isArray(c.emails)) {
+      emails = c.emails
+    } else if (c.email) {
+      emails = [c.email]
+    }
+
+    // Handle airtableId/airtable_id field
+    const airtableId = c.airtable_id || c.airtableId || ''
+
+    // Handle folder/folderPath field
+    const folder = c.folder || c.folderPath || ''
+
+    return {
+      ...c,
+      emails,
+      airtable_id: airtableId,
+      folder,
+    }
+  }
+
   const pickApiBase = async () => {
     const MODE = (import.meta.env.VITE_MODE || '').toUpperCase()
     if(MODE === 'LOCAL' && ENV_API){
       try{
-        const r = await fetch(`${ENV_API}/api/clients`, { credentials:'omit' })
+        const r = await fetch(`${ENV_API}/api/clients?status=${statusFilter}`, { credentials:'omit' })
         if(r.ok){
           const j = await r.json()
-          setRows(Array.isArray(j)? j : [])
+          setRows(Array.isArray(j) ? j.map(normalizeClient) : [])
           setAPIBase(ENV_API)
           setStoredApiBase(ENV_API)
+          // Fetch archived count
+          try {
+            const arcRes = await fetch(`${ENV_API}/api/clients?status=archived`, { credentials:'omit' })
+            if (arcRes.ok) {
+              const arcData = await arcRes.json()
+              setArchivedCount(Array.isArray(arcData) ? arcData.length : 0)
+            }
+          } catch {}
           return ENV_API
         }
       }catch{}
@@ -32,12 +68,20 @@ export default function ClientsList(){
     const detected = await detectApiBase([ENV_API])
     if(detected){
       try{
-        const r = await fetch(`${detected}/api/clients`, { credentials:'omit' })
+        const r = await fetch(`${detected}/api/clients?status=${statusFilter}`, { credentials:'omit' })
         if(r.ok){
           const j = await r.json()
-          setRows(Array.isArray(j)? j : [])
+          setRows(Array.isArray(j) ? j.map(normalizeClient) : [])
           setAPIBase(detected)
           setStoredApiBase(detected)
+          // Fetch archived count
+          try {
+            const arcRes = await fetch(`${detected}/api/clients?status=archived`, { credentials:'omit' })
+            if (arcRes.ok) {
+              const arcData = await arcRes.json()
+              setArchivedCount(Array.isArray(arcData) ? arcData.length : 0)
+            }
+          } catch {}
           return detected
         }
       }catch{}
@@ -47,10 +91,15 @@ export default function ClientsList(){
     return ''
   }
   const load = async () => {
-    await pickApiBase()
+    setIsLoading(true)
+    try {
+      await pickApiBase()
+    } finally {
+      setIsLoading(false)
+    }
     // rows set inside pickApiBase when a base responds
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [statusFilter])
   useEffect(() => {
     const pre = (query.get('create')||'').trim()
     if(pre){
@@ -66,7 +115,7 @@ export default function ClientsList(){
     return rows.filter(c => {
       // Search in name
       if ((c.name || '').toLowerCase().includes(q)) return true
-      // Search in emails
+      // Search in emails (now properly normalized to array)
       if ((c.emails || []).some(e => (e || '').toLowerCase().includes(q))) return true
       // Search in phone
       if ((c.phone || '').toLowerCase().includes(q)) return true
@@ -147,8 +196,15 @@ export default function ClientsList(){
     const API = (APIBase || ENV_API || 'http://127.0.0.1:8788').replace(/\/$/,'')
     try{
       const loc = await (await fetch(`${API}/api/client/locations?name=${encodeURIComponent(name)}`)).json()
-      if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer') }
-    }catch{}
+      if(loc.sharepointUrl){
+        window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer')
+      } else {
+        alert('לא נמצא קישור SharePoint ללקוח זה. יש להגדיר תחילה.')
+      }
+    }catch(err){
+      console.error('openSharePoint error:', err)
+      alert('שגיאה בפתיחת SharePoint')
+    }
   }
   return (
     <div className="space-y-4">
@@ -159,31 +215,51 @@ export default function ClientsList(){
           {APIBase && <div className="text-xs text-slate-500 hidden md:block">API: {APIBase}</div>}
         </div>
         <button
-          className="px-3 py-2 rounded bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive"
+          className="px-3 py-2 min-h-[44px] rounded bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive"
           onClick={() => setShowAdd(true)}
         >הוסף לקוח</button>
       </div>
 
       {/* Search box */}
-      {rows.length > 0 && (
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="חיפוש לקוח לפי שם, אימייל או טלפון..."
-            className="w-full pr-10 pl-10 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
-            data-testid="client-search"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {(rows.length > 0 || archivedCount > 0) && (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לקוח לפי שם, אימייל או טלפון..."
+              className="w-full pr-10 pl-10 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+              data-testid="client-search"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {/* Status filter dropdown */}
+          {isLoading && (
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>טוען...</span>
+            </div>
           )}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+            data-testid="status-filter"
+            disabled={isLoading}
+          >
+            <option value="active">לקוחות פעילים</option>
+            <option value="archived">ארכיון ({archivedCount})</option>
+            <option value="all">הכל</option>
+          </select>
         </div>
       )}
 
@@ -192,7 +268,7 @@ export default function ClientsList(){
           <div className="text-slate-600 text-sm mb-3">לא נמצאו לקוחות.</div>
           <button
             data-testid="add-client-header"
-            className="px-3 py-2 rounded bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive"
+            className="px-3 py-2 min-h-[44px] rounded bg-petrol text-white hover:bg-petrolHover active:bg-petrolActive"
             onClick={() => setShowAdd(true)}
           >הוסף לקוח</button>
         </div>
@@ -215,12 +291,14 @@ export default function ClientsList(){
             </thead>
             <tbody>
               {filteredRows.map(c => {
+                // Now properly normalized - airtable_id and folder will be set correctly
                 const hasAirtable = Boolean(c.airtable_id)
                 const hasFolder = Boolean(c.folder)
-                const emailCount = (c.emails || []).length
+                const emails = c.emails || []
+                const emailCount = emails.length
 
                 return (
-                  <tr key={c.id} className="border-b last:border-none hover:bg-slate-50">
+                  <tr key={c.id} className={`border-b last:border-none hover:bg-slate-50 ${c.active === false ? 'opacity-60 bg-slate-50' : ''}`}>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         <Link className="underline text-petrol font-medium" data-testid={`open-${encodeURIComponent(c.name)}-name`} to={`/clients/${encodeURIComponent(c.name)}`}>{c.name}</Link>
@@ -232,15 +310,20 @@ export default function ClientsList(){
                             </span>
                           )}
                           {hasFolder && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200" title="תיקייה מקושרת">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200" title="SharePoint מקושר - לחץ SP לפתיחה">
                               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                               SP
                             </span>
                           )}
                           {!hasAirtable && !hasFolder && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-50 text-amber-700 border border-amber-200" title="דורש הגדרה">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-50 text-amber-700 border border-amber-200" title="לקוח ללא קישורים - יש להגדיר Airtable או SharePoint">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              חדש
+                              להגדרה
+                            </span>
+                          )}
+                          {c.active === false && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-600" title="לקוח בארכיון">
+                              בארכיון
                             </span>
                           )}
                         </div>
@@ -248,7 +331,7 @@ export default function ClientsList(){
                     </td>
                     <td className="p-2 text-slate-600">
                       <div className="flex items-center gap-2">
-                        <span className="truncate max-w-[200px]">{(c.emails||[]).join(', ') || '-'}</span>
+                        <span className="truncate max-w-[200px]">{emails.join(', ') || '-'}</span>
                         {emailCount > 1 && (
                           <span className="text-xs text-slate-400">+{emailCount - 1}</span>
                         )}
@@ -258,8 +341,7 @@ export default function ClientsList(){
                       <div className="flex gap-2">
                         <Link className="underline" data-testid={`open-${encodeURIComponent(c.name)}`} to={`/clients/${encodeURIComponent(c.name)}`}>פתח</Link>
                         <button className="text-petrol underline" onClick={()=>navigate(`/clients/${encodeURIComponent(c.name)}?tab=emails`)}>אימיילים</button>
-                        <button className="text-petrol underline" onClick={()=>openFiles(c.name)}>קבצים</button>
-                        <button className="text-petrol underline" onClick={()=>openSharePoint(c.name)}>SP</button>
+                        <button className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-petrol hover:bg-petrol/10 rounded" onClick={()=>openSharePoint(c.name)} title="פתח תיקיית SharePoint"><FolderOpen className="w-5 h-5" /></button>
                         {!HIDE_OUTLOOK && <button className="text-petrol underline" onClick={()=>openEmails(c.name)}>Outlook</button>}
                       </div>
                     </td>

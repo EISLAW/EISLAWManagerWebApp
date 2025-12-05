@@ -11,6 +11,13 @@ import Prompts from './pages/Prompts/index.jsx'
 import Insights from './pages/Insights/index.jsx'
 import Privacy from './pages/Privacy/index.jsx'
 import TaskModalPreview from './design/task-modal/TaskModalPreview.jsx'
+import MarketingPromptsManager from './components/MarketingPromptsManager.jsx'
+import LeadScoringSettings from './components/LeadScoringSettings.jsx'
+import MarketingDashboard from './components/MarketingDashboard.jsx'
+import MarketingLeads from './components/MarketingLeads.jsx'
+import MarketingCampaigns from './components/MarketingCampaigns.jsx'
+import MarketingInsights from './components/MarketingInsights.jsx'
+import AIStudio from './pages/AIStudio/index.jsx'
 
 const RoutesRoot = (
   <>
@@ -21,10 +28,17 @@ const RoutesRoot = (
     <Route path="/rag" element={<RAG/>} />
     <Route path="/admin" element={<Admin/>} />
     <Route path="/settings" element={<Admin/>} />
-    <Route path="/marketing" element={<Marketing/>} />
+    <Route path="/settings/prompts" element={<MarketingPromptsManager/>} />
+    <Route path="/settings/leads" element={<LeadScoringSettings/>} />
+    <Route path="/marketing" element={<MarketingDashboard/>} />
+    <Route path="/marketing/content" element={<Marketing/>} />
+    <Route path="/marketing/leads" element={<MarketingLeads/>} />
+    <Route path="/marketing/campaigns" element={<MarketingCampaigns/>} />
+    <Route path="/marketing/insights" element={<MarketingInsights/>} />
     <Route path="/prompts" element={<Prompts/>} />
     <Route path="/insights" element={<Insights/>} />
     <Route path="/privacy" element={<Privacy/>} />
+    <Route path="/ai-studio" element={<AIStudio/>} />
     <Route path="/design/task-modal" element={<TaskModalPreview/>} />
   </>
 )

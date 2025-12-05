@@ -21,10 +21,10 @@ def coerce_inputs(d: dict) -> dict:
     for k, v in d.items():
         if isinstance(v, str):
             vl = v.strip().lower()
-            if vl in {"true", "yes", "1"}:
+            if vl in {"true", "yes", "כן"}:
                 out[k] = True
                 continue
-            if vl in {"false", "no", "0", ""}:
+            if vl in {"false", "no", "0", "", "לא"}:
                 out[k] = False
                 continue
             # try number

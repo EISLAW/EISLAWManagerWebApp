@@ -38,7 +38,7 @@ function isUnread(email) {
 /**
  * Compact email list widget for client overview
  */
-export default function EmailsWidget({ clientName, clientEmails = [], limit = 5 }) {
+export default function EmailsWidget({ clientName, clientEmails = [], limit = 5, onEmailClick }) {
   const [emails, setEmails] = useState([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -126,7 +126,7 @@ export default function EmailsWidget({ clientName, clientEmails = [], limit = 5 
         </div>
       </div>
 
-      <div className="divide-y">
+      <div className="divide-y max-h-[500px] overflow-y-auto">
         {loading && (
           <div className="p-4 text-sm text-slate-500 text-center flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -149,7 +149,8 @@ export default function EmailsWidget({ clientName, clientEmails = [], limit = 5 
           return (
             <div
               key={email.id}
-              className={`px-4 py-2.5 hover:bg-slate-50 transition-colors ${unread ? 'bg-blue-50/30' : ''}`}
+              className={`px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer ${unread ? 'bg-blue-50/30' : ''}`}
+              onClick={() => onEmailClick && onEmailClick(email)}
               data-testid={`email-row-${email.id}`}
             >
               <div className="flex items-start gap-3">

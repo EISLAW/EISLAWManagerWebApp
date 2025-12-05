@@ -2,6 +2,22 @@
 
 Lightweight, dated notes for significant changes. Keep entries short (1–3 bullets per area) and tag releases before deploys so rollbacks are just “redeploy the last tag”.
 
+## 2025-12-05 - AI Studio Feature
+- **Feature/AI Studio**: Implemented multi-LLM chat interface per PRD:
+  - Backend: FastAPI router with SSE streaming (/api/ai-studio/chat)
+  - Backend: Conversation persistence (JSON file storage)
+  - Backend: Provider management (Gemini, Claude, OpenAI via LiteLLM)
+  - Backend: Endpoints: /chat, /providers, /conversations CRUD
+  - Frontend: React chat UI with real-time streaming
+  - Frontend: RTL/Hebrew support (dir=rtl, Hebrew placeholders/buttons)
+  - Frontend: Provider selector dropdown with availability indicators
+  - Frontend: Conversation history sidebar (load, delete, new conversation)
+  - Frontend: Message display with user/assistant avatars and timestamps
+  - Frontend: Error handling with user-friendly Hebrew messages
+- **Fix/API Base**: Added fallback chain for API base URL detection
+- **QA/Playwright**: Test suite: 17 tests, 100% pass rate
+- **Docs/Review**: Senior reviews completed - APPROVED FOR DEPLOYMENT
+
 ## Rollback (light playbook)
 - Deploy from tags (e.g., `git checkout v0.1.0` → build → deploy). If something breaks, redeploy the prior tag.
 - For frontend preview: `cd "EISLAW System/frontend" && npm run build && npm run preview -- --host --port 5197`; backend mock: `cd "EISLAW System" && DEV_CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://localhost:5197,http://127.0.0.1:5197" .venv/bin/python -m uvicorn scoring_service.main:app --host 127.0.0.1 --port 8788`.

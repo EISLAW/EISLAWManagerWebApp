@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useLocation } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import Card from '../../../components/Card.jsx'
 import KPI from '../../../components/KPI.jsx'
 import StagePills from '../../../components/StagePills.jsx'
@@ -10,8 +10,12 @@ import TasksWidget from '../../../components/TasksWidget.jsx'
 import EmailsWidget from '../../../components/EmailsWidget.jsx'
 import AddClientModal from '../../../components/AddClientModal.jsx'
 import LinkAirtableModal from '../../../components/LinkAirtableModal.jsx'
+import QuickActions from '../../../components/QuickActions.jsx'
+import QuoteModal from '../../../components/QuoteModal.jsx'
+import DeliveryEmailModal from '../../../components/DeliveryEmailModal.jsx'
+import TemplatePicker from '../../../components/TemplatePicker.jsx'
 import { addClientTask, updateTaskFields } from '../../../features/tasksNew/TaskAdapter.js'
-import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle } from 'lucide-react'
+import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight, Archive, ArchiveRestore} from 'lucide-react'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../../utils/apiBase.js'
 
 // Simple in-memory cache for client summaries during the session to avoid re-fetch on tab switches
@@ -21,6 +25,7 @@ export default function ClientOverview(){
   const decodedName = useMemo(() => decodeURIComponent(name), [name])
   const encodedName = useMemo(() => encodeURIComponent(decodedName), [decodedName])
   const loc = useLocation()
+  const navigate = useNavigate()
   const params = new URLSearchParams(loc.search)
   const tab = params.get('tab') || 'overview'
   const base = `/clients/${encodedName}`
@@ -61,13 +66,19 @@ export default function ClientOverview(){
   const [emailSinceDays, setEmailSinceDays] = useState(90)
   const [lastAutoSync, setLastAutoSync] = useState(null)
   const autoSyncAttemptedRef = useRef(false)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
-  const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
-  const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type })
-    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000)
-  }
   const moreMenuRef = useRef(null)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [isArchived, setIsArchived] = useState(false)
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false)
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  // Simple toast helper
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   // Load summary before hooks that depend on it to avoid TDZ errors
   const loadSummary = useCallback(async (opts = {}) => {
@@ -84,6 +95,7 @@ export default function ClientOverview(){
       const j = await r.json()
       summaryCache.set(key, j)
       setSummary(j)
+      setIsArchived(j?.client?.active === false)
       setEditForm({ email: (j.client?.emails||[])[0] || '', phone: j.client?.phone||'' })
       return j
     }catch{
@@ -659,11 +671,97 @@ export default function ClientOverview(){
       setTimeout(() => setSyncStatus(''), 6000)
     }
   }
+
+  // Archive/Restore functions
+  async function archiveClient() {
+    // Check for open tasks first
+    try {
+      const tasksRes = await fetch(`${API}/api/tasks?client=${encodeURIComponent(decodedName)}&status=new,in_progress`)
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json()
+        const openTasks = tasksData.tasks || []
+        if (openTasks.length > 0) {
+          if (!confirm(`ללקוח זה יש ${openTasks.length} משימות פתוחות. להעביר לארכיון בכל זאת?`)) return
+        } else {
+          if (!confirm('להעביר לקוח זה לארכיון?')) return
+        }
+      } else {
+        if (!confirm('להעביר לקוח זה לארכיון?')) return
+      }
+    } catch {
+      if (!confirm('להעביר לקוח זה לארכיון?')) return
+    }
+
+    try {
+      const r = await fetch(`${API}/api/clients/${encodeURIComponent(decodedName)}/archive`, {
+        method: 'PATCH'
+      })
+      if (r.ok) {
+        setIsArchived(true)
+        showToast('הלקוח הועבר לארכיון', 'success')
+      } else {
+        showToast('שגיאה בהעברה לארכיון', 'error')
+      }
+    } catch {
+      showToast('שגיאה בהעברה לארכיון', 'error')
+    }
+  }
+
+  async function restoreClient() {
+    if (!confirm('להחזיר לקוח זה לפעילים?')) return
+    try {
+      const r = await fetch(`${API}/api/clients/${encodeURIComponent(decodedName)}/restore`, {
+        method: 'PATCH'
+      })
+      if (r.ok) {
+        setIsArchived(false)
+        showToast('הלקוח הוחזר לפעילים', 'success')
+      } else {
+        showToast('שגיאה בשחזור', 'error')
+      }
+    } catch {
+      showToast('שגיאה בשחזור', 'error')
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Archived client banner */}
+      {isArchived && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-600 font-medium">לקוח זה בארכיון</span>
+            <span className="text-sm text-amber-500">הנתונים נשמרים אך הלקוח מוסתר מהרשימה הראשית</span>
+          </div>
+          <button
+            onClick={restoreClient}
+            className="px-3 py-1.5 rounded bg-amber-600 text-white text-sm hover:bg-amber-700"
+          >
+            החזר לפעילים
+          </button>
+        </div>
+      )}
       {/* Simplified Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="heading text-2xl font-bold text-slate-800">{decodedName}</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/clients')}
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+            title="חזרה לרשימת הלקוחות"
+          >
+            <ArrowRight className="w-5 h-5 text-slate-600" />
+          </button>
+          <h1 className="heading text-2xl font-bold text-slate-800">{decodedName}</h1>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Primary actions - always visible */}
@@ -699,7 +797,24 @@ export default function ClientOverview(){
 
             {showMoreMenu && (
               <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg z-50 py-1">
-                <button
+                                {!isArchived ? (
+                  <button
+                    onClick={() => { archiveClient(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Archive className="w-4 h-4" />
+                    העבר לארכיון
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { restoreClient(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ArchiveRestore className="w-4 h-4" />
+                    החזר לפעילים
+                  </button>
+                )}
+<button
                   data-testid="edit-client"
                   onClick={() => { setEdit(v => !v); setShowMoreMenu(false) }}
                   className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
@@ -791,6 +906,15 @@ export default function ClientOverview(){
           // {key:'privacy', label:'פרטיות (בקרוב)'} // Hidden until implemented
         ]}/>
       </div>
+      {/* Quick Actions - Phase 1: Three action buttons */}
+      {tab === 'overview' && (
+        <QuickActions
+          onQuote={() => setQuoteModalOpen(true)}
+          onDocuments={() => setTemplatePickerOpen(true)}
+          onDelivery={() => setDeliveryModalOpen(true)}
+        />
+      )}
+
 
             {tab==='overview' && (
         <div className="space-y-6">
@@ -821,8 +945,8 @@ export default function ClientOverview(){
 
           {/* Two-column layout: Tasks + Emails side by side */}
           <div className="grid gap-6 md:grid-cols-2">
-            <TasksWidget clientName={decodedName} limit={5} />
-            <EmailsWidget clientName={decodedName} clientEmails={summary.client?.emails || []} limit={5} />
+            <TasksWidget clientName={decodedName} limit={100} />
+            <EmailsWidget clientName={decodedName} clientEmails={summary.client?.emails || []} limit={100} onEmailClick={showEmailInline} />
           </div>
 
           {/* Quick contact info */}
@@ -917,9 +1041,24 @@ export default function ClientOverview(){
         </div>
       )}\n{tab==='files' && (
         <Card title="קבצים">
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => {
+                if(summary.client?.sharepoint_url) {
+                  window.open(summary.client.sharepoint_url, '_blank', 'noopener,noreferrer')
+                } else {
+                  alert('לא נמצא קישור SharePoint ללקוח זה. יש להגדיר תחילה.')
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50"
+            >
+              <FolderOpen className="w-4 h-4 text-blue-500" />
+              <span>פתח תיקיית SharePoint</span>
+            </button>
+          </div>
           {(summary.files||[]).length === 0 ? (
             <div className="text-sm text-slate-500 text-center py-4">
-              אין קבצים עדיין
+              אין קבצים מקומיים עדיין. לחץ על הכפתור למעלה לפתיחת תיקיית SharePoint.
             </div>
           ) : (
             <>
@@ -1067,7 +1206,7 @@ export default function ClientOverview(){
                 </span>
               )}
             </div>
-            <div className="border rounded divide-y">
+            <div className="border rounded divide-y max-h-[60vh] overflow-y-auto">
               {idx.items.length === 0 && !idx.loading && (
                 <div className="p-3 text-sm text-slate-500">אין אימיילים מאונדקסים עדיין.</div>
               )}
@@ -1220,20 +1359,43 @@ export default function ClientOverview(){
           onLinked={handleLinkCompleted}
         />
       )}
-      
-      {/* Toast notification */}
-      {toast.show && (
-        <div className={"fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all " +
-          (toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500') + ' text-white'}>
-          {toast.message}
-        </div>
+
+      {/* Quick Actions Modals */}
+      <QuoteModal
+        open={quoteModalOpen}
+        onClose={() => setQuoteModalOpen(false)}
+        clientName={decodedName}
+        clientEmail={primaryEmail}
+        
+      />
+      <DeliveryEmailModal
+        open={deliveryModalOpen}
+        onClose={() => setDeliveryModalOpen(false)}
+        clientName={decodedName}
+        clientEmail={primaryEmail}
+        
+        sharepointUrl={summary.client?.sharepoint_url}
+      />
+      {templatePickerOpen && (
+        <TemplatePicker
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          clientName={decodedName}
+          
+        />
       )}
+
+      
     </div>
   )
   async function openEmailInOutlook(item){
     if(!item?.id) return
     try{
       const data = await fetchEmailOpenData(item, { launchOutlook: true })
+      if(data?.link){
+        window.open(data.link, "_blank")
+        return
+      }
       if(data?.desktop_launched){
         return
       }
@@ -1389,10 +1551,10 @@ export default function ClientOverview(){
         console.error('tasks/create_or_get_folder', err)
       }
       window.dispatchEvent(new CustomEvent('tasks:refresh', { detail: { client: decodedName } }))
-      alert('משימה נוצרה מהאימייל. עבור לטאב המשימות כדי להמשיך לעבוד עליה.')
+      showToast('משימה נוצרה מהאימייל', 'success')
     }catch(err){
       console.error('createTaskFromEmail', err)
-      alert('יצירת משימה מהאימייל נכשלה.')
+      showToast('יצירת משימה נכשלה', 'error')
     }finally{
       setCreatingTaskId(null)
     }

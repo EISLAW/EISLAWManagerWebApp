@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   api:
@@ -11,6 +10,7 @@ services:
       - PORT=${API_PORT:-8799}
       - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://20.217.86.4:5173,http://20.217.86.4:8080,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,http://127.0.0.1:5173}
       - MEILI_URL=${MEILI_URL:-http://meili:7700}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     ports:
       - "${API_PORT:-8799}:8799"
     volumes:
@@ -18,9 +18,25 @@ services:
       - ~/.eislaw/store:/root/.eislaw/store
       # DEV: Mount backend code for hot-reload (no rebuild needed)
       - ./backend:/app/backend:ro
+      - ./tools:/app/tools:ro
+      - ./config:/app/config:ro
+      - ./data:/app/data
+      - ~/zoom-import:/app/zoom-import:ro
+      # Log persistence
+      - eislaw_logs:/var/log/eislaw
     depends_on:
       - meili
     restart: unless-stopped
+    # Log rotation configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service,environment"
+    labels:
+      service: "api"
+      environment: "production"
     # DEV: Auto-reload on code changes
     command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8799", "--reload"]
 
@@ -35,6 +51,11 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
   # DEV: Frontend with hot-reload (use instead of 'web' for development)
   web-dev:
@@ -50,6 +71,11 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - api
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
   meili:
     image: getmeili/meilisearch:latest
@@ -61,6 +87,11 @@ services:
     volumes:
       - meili_data:/meili_data
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
   sync:
     build:
@@ -73,6 +104,7 @@ services:
       - DEV_CORS_ORIGINS=${DEV_CORS_ORIGINS:-http://localhost:80,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080}
       - MEILI_URL=${MEILI_URL:-http://meili:7700}
       - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     command: >
       /bin/sh -c "
         while true; do
@@ -87,9 +119,19 @@ services:
     volumes:
       - ./secrets.local.json:/app/secrets.local.json:ro
       - ~/.eislaw/store:/root/.eislaw/store:ro
+      - eislaw_logs:/var/log/eislaw
     depends_on:
       - api
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      service: "sync"
+      environment: "production"
 
 volumes:
   meili_data:
+  eislaw_logs:
