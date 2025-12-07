@@ -169,6 +169,7 @@ export default function RAG() {
   const [renameTo, setRenameTo] = useState('')
   const [selectedItems, setSelectedItems] = useState(new Set())
   const audioRef = useRef(null)
+  const reviewerRef = useRef(null)
   const [assistantQ, setAssistantQ] = useState('')
   const [assistantClient, setAssistantClient] = useState('')
   const [assistantDomain, setAssistantDomain] = useState('all')
@@ -196,6 +197,24 @@ export default function RAG() {
   const [zoomCloudFilter, setZoomCloudFilter] = useState('')
   const [availableClients, setAvailableClients] = useState([])
   const [clientsLoading, setClientsLoading] = useState(false)
+  const loadAvailableClients = async () => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      setClientsLoading(true)
+      const res = await fetch()
+      if (!res.ok) throw new Error("Failed")
+      const list = await res.json()
+      const names = Array.isArray(list) ? list.map(c => ({id: c.id, name: c.name || c.display_name || ""})).filter(c => c.name) : []
+      setAvailableClients(names)
+    } catch (e) {
+      console.error("Failed to load clients:", e)
+      setAvailableClients([])
+    } finally {
+      setClientsLoading(false)
+    }
+  }
+
 
   useEffect(() => {
     const init = async () => {
@@ -204,6 +223,7 @@ export default function RAG() {
     }
     init()
     refreshInbox()
+    loadAvailableClients()
     const t = setInterval(refreshInbox, 15000)
     return () => clearInterval(t)
   }, [ENV_API])
@@ -500,6 +520,7 @@ export default function RAG() {
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
       await refreshInbox()
+    loadAvailableClients()
       setZoomPreview(null)
       setImportedZoomIds(prev => new Set([...prev, transcript.id]))
     } catch (err) {
@@ -645,6 +666,7 @@ const deleteZoomTranscript = async (transcript) => {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -661,6 +683,7 @@ const deleteZoomTranscript = async (transcript) => {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -676,6 +699,7 @@ const deleteZoomTranscript = async (transcript) => {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -686,9 +710,11 @@ const deleteZoomTranscript = async (transcript) => {
     try {
       await fetch(`${base}/api/rag/file/${item.id || item.hash}`, { method: 'DELETE' })
       refreshInbox()
+    loadAvailableClients()
     } catch (err) {
       console.error(err)
       refreshInbox()
+    loadAvailableClients()
     }
   }
 
@@ -752,6 +778,10 @@ const deleteZoomTranscript = async (transcript) => {
             ? data.transcript
             : parsedFromRaw(),
       })
+      // Auto-scroll to reviewer panel
+      setTimeout(() => {
+        reviewerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     } catch (err) {
       console.error(err)
       setInboxError('טעינת סוקר נכשלה.')
@@ -782,6 +812,7 @@ const deleteZoomTranscript = async (transcript) => {
       const data = await res.json()
       setReviewItem(data)
       refreshInbox()
+    loadAvailableClients()
     } catch (err) {
       console.error(err)
       setInboxError('שמירת שינויים נכשלה.')
@@ -1128,9 +1159,10 @@ const deleteZoomTranscript = async (transcript) => {
                         {item.fileName || item.name || 'ללא שם'}
                       </div>
                       <div className="text-xs text-slate-500 flex flex-wrap gap-2 mt-1">
+                        {item.recording_date && <span>📅 {item.recording_date}</span>}
                         <StatusBadge status={item.status} />
                         {item.note && <span>{item.note}</span>}
-                        {item.client && <span>Client: {item.client}</span>}
+                        {item.client_name && <span>👤 {item.client_name}</span>}
                         {item.domain && <span>Domain: {item.domain}</span>}
                         {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
                       </div>
@@ -1425,6 +1457,7 @@ const deleteZoomTranscript = async (transcript) => {
 
           {reviewItem && (
             <SectionCard
+              ref={reviewerRef}
               testId="rag.reviewer"
               title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
               subtitle="Click any chat bubble to play audio from that timestamp"
@@ -1477,12 +1510,24 @@ const deleteZoomTranscript = async (transcript) => {
                     />
                   </LabeledField>
                   <LabeledField label="Client">
-                    <input
+                    <select
                       className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
-                      value={reviewItem.client || ''}
-                      onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
+                      value={reviewItem.client_id || ''}
+                      onChange={(e) => {
+                        const selected = availableClients.find(c => c.id === e.target.value)
+                        setReviewItem((prev) => ({
+                          ...prev,
+                          client_id: e.target.value,
+                          client_name: selected?.name || ''
+                        }))
+                      }}
                       data-testid="rag.reviewer.client"
-                    />
+                    >
+                      <option value="">-- Select Client --</option>
+                      {availableClients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </LabeledField>
                   <LabeledField label="Tags">
                     <input

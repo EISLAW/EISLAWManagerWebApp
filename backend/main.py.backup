@@ -23,13 +23,25 @@ try:
 except ImportError:
     import templates_api
     import word_api
+try:
+    from backend import ai_studio
+except ImportError:
+    import ai_studio
 import httpx
 import msal
+
+try:
+    from backend import db_api_helpers
+except ImportError:
+    import db_api_helpers
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
 # ─────────────────────────────────────────────────────────────
 # Secrets Loading (from secrets.local.json)
+
+# Include AI Studio router
+app.include_router(ai_studio.router)
 # ─────────────────────────────────────────────────────────────
 SECRETS_PATH = Path(__file__).resolve().parent.parent / "secrets.local.json"
 
@@ -83,6 +95,11 @@ def get_clients_store_path():
 
 def load_local_clients():
     """Load clients from local registry file."""
+    # Try SQLite first
+    result = db_api_helpers.load_clients_from_sqlite()
+    if result:
+        return result
+    # Fallback to JSON
     clients_path = get_clients_store_path()
     if not clients_path.exists():
         return []
@@ -118,6 +135,9 @@ def load_local_clients():
 
 def find_local_client(client_id: str):
     """Find a single client by ID from local registry."""
+    result = db_api_helpers.find_client_by_id(client_id)
+    if result:
+        return result
     clients = load_local_clients()
     for c in clients:
         if c.get("id") == client_id:
@@ -323,6 +343,11 @@ def ensure_dirs():
 # ─────────────────────────────────────────────────────────────
 
 def load_tasks():
+    # Try SQLite first
+    result = db_api_helpers.load_tasks_from_sqlite()
+    if result:
+        return result
+    # Fallback to JSON
     if not TASKS_PATH.exists():
         return []
     try:
@@ -332,8 +357,16 @@ def load_tasks():
 
 
 def save_tasks(tasks):
+    # Save to JSON as backup
     TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
     TASKS_PATH.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Sync new tasks to SQLite
+    try:
+        for t in tasks:
+            if not db_api_helpers.find_task_by_id(t.get("id", "")):
+                db_api_helpers.create_task_in_sqlite(t)
+    except Exception as e:
+        print(f"Error syncing to SQLite: {e}")
 
 
 def load_tasks_archive():
@@ -351,6 +384,9 @@ def save_tasks_archive(tasks):
 
 
 def find_task(task_id: str):
+    result = db_api_helpers.find_task_by_id(task_id)
+    if result:
+        return result
     for t in load_tasks():
         if t.get("id") == task_id:
             return t
@@ -524,7 +560,9 @@ def get_client(cid: str):
         return c
     # Fall back to fixtures
     c = fixtures.client_detail(cid)
-    return c or {"error": "not found"}
+    if c:
+        return c
+    raise HTTPException(status_code=404, detail="Client not found")
 
 
 @app.patch("/api/clients/{client_name}/archive")
@@ -776,6 +814,11 @@ def create_task(payload: dict = Body(...)):
     tasks = load_tasks()
     tasks.append(task)
     save_tasks(tasks)
+    # Also save to SQLite
+    try:
+        db_api_helpers.create_task_in_sqlite(task)
+    except Exception as e:
+        print(f"Error saving task to SQLite: {e}")
     return task
 
 
@@ -810,6 +853,11 @@ def update_task(task_id: str, payload: dict = Body(...)):
     task["updatedAt"] = now
     tasks[idx] = task
     save_tasks(tasks)
+    # Also update in SQLite
+    try:
+        db_api_helpers.update_task_in_sqlite(task_id, payload)
+    except Exception as e:
+        print(f"Error updating task in SQLite: {e}")
     return task
 
 
@@ -831,6 +879,11 @@ def delete_task(task_id: str, hard: bool = False):
         tasks[idx]["deletedAt"] = datetime.utcnow().isoformat() + "Z"
 
     save_tasks(tasks)
+    # Also delete from SQLite
+    try:
+        db_api_helpers.delete_task_from_sqlite(task_id)
+    except Exception as e:
+        print(f"Error deleting task from SQLite: {e}")
     return {"deleted": True, "id": task_id}
 
 
@@ -853,6 +906,11 @@ def mark_task_done(task_id: str, done: bool = True):
     tasks[idx]["updatedAt"] = now
 
     save_tasks(tasks)
+    # Also update in SQLite
+    try:
+        db_api_helpers.mark_task_done_in_sqlite(task_id, done)
+    except Exception as e:
+        print(f"Error marking task done in SQLite: {e}")
     return tasks[idx]
 
 
@@ -2007,7 +2065,7 @@ def get_azure_blob_client():
         conn_str = secrets.get("azure_blob", {}).get("connection_string")
     if not conn_str:
         raise HTTPException(status_code=500, detail="Azure Blob connection not configured")
-    blob_service = BlobServiceClient.from_connection_string(conn_str)
+    from azure.storage.blob import BlobServiceClient; blob_service = BlobServiceClient.from_connection_string(conn_str)
     return blob_service.get_container_client("zoom-recordings")
 
 
@@ -2425,7 +2483,7 @@ def _download_and_transcribe(zoom_id: str, rec: dict):
         blob_name = f"pending/{date_str}_{topic}_{zoom_id}.{ext}"
 
         conn_str = secrets.get("azure_blob", {}).get("connection_string") or os.environ.get("AZURE_BLOB_CONNECTION_STRING")
-        blob_service = BlobServiceClient.from_connection_string(conn_str)
+        from azure.storage.blob import BlobServiceClient; blob_service = BlobServiceClient.from_connection_string(conn_str)
         container = blob_service.get_container_client("zoom-recordings")
         blob_client = container.get_blob_client(blob_name)
 
@@ -2617,3 +2675,142 @@ def get_transcription_queue():
         "pending_transcription": [{"zoom_id": r["zoom_id"], "topic": r.get("topic")} for r in pending],
         "is_busy": len(downloading) > 0 or len(transcribing) > 0
     }
+
+# ============ Marketing Leads & Attribution Endpoints ============
+from pathlib import Path as _Path
+
+_marketing_leads_path = _Path(__file__).parent / "marketing_leads_endpoints.py"
+if _marketing_leads_path.exists():
+    try:
+        exec(_marketing_leads_path.read_text("utf-8"), globals())
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to load marketing_leads_endpoints.py: {e}")
+
+# ============ Marketing Prompts Endpoints ============
+_marketing_prompts_path = _Path(__file__).parent / "marketing_prompts_endpoints.py"
+if _marketing_prompts_path.exists():
+    try:
+        exec(_marketing_prompts_path.read_text("utf-8"), globals())
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to load marketing_prompts_endpoints.py: {e}")
+
+# Voice sample path for speaker identification
+VOICE_SAMPLE_PATH = Path("/app/backend/eitan_voice_sample.m4a")
+
+def gemini_transcribe_with_speaker_id(file_path: str, topic: str = "", model: Optional[str] = None) -> List[dict]:
+    """
+    Transcribe audio with speaker identification using voice sample.
+    Uses Eitan voice sample to identify speakers.
+    Returns a list of transcript segments with speaker attribution.
+    """
+    key = require_env("GEMINI_API_KEY")
+    model_name = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+    
+    # Load the recording to transcribe
+    recording_data = Path(file_path).read_bytes()
+    recording_b64 = base64.b64encode(recording_data).decode("utf-8")
+    
+    # Build the parts list
+    parts = []
+    
+    # Check if voice sample exists
+    if VOICE_SAMPLE_PATH.exists():
+        voice_data = VOICE_SAMPLE_PATH.read_bytes()
+        voice_b64 = base64.b64encode(voice_data).decode("utf-8")
+        
+        # Extract client name from topic (format: "איתן עם [Client Name]")
+        client_name = ""
+        if topic:
+            import re
+            match = re.search(r"איתן עם (.+)", topic) or re.search(r"עם (.+)", topic)
+            if match:
+                client_name = match.group(1).strip()
+        
+        # Build prompt with voice context
+        prompt_text = """אתה מתמלל שיחה משפטית בעברית.
+
+הקובץ הראשון הוא דוגמת קול של עו"ד איתן שמיר - עורך דין ישראלי, גבר בן 48.
+הקובץ השני הוא ההקלטה לתמלול.
+
+הוראות:
+1. תמלל את כל השיחה מילה במילה
+2. זהה את הדוברים לפי הקול:
+   - עו"ד איתן שמיר (משתמש בדוגמת הקול לזיהוי)"""
+        
+        if client_name:
+            prompt_text += f"""
+   - {client_name} (הצד השני בשיחה)"""
+        else:
+            prompt_text += """
+   - לקוח (הצד השני בשיחה)"""
+            
+        prompt_text += """
+
+3. החזר את התמלול בפורמט JSON:
+[
+  {"speaker": "שם הדובר", "text": "הטקסט שנאמר"},
+  ...
+]
+
+החזר רק את ה-JSON, ללא הסברים נוספים."""
+        
+        parts = [
+            {"text": prompt_text},
+            {"inlineData": {"mimeType": "audio/mp4", "data": voice_b64}},
+            {"inlineData": {"mimeType": "audio/mp4", "data": recording_b64}},
+        ]
+    else:
+        # Fallback without voice sample
+        parts = [
+            {"text": "תמלל את ההקלטה הזו לעברית. זהה דוברים שונים אם יש. החזר JSON: [{\"speaker\": \"דובר\", \"text\": \"טקסט\"}]"},
+            {"inlineData": {"mimeType": "audio/mp4", "data": recording_b64}},
+        ]
+    
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"temperature": 0.1}
+    }
+    
+    with httpx.Client(timeout=300.0) as client:
+        resp = client.post(url, json=payload)
+        if resp.status_code != 200:
+            raise Exception(f"Gemini transcription failed: {resp.text}")
+        data = resp.json()
+    
+    text = ""
+    try:
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                text = parts[0].get("text", "")
+    except Exception:
+        pass
+    
+    if not text:
+        raise Exception("No transcript returned")
+    
+    # Try to parse as JSON
+    try:
+        import json
+        # Clean up the response (remove markdown code blocks if present)
+        clean_text = text.strip()
+        if clean_text.startswith("```json"):
+            clean_text = clean_text[7:]
+        if clean_text.startswith("```"):
+            clean_text = clean_text[3:]
+        if clean_text.endswith("```"):
+            clean_text = clean_text[:-3]
+        clean_text = clean_text.strip()
+        
+        segments = json.loads(clean_text)
+        if isinstance(segments, list):
+            return segments
+    except json.JSONDecodeError:
+        pass
+    
+    # Fallback: return as single segment
+    return [{"speaker": "דובר", "text": text.strip()}]

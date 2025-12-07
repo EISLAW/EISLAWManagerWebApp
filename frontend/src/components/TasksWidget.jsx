@@ -32,8 +32,9 @@ function getDueBadge(dueAt) {
 
 /**
  * Compact task list widget for client overview
+ * Always scrollable - shows 5 tasks height, scroll to see all
  */
-export default function TasksWidget({ clientName, limit = 5 }) {
+export default function TasksWidget({ clientName }) {
   const [items, setItems] = useState({ parents: [], byParent: {} })
   const [quickAdd, setQuickAdd] = useState('')
   const [adding, setAdding] = useState(false)
@@ -54,6 +55,7 @@ export default function TasksWidget({ clientName, limit = 5 }) {
     return () => window.removeEventListener('tasks:refresh', handler)
   }, [clientName])
 
+  // Get all active tasks (no limit - we scroll to see all)
   const activeTasks = useMemo(() => {
     return items.parents
       .filter(t => t.status !== 'done')
@@ -64,11 +66,7 @@ export default function TasksWidget({ clientName, limit = 5 }) {
         if (aDue !== bDue) return aDue - bDue
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       })
-      .slice(0, limit)
-  }, [items.parents, limit])
-
-  const totalActive = items.parents.filter(t => t.status !== 'done').length
-  const hasMore = totalActive > limit
+  }, [items.parents])
 
   async function handleQuickAdd(e) {
     e.preventDefault()
@@ -102,7 +100,8 @@ export default function TasksWidget({ clientName, limit = 5 }) {
         </Link>
       </div>
 
-      <div className="divide-y">
+      {/* Always scrollable - fixed height for ~5 tasks, scroll to see all */}
+      <div className="max-h-[400px] overflow-y-auto divide-y">
         {activeTasks.length === 0 && (
           <div className="p-4 text-sm text-slate-500 text-center">
             אין משימות פתוחות
@@ -177,16 +176,6 @@ export default function TasksWidget({ clientName, limit = 5 }) {
         </div>
       </form>
 
-      {hasMore && (
-        <div className="border-t px-4 py-2 text-center">
-          <Link
-            to={`/clients/${encodedName}?tab=tasks`}
-            className="text-xs text-slate-500 hover:text-petrol"
-          >
-            +{totalActive - limit} משימות נוספות
-          </Link>
-        </div>
-      )}
     </div>
   )
 }

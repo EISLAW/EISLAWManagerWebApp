@@ -13,6 +13,17 @@ except ImportError:
     import db as sqlite_db
 
 
+
+
+def _log_activity(event_type: str, entity_type: str, entity_id: str, details: dict = None):
+    """Log activity for audit trail."""
+    try:
+        db = sqlite_db.get_db()
+        sqlite_db.log_activity(db, event_type, entity_type, entity_id, details)
+    except Exception as e:
+        print(f"Warning: Failed to log activity: {e}")
+
+
 def load_clients_from_sqlite() -> List[Dict]:
     """
     Load clients from SQLite database.
@@ -178,6 +189,7 @@ def archive_client(client_name: str) -> bool:
             return False
 
         clients_db.archive(client["id"])
+        _log_activity("client_archived", "client", client["id"], {"name": client_name})
         return True
     except Exception as e:
         print(f"Error archiving client in SQLite: {e}")
@@ -195,6 +207,7 @@ def restore_client(client_name: str) -> bool:
             return False
 
         clients_db.restore(client["id"])
+        _log_activity("client_restored", "client", client["id"], {"name": client_name})
         return True
     except Exception as e:
         print(f"Error restoring client in SQLite: {e}")
@@ -220,19 +233,19 @@ def load_tasks_from_sqlite() -> List[Dict]:
                 "title": t.get("title", ""),
                 "desc": t.get("description", ""),
                 "status": status,
-                "dueAt": (t.get("due_date") + "T00:00:00Z") if t.get("due_date") else None,
+                "dueAt": t.get("due_date"),
                 "priority": t.get("priority"),
                 "clientName": t.get("client_name"),
                 "clientFolderPath": None,
                 "ownerId": t.get("assigned_to"),
                 "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
                 "comments": [],
-                "attachments": [],
+                "attachments": json.loads(t.get("attachments", "[]")) if t.get("attachments") else [],
                 "templateRef": None,
                 "source": t.get("source_type") or "manual",
-                "createdAt": t.get("created_at") + "Z" if t.get("created_at") else None,
-                "updatedAt": t.get("updated_at") + "Z" if t.get("updated_at") else None,
-                "doneAt": t.get("completed_at") + "Z" if t.get("completed_at") else None,
+                "createdAt": t.get("created_at"),
+                "updatedAt": t.get("updated_at"),
+                "doneAt": t.get("completed_at"),
                 "deletedAt": None,
             })
         return result
@@ -259,19 +272,19 @@ def find_task_by_id(task_id: str) -> Optional[Dict]:
             "title": t.get("title", ""),
             "desc": t.get("description", ""),
             "status": status,
-            "dueAt": (t.get("due_date") + "T00:00:00Z") if t.get("due_date") else None,
+            "dueAt": t.get("due_date"),
             "priority": t.get("priority"),
             "clientName": t.get("client_name"),
             "clientFolderPath": None,
             "ownerId": t.get("assigned_to"),
             "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
             "comments": [],
-            "attachments": [],
+            "attachments": json.loads(t.get("attachments", "[]")) if t.get("attachments") else [],
             "templateRef": None,
             "source": t.get("source_type") or "manual",
-            "createdAt": t.get("created_at") + "Z" if t.get("created_at") else None,
-            "updatedAt": t.get("updated_at") + "Z" if t.get("updated_at") else None,
-            "doneAt": t.get("completed_at") + "Z" if t.get("completed_at") else None,
+            "createdAt": t.get("created_at"),
+            "updatedAt": t.get("updated_at"),
+            "doneAt": t.get("completed_at"),
             "deletedAt": None,
         }
     except Exception as e:
@@ -306,7 +319,9 @@ def create_task_in_sqlite(task_data: Dict) -> str:
             "source_id": task_data.get("parentId"),
         }
 
-        return tasks_db.save(sqlite_data)
+        task_id = tasks_db.save(sqlite_data)
+        _log_activity("task_created", "task", task_id, {"title": task_data.get("title", "")})
+        return task_id
     except Exception as e:
         print(f"Error creating task in SQLite: {e}")
         raise
@@ -342,8 +357,11 @@ def update_task_in_sqlite(task_id: str, updates: Dict) -> bool:
             sqlite_updates["client_name"] = updates["clientName"]
         if "ownerId" in updates:
             sqlite_updates["assigned_to"] = updates["ownerId"]
+        if "attachments" in updates:
+            att = updates["attachments"]; sqlite_updates["attachments"] = json.dumps(att, ensure_ascii=False) if isinstance(att, list) else att
 
         tasks_db.save(sqlite_updates)
+        _log_activity("task_updated", "task", task_id, updates)
         return True
     except Exception as e:
         print(f"Error updating task in SQLite: {e}")
@@ -356,6 +374,7 @@ def delete_task_from_sqlite(task_id: str) -> bool:
         db = sqlite_db.get_db()
         tasks_db = sqlite_db.TasksDB(db)
         tasks_db.delete(task_id)
+        _log_activity("task_deleted", "task", task_id)
         return True
     except Exception as e:
         print(f"Error deleting task from SQLite: {e}")
@@ -370,9 +389,30 @@ def mark_task_done_in_sqlite(task_id: str, done: bool = True) -> bool:
 
         if done:
             tasks_db.complete(task_id)
+            _log_activity("task_completed", "task", task_id)
         else:
             tasks_db.save({"id": task_id, "done": 0, "status": "todo"})
+            _log_activity("task_reopened", "task", task_id)
         return True
     except Exception as e:
         print(f"Error marking task done in SQLite: {e}")
         return False
+
+def update_or_create_task_in_sqlite(task_data: Dict) -> str:
+    """
+    Update existing task or create new one.
+    Returns task ID.
+    """
+    task_id = task_data.get("id")
+    if not task_id:
+        raise ValueError("Task must have an id")
+    
+    # Check if exists
+    existing = find_task_by_id(task_id)
+    if existing:
+        # Update
+        update_task_in_sqlite(task_id, task_data)
+        return task_id
+    else:
+        # Create
+        return create_task_in_sqlite(task_data)

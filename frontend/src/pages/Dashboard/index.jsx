@@ -99,7 +99,7 @@ export default function Dashboard(){
           {primaryActions.map((action) => (
             <button
               key={action.label}
-              className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition"
+              className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-petrol shadow-sm hover:bg-petrol hover:text-white transition min-h-[44px] inline-flex items-center"
               onClick={action.handler}
             >
               {action.label}
@@ -130,7 +130,7 @@ export default function Dashboard(){
             <div className="flex items-center justify-between">
               <div className="subheading">My Tasks</div>
               <div className="flex items-center gap-2 text-xs">
-                <button className="text-petrol underline" onClick={()=>window.location.assign('/clients?tab=tasks')}>Open Task Board</button>
+                <button className="text-petrol underline min-h-[44px] px-2 inline-flex items-center" onClick={()=>window.location.assign('/clients?tab=tasks')}>Open Task Board</button>
               </div>
             </div>
             <div className="text-xs text-slate-500">
@@ -147,7 +147,6 @@ export default function Dashboard(){
         </div>
         <div className="space-y-4">
           <DashboardEmails apiBase={apiBase} clientFilter={filters.client} />
-          <WorkQueue title="Recent Activity" items={[]} renderItem={(it)=>(<div className="text-sm text-slate-700">{it.t}</div>)} emptyText="Activity feed placeholder – hook to telemetry backlog." />
         </div>
       </div>
     </div>

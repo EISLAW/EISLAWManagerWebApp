@@ -41,9 +41,12 @@ CREATE TABLE IF NOT EXISTS clients (
     airtable_id TEXT,
     airtable_url TEXT,
     sharepoint_url TEXT,
+    sharepoint_id TEXT,
+    slug TEXT,
     local_folder TEXT,
     active INTEGER DEFAULT 1,
     notes TEXT,
+    is_primary INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     last_synced_at TEXT,
@@ -63,6 +66,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     phone TEXT,
     role TEXT,
     notes TEXT,
+    is_primary INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -120,6 +124,22 @@ CREATE TABLE IF NOT EXISTS sync_state (
     error_message TEXT,
     records_synced INTEGER DEFAULT 0
 );
+
+-- QUOTE TEMPLATES TABLE
+CREATE TABLE IF NOT EXISTS quote_templates (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    name TEXT NOT NULL,
+    category TEXT DEFAULT 'general',
+    content TEXT NOT NULL,
+    variables TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    created_by TEXT,
+    version INTEGER DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_category ON quote_templates(category);
+CREATE INDEX IF NOT EXISTS idx_templates_name ON quote_templates(name);
 """
 
 
@@ -321,7 +341,7 @@ class TasksDB:
             fields = []
             values = []
             for key in ["title", "description", "done", "status", "priority",
-                       "due_date", "assigned_to", "client_id", "client_name"]:
+                       "due_date", "assigned_to", "client_id", "client_name", "attachments"]:
                 if key in data:
                     fields.append(f"{key} = ?")
                     values.append(data[key])
@@ -401,7 +421,7 @@ class ContactsDB:
         if existing:
             fields = []
             values = []
-            for key in ["name", "email", "phone", "role", "notes"]:
+            for key in ["name", "email", "phone", "role", "notes", "is_primary"]:
                 if key in data:
                     fields.append(f"{key} = ?")
                     values.append(data[key])
@@ -413,11 +433,11 @@ class ContactsDB:
                 self.db.execute(sql, tuple(values))
         else:
             self.db.execute(
-                """INSERT INTO contacts (id, client_id, name, email, phone, role, notes)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO contacts (id, client_id, name, email, phone, role, notes, is_primary)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (contact_id, data.get("client_id"), data.get("name"),
                  data.get("email"), data.get("phone"), data.get("role"),
-                 data.get("notes"))
+                 data.get("notes"), data.get("is_primary", 0))
             )
 
         return contact_id
@@ -474,6 +494,271 @@ def get_stats(db: Database) -> Dict:
     return stats
 
 
+
+
+# =========================================
+# Agent System Database Helpers
+# =========================================
+
+class AgentApprovalsDB:
+    """Database operations for agent approvals."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def create(self, data):
+        """Create a new approval request."""
+        approval_id = data.get("id") or str(uuid.uuid4())
+
+        self.db.execute(
+            """INSERT INTO agent_approvals
+               (id, agent_id, tool_id, action_name, action_name_he, description,
+                context, parameters, risk_level, status, expires_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (approval_id, data["agent_id"], data["tool_id"], data["action_name"],
+             data.get("action_name_he"), data.get("description"), data.get("context"),
+             json.dumps(data.get("parameters")) if data.get("parameters") else None,
+             data.get("risk_level", "medium"), data.get("status", "pending"),
+             data.get("expires_at"))
+        )
+        return approval_id
+
+    def get(self, id):
+        """Get approval by ID."""
+        return self.db.execute_one("SELECT * FROM agent_approvals WHERE id = ?", (id,))
+
+    def list_pending(self, limit=50):
+        """Get pending approvals."""
+        return self.db.execute_many(
+            "SELECT * FROM agent_approvals WHERE status = 'pending' ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        )
+
+    def approve(self, id, resolved_by=None):
+        """Approve an action."""
+        self.db.execute(
+            """UPDATE agent_approvals
+               SET status = 'approved', resolved_at = datetime('now'), resolved_by = ?
+               WHERE id = ? AND status = 'pending'""",
+            (resolved_by, id)
+        )
+        return True
+
+    def reject(self, id, reason=None, resolved_by=None):
+        """Reject an action."""
+        self.db.execute(
+            """UPDATE agent_approvals
+               SET status = 'rejected', resolved_at = datetime('now'), resolved_by = ?, reject_reason = ?
+               WHERE id = ? AND status = 'pending'""",
+            (resolved_by, reason, id)
+        )
+        return True
+
+    def set_execution_result(self, id, result):
+        """Set the execution result after approval."""
+        self.db.execute(
+            "UPDATE agent_approvals SET execution_result = ? WHERE id = ?",
+            (json.dumps(result), id)
+        )
+        return True
+
+
+class AgentAuditDB:
+    """Database operations for agent audit logging."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def log(self, agent_id, action, action_type,
+            input_data=None, output_data=None,
+            tokens_used=None, duration_ms=None,
+            success=True, error_message=None,
+            user_id=None, client_id=None, tool_id=None):
+        """Log an agent action."""
+        log_id = str(uuid.uuid4())
+
+        self.db.execute(
+            """INSERT INTO agent_audit_log
+               (id, agent_id, tool_id, action, action_type, input_data, output_data,
+                tokens_used, duration_ms, success, error_message, user_id, client_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (log_id, agent_id, tool_id, action, action_type,
+             json.dumps(input_data) if input_data else None,
+             json.dumps(output_data) if output_data else None,
+             tokens_used, duration_ms, 1 if success else 0,
+             error_message, user_id, client_id)
+        )
+        return log_id
+
+    def list(self, agent_id=None, limit=100):
+        """List audit logs, optionally filtered by agent."""
+        if agent_id:
+            return self.db.execute_many(
+                "SELECT * FROM agent_audit_log WHERE agent_id = ? ORDER BY timestamp DESC LIMIT ?",
+                (agent_id, limit)
+            )
+        return self.db.execute_many(
+            "SELECT * FROM agent_audit_log ORDER BY timestamp DESC LIMIT ?",
+            (limit,)
+        )
+
+    def get_for_client(self, client_id, limit=50):
+        """Get audit logs for a specific client."""
+        return self.db.execute_many(
+            "SELECT * FROM agent_audit_log WHERE client_id = ? ORDER BY timestamp DESC LIMIT ?",
+            (client_id, limit)
+        )
+
+
+class AgentSettingsDB:
+    """Database operations for agent settings."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def get(self, agent_id):
+        """Get agent settings or return defaults."""
+        result = self.db.execute_one(
+            "SELECT * FROM agent_settings WHERE agent_id = ?", (agent_id,)
+        )
+        if result:
+            return dict(result)
+        return {
+            "agent_id": agent_id,
+            "enabled": True,
+            "auto_trigger": False,
+            "approval_required": True,
+            "max_actions_per_hour": 100,
+            "allowed_tools": None,
+            "blocked_tools": None
+        }
+
+    def save(self, agent_id, settings):
+        """Save agent settings (upsert)."""
+        existing = self.db.execute_one(
+            "SELECT agent_id FROM agent_settings WHERE agent_id = ?", (agent_id,)
+        )
+
+        if existing:
+            fields = []
+            values = []
+            for key in ["enabled", "auto_trigger", "approval_required",
+                        "max_actions_per_hour", "allowed_tools", "blocked_tools",
+                        "custom_prompt", "settings_json", "updated_by"]:
+                if key in settings:
+                    fields.append(f"{key} = ?")
+                    val = settings[key]
+                    if key in ("allowed_tools", "blocked_tools", "settings_json") and isinstance(val, (list, dict)):
+                        val = json.dumps(val)
+                    values.append(val)
+
+            if fields:
+                fields.append("updated_at = datetime('now')")
+                values.append(agent_id)
+                sql = f"UPDATE agent_settings SET {', '.join(fields)} WHERE agent_id = ?"
+                self.db.execute(sql, tuple(values))
+        else:
+            self.db.execute(
+                """INSERT INTO agent_settings
+                   (agent_id, enabled, auto_trigger, approval_required, max_actions_per_hour,
+                    allowed_tools, blocked_tools, custom_prompt, settings_json, updated_by)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (agent_id, settings.get("enabled", 1), settings.get("auto_trigger", 0),
+                 settings.get("approval_required", 1), settings.get("max_actions_per_hour", 100),
+                 json.dumps(settings.get("allowed_tools")) if settings.get("allowed_tools") else None,
+                 json.dumps(settings.get("blocked_tools")) if settings.get("blocked_tools") else None,
+                 settings.get("custom_prompt"),
+                 json.dumps(settings.get("settings_json")) if settings.get("settings_json") else None,
+                 settings.get("updated_by"))
+            )
+        return True
+
+    def list_all(self):
+        """List all agent settings."""
+        return self.db.execute_many("SELECT * FROM agent_settings")
+
+
+class AgentMetricsDB:
+    """Database operations for agent metrics."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def increment(self, agent_id, **metrics):
+        """Increment daily metrics for an agent."""
+        from datetime import date
+        today = date.today().isoformat()
+
+        existing = self.db.execute_one(
+            "SELECT id FROM agent_metrics WHERE agent_id = ? AND date = ?",
+            (agent_id, today)
+        )
+
+        if not existing:
+            self.db.execute(
+                "INSERT INTO agent_metrics (id, agent_id, date) VALUES (?, ?, ?)",
+                (str(uuid.uuid4()), agent_id, today)
+            )
+
+        valid_fields = ("invocations", "tool_calls", "approvals_requested",
+                        "approvals_granted", "approvals_rejected", "errors", "total_tokens")
+        for key, value in metrics.items():
+            if key in valid_fields and value:
+                self.db.execute(
+                    f"UPDATE agent_metrics SET {key} = {key} + ? WHERE agent_id = ? AND date = ?",
+                    (value, agent_id, today)
+                )
+
+        return True
+
+    def get_daily(self, agent_id, date_str):
+        """Get metrics for a specific day."""
+        return self.db.execute_one(
+            "SELECT * FROM agent_metrics WHERE agent_id = ? AND date = ?",
+            (agent_id, date_str)
+        )
+
+    def get_range(self, agent_id, start_date, end_date):
+        """Get metrics for a date range."""
+        return self.db.execute_many(
+            """SELECT * FROM agent_metrics
+               WHERE agent_id = ? AND date >= ? AND date <= ?
+               ORDER BY date DESC""",
+            (agent_id, start_date, end_date)
+        )
+
+    def get_totals(self, agent_id):
+        """Get total metrics for an agent."""
+        result = self.db.execute_one(
+            """SELECT
+                SUM(invocations) as total_invocations,
+                SUM(tool_calls) as total_tool_calls,
+                SUM(approvals_requested) as total_approvals_requested,
+                SUM(approvals_granted) as total_approvals_granted,
+                SUM(approvals_rejected) as total_approvals_rejected,
+                SUM(errors) as total_errors,
+                SUM(total_tokens) as total_tokens
+               FROM agent_metrics WHERE agent_id = ?""",
+            (agent_id,)
+        )
+        return dict(result) if result else {}
+
+
+# Global agent DB instances
+agent_approvals: AgentApprovalsDB = None
+agent_audit: AgentAuditDB = None
+agent_settings: AgentSettingsDB = None
+agent_metrics: AgentMetricsDB = None
+
+
+def init_agent_db():
+    """Initialize agent database helpers."""
+    global agent_approvals, agent_audit, agent_settings, agent_metrics
+    db = get_db()
+    agent_approvals = AgentApprovalsDB(db)
+    agent_audit = AgentAuditDB(db)
+    agent_settings = AgentSettingsDB(db)
+    agent_metrics = AgentMetricsDB(db)
 # Global instance - created on first import
 _db: Database = None
 clients: ClientsDB = None

@@ -102,7 +102,7 @@ export default function PrivacyMonitor({ apiBase }) {
             )}
             <button 
               onClick={fetchData}
-              className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+              className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200 min-h-[44px]"
             >
               רענן
             </button>

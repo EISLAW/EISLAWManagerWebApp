@@ -97,7 +97,7 @@ export default function Privacy() {
       const API = await pickApiBase() || ''
       const [lab, sub, met] = await Promise.all([
         axios.get(`${API}/api/privacy/labels`),
-        axios.get(`${API}/api/privacy/db-submissions`, { params: { limit: 50 } }),
+        axios.get(`${API}/api/privacy/submissions`, { params: { limit: 50 } }),
         axios.get(`${API}/api/privacy/metrics`, { params: { window: 10 } }).catch(() => ({ data: null })),
       ])
       setLabels(lab.data.labels || {})
@@ -123,37 +123,41 @@ export default function Privacy() {
   const openCard = async (id) => {
     if (openId === id) { setOpenId(null); setDetail(null); return }
     setOpenId(id); setDetail(null); setShowOverride(false); setShowEmail(false); setPublishInfo(null)
-    // Find submission in items array (SQLite data already loaded)
-    const sub = items.find(i => i.submission_id === id)
-    if (sub) {
-      // Parse answers_json and score_requirements
-      const answers = typeof sub.answers_json === 'string' ? JSON.parse(sub.answers_json || '{}') : (sub.answers_json || {})
-      const requirements = typeof sub.score_requirements === 'string' ? JSON.parse(sub.score_requirements || '[]') : (sub.score_requirements || [])
+    
+    try {
+      // Fetch full detail from API
+      const API = APIBase || await pickApiBase() || ""
+      const res = await axios.get(`${API}/api/privacy/submissions/${id}`)
+      const sub = res.data
       
+      // Map API response to detail state
       const detail = {
-        submission_id: sub.submission_id,
+        submission_id: sub.submission_id || sub.id,
         business_name: sub.business_name,
         contact_name: sub.contact_name,
         contact_email: sub.contact_email,
         contact_phone: sub.contact_phone,
         submitted_at: sub.submitted_at,
-        answers: answers,
-        score: {
-          level: sub.score_level,
-          color: sub.score_color,
-          dpo: !!sub.score_dpo,
-          reg: !!sub.score_reg,
-          report: !!sub.score_report,
-          requirements: requirements
+        answers: sub.answers || {},
+        score: sub.score || {
+          level: sub.level,
+          dpo: sub.dpo,
+          reg: sub.reg,
+          report: sub.report,
+          requirements: []
         },
-        review_status: sub.review_status
+        review_status: sub.status
       }
       setDetail(detail)
-      setLevelSel(sub.score_level || '')
-      const initial = { DPO: !!sub.score_dpo, Registration: !!sub.score_reg, Report: !!sub.score_report }
-      requirements.forEach(r => { initial[r] = true })
+      setLevelSel(sub.score?.level || sub.level || "")
+      const initial = { DPO: !!(sub.score?.dpo || sub.dpo), Registration: !!(sub.score?.reg || sub.reg), Report: !!(sub.score?.report || sub.report) }
+      if (sub.score?.requirements) {
+        sub.score.requirements.forEach(r => { initial[r] = true })
+      }
       setSelectedModules(initial)
-      setOverrideReason('')
+      setOverrideReason("")
+    } catch (e) {
+      setError(e?.response?.data?.detail || e.message)
     }
   }
 
@@ -184,28 +188,25 @@ export default function Privacy() {
     if (!detail) return
     try {
       setBusySave(true)
-      const payload = {
-        submission_id: detail.submission_id,
-        form_id: formId,
-        selected_modules: selectedList,
-        selected_level: levelSel || (detail.score?.level || ''),
-        status: 'correct',
-        override_reason: '',
-      }
-      const API = (APIBase || '')
-      await axios.post(`${API}/api/privacy/save_review`, payload)
+      const API = APIBase || ""
+      await axios.post(`${API}/api/privacy/save_review`, null, {
+        params: {
+          submission_id: detail.submission_id,
+          status: "correct"
+        }
+      })
 
       // Update local status
-      setReviewStatus(prev => ({ ...prev, [detail.submission_id]: 'correct' }))
-      showToast('סומן כנכון ✓', 'success')
+      setReviewStatus(prev => ({ ...prev, [detail.submission_id]: "correct" }))
+      showToast("סומן כנכון ✓", "success")
 
       // Refresh metrics
-      const met = await axios.get(`${API}/api/privacy/metrics`, { params: { window: 10 } })
+      const met = await axios.get(`${API}/api/privacy/metrics`)
       setMetrics(met.data)
 
       // Auto-advance to next pending item
       const currentIndex = items.findIndex(it => it.submission_id === detail.submission_id)
-      const nextPending = items.find((it, idx) => idx > currentIndex && reviewStatus[it.submission_id] !== 'correct' && reviewStatus[it.submission_id] !== 'override')
+      const nextPending = items.find((it, idx) => idx > currentIndex && reviewStatus[it.submission_id] !== "correct" && reviewStatus[it.submission_id] !== "override")
       if (nextPending) {
         openCard(nextPending.submission_id)
       }
@@ -216,44 +217,33 @@ export default function Privacy() {
   const previewEmail = async () => {
     if (!detail) return
     try {
-      const payload = {
-        contact_name: detail.answers?.contact_name,
-        business_name: detail.answers?.business_name,
-        score: detail.score,
-        selected_modules: selectedList,
-        selected_level: levelSel || (detail.score?.level || ''),
-        report_url: (publishInfo && publishInfo.report_url) ? publishInfo.report_url : '',
-      }
-      const API = (APIBase || '')
-      const res = await axios.post(`${API}/api/privacy/preview_email`, payload)
+      const API = APIBase || ""
+      const res = await axios.post(`${API}/api/privacy/preview_email/${detail.submission_id}`)
       setEmailPreview(res.data); setShowEmail(true)
     } catch (e) { setError(e?.response?.data?.detail || e.message) }
   }
 
-  const saveReview = async (status = 'approved') => {
+  const saveReview = async (status = "reviewed") => {
     if (!detail) return
     try {
       setBusySave(true)
-      const payload = {
-        submission_id: detail.submission_id,
-        form_id: formId,
-        selected_modules: selectedList,
-        selected_level: levelSel || (detail.score?.level || ''),
-        report_url: (publishInfo && publishInfo.report_url) ? publishInfo.report_url : '',
-        status: status,
-        override_reason: overrideReason,
-        per_change_notes: perChangeNotes,
-      }
-      const API = (APIBase || '')
-      await axios.post(`${API}/api/privacy/save_review`, payload)
+      const API = APIBase || ""
+      await axios.post(`${API}/api/privacy/save_review`, null, {
+        params: {
+          submission_id: detail.submission_id,
+          override_level: levelSel || (detail.score?.level || ""),
+          notes: overrideReason || undefined,
+          status: status
+        }
+      })
 
       // Update local status
-      if (status === 'override' || overrideReason) {
-        setReviewStatus(prev => ({ ...prev, [detail.submission_id]: 'override' }))
+      if (status === "override" || overrideReason) {
+        setReviewStatus(prev => ({ ...prev, [detail.submission_id]: "override" }))
       }
 
-      showToast('נשמר בהצלחה', 'success')
-      const met = await axios.get(`${API}/api/privacy/metrics`, { params: { window: 10 } })
+      showToast("נשמר בהצלחה", "success")
+      const met = await axios.get(`${API}/api/privacy/metrics`)
       setMetrics(met.data)
     } catch (e) { setError(e?.response?.data?.detail || e.message) }
     finally { setBusySave(false) }
@@ -263,16 +253,10 @@ export default function Privacy() {
     if (!detail) return
     try {
       setBusyPublish(true)
-      const API = (APIBase || '')
-      const payload = {
-        submission_id: detail.submission_id,
-        form_id: formId,
-        selected_modules: selectedList,
-        selected_level: levelSel || (detail.score?.level || ''),
-      }
-      const res = await axios.post(`${API}/api/privacy/approve_and_publish`, payload)
+      const API = APIBase || ""
+      const res = await axios.post(`${API}/api/privacy/approve_and_publish/${detail.submission_id}`)
       setPublishInfo(res.data)
-      showToast('הדוח פורסם', 'success')
+      showToast("הדוח פורסם", "success")
       return res.data
     } catch (e) { setError(e?.response?.data?.detail || e.message) }
     finally { setBusyPublish(false) }
@@ -291,46 +275,33 @@ export default function Privacy() {
     if (!detail) return
     try {
       if (!publishInfo || !publishInfo.report_url) {
-        if (!confirm('לפרסם את הדוח לפני שליחת המייל?')) {
-          showToast('יש לפרסם את הדוח קודם', 'warn')
+        if (!confirm("לפרסם את הדוח לפני שליחת המייל?")) {
+          showToast("יש לפרסם את הדוח קודם", "warn")
           return
         }
         const pub = await approvePublish()
         if (!pub || !pub.report_url) {
-          showToast('הפרסום נכשל', 'error')
+          showToast("הפרסום נכשל", "error")
           return
         }
       }
       setBusySend(true)
-      const payload = {
-        contact_name: detail.answers?.contact_name,
-        business_name: detail.answers?.business_name,
-        contact_email: detail.answers?.contact_email,
-        score: detail.score,
-        selected_modules: selectedList,
-        selected_level: levelSel || (detail.score?.level || ''),
-        report_url: (publishInfo && publishInfo.report_url) ? publishInfo.report_url : '',
-        to: detail.answers?.contact_email,
-      }
-      const API = (APIBase || '')
-      await axios.post(`${API}/api/privacy/send_email`, payload)
-      showToast('המייל נשלח', 'success')
+      const API = APIBase || ""
+      await axios.post(`${API}/api/privacy/send_email/${detail.submission_id}`)
+      showToast("המייל נשלח", "success")
 
       // Update status to sent
-      setReviewStatus(prev => ({ ...prev, [detail.submission_id]: 'sent' }))
+      setReviewStatus(prev => ({ ...prev, [detail.submission_id]: "sent" }))
 
       try {
-        const sentPayload = {
-          submission_id: detail.submission_id,
-          form_id: formId,
-          selected_modules: selectedList,
-          selected_level: levelSel || (detail.score?.level || ''),
-          status: 'sent',
-          override_reason: overrideReason,
-          per_change_notes: perChangeNotes,
-        }
-        await axios.post(`${API}/api/privacy/save_review`, sentPayload)
-        const met = await axios.get(`${API}/api/privacy/metrics`, { params: { window: 10 } })
+        // Save review status as sent
+        await axios.post(`${API}/api/privacy/save_review`, null, {
+          params: {
+            submission_id: detail.submission_id,
+            status: "sent"
+          }
+        })
+        const met = await axios.get(`${API}/api/privacy/metrics`)
         setMetrics(met.data)
       } catch { }
     } catch (e) { setError(e?.response?.data?.detail || e.message) }
@@ -721,9 +692,9 @@ export default function Privacy() {
                         <a className="text-petrol underline" href={publishInfo.report_url} target="_blank" rel="noreferrer">{publishInfo.report_url}</a>
                       </div>
                       <div className="flex gap-2">
-                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm" onClick={() => copyText(publishInfo.report_url)}>העתק קישור</button>
-                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm" onClick={() => copyText(publishInfo.share_url)}>העתק קצר</button>
-                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm" onClick={copyWhatsAppLink}>WhatsApp</button>
+                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm min-h-[44px]" onClick={() => copyText(publishInfo.report_url)}>העתק קישור</button>
+                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm min-h-[44px]" onClick={() => copyText(publishInfo.share_url)}>העתק קצר</button>
+                        <button className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 text-sm min-h-[44px]" onClick={copyWhatsAppLink}>WhatsApp</button>
                       </div>
                     </div>
                   )}

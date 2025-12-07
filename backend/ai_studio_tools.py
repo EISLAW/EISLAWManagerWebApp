@@ -151,6 +151,74 @@ AVAILABLE_TOOLS = [
                 "required": []
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "score_privacy_submission",
+            "description": "Score a privacy questionnaire submission. Use when user asks to analyze or score a privacy assessment.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "submission_id": {
+                        "type": "string",
+                        "description": "The ID of the privacy submission to score"
+                    }
+                },
+                "required": ["submission_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_privacy_email",
+            "description": "Send privacy results email to the contact. Use when user asks to send privacy assessment results to a client.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "submission_id": {
+                        "type": "string",
+                        "description": "The ID of the privacy submission"
+                    }
+                },
+                "required": ["submission_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_privacy_metrics",
+            "description": "Get privacy module statistics - submissions count, scoring distribution, DPO requirements, etc. Use when user asks about privacy statistics or status.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_privacy_submissions",
+            "description": "Search for privacy questionnaire submissions. Use when user asks about privacy submissions or wants to find a specific submission.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query - business name or contact name (optional)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 10)",
+                        "default": 10
+                    }
+                },
+                "required": []
+            }
+        }
     }
 ]
 
@@ -456,6 +524,149 @@ def execute_get_system_summary() -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────
+# Privacy Tool Execution Functions (Phase 5D)
+# ─────────────────────────────────────────────────────────────
+
+def execute_score_privacy_submission(submission_id: str) -> Dict[str, Any]:
+    """Score a privacy questionnaire submission."""
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(f"{API_BASE}/api/privacy/score/{submission_id}")
+            if resp.status_code == 200:
+                result = resp.json()
+                return {
+                    "success": True,
+                    "submission_id": submission_id,
+                    "level": result.get("level"),
+                    "level_name": {
+                        "lone": "מאגר בידי יחיד",
+                        "basic": "רמת אבטחה בסיסית",
+                        "mid": "רמת אבטחה בינונית",
+                        "high": "רמת אבטחה גבוהה"
+                    }.get(result.get("level"), result.get("level")),
+                    "dpo_required": result.get("dpo", False),
+                    "registration_required": result.get("reg", False),
+                    "report_required": result.get("report", False),
+                    "requirements": result.get("requirements", [])
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Scoring failed: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to score submission: {str(e)}"
+        }
+
+
+def execute_send_privacy_email(submission_id: str) -> Dict[str, Any]:
+    """Send privacy results email to the contact."""
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.post(f"{API_BASE}/api/privacy/send_email/{submission_id}")
+            if resp.status_code == 200:
+                result = resp.json()
+                return {
+                    "success": True,
+                    "message": f"Email sent to {result.get('sent_to')}",
+                    "sent_to": result.get("sent_to"),
+                    "sent_at": result.get("sent_at"),
+                    "subject": result.get("subject")
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Email sending failed: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to send email: {str(e)}"
+        }
+
+
+def execute_get_privacy_metrics() -> Dict[str, Any]:
+    """Get privacy module statistics."""
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(f"{API_BASE}/api/privacy/metrics")
+            if resp.status_code == 200:
+                result = resp.json()
+                return {
+                    "success": True,
+                    "metrics": {
+                        "total_submissions": result.get("total_submissions", 0),
+                        "total_scored": result.get("total_scored", 0),
+                        "unscored": result.get("unscored", 0),
+                        "scoring_rate": result.get("scoring_rate", 0),
+                        "by_level": result.get("by_level", {}),
+                        "requirements": result.get("requirements", {}),
+                        "recent_submissions_7d": result.get("recent_submissions_7d", 0)
+                    }
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to get metrics: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to get privacy metrics: {str(e)}"
+        }
+
+
+def execute_search_privacy_submissions(query: str = None, limit: int = 10) -> Dict[str, Any]:
+    """Search for privacy questionnaire submissions."""
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(f"{API_BASE}/api/privacy/submissions?limit={limit}")
+            if resp.status_code == 200:
+                result = resp.json()
+                submissions = result.get("items", [])
+
+                # Filter by query if provided
+                if query:
+                    query_lower = query.lower()
+                    submissions = [
+                        s for s in submissions
+                        if query_lower in (s.get("business_name") or "").lower()
+                        or query_lower in (s.get("contact_name") or "").lower()
+                        or query_lower in (s.get("contact_email") or "").lower()
+                    ]
+
+                return {
+                    "success": True,
+                    "query": query,
+                    "count": len(submissions),
+                    "submissions": [
+                        {
+                            "id": s.get("id"),
+                            "business_name": s.get("business_name"),
+                            "contact_name": s.get("contact_name"),
+                            "contact_email": s.get("contact_email"),
+                            "level": s.get("level"),
+                            "status": s.get("status"),
+                            "submitted_at": s.get("submitted_at")
+                        }
+                        for s in submissions[:limit]
+                    ]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to search submissions: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to search privacy submissions: {str(e)}"
+        }
+
+
+# ─────────────────────────────────────────────────────────────
 # Main Tool Executor
 # ─────────────────────────────────────────────────────────────
 
@@ -501,6 +712,26 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
         elif tool_name == "get_system_summary":
             return execute_get_system_summary()
+
+        # Privacy tools (Phase 5D)
+        elif tool_name == "score_privacy_submission":
+            return execute_score_privacy_submission(
+                submission_id=arguments.get("submission_id", "")
+            )
+
+        elif tool_name == "send_privacy_email":
+            return execute_send_privacy_email(
+                submission_id=arguments.get("submission_id", "")
+            )
+
+        elif tool_name == "get_privacy_metrics":
+            return execute_get_privacy_metrics()
+
+        elif tool_name == "search_privacy_submissions":
+            return execute_search_privacy_submissions(
+                query=arguments.get("query"),
+                limit=arguments.get("limit", 10)
+            )
 
         else:
             return {

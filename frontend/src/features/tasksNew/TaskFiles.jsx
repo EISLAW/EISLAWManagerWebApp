@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, Link as LinkIcon, Folder, Mail, ExternalLink, Edit2, CheckCircle2, Search, X, Loader2, Trash2, Paperclip } from 'lucide-react';
+import { FileText, Link as LinkIcon, Folder, Mail, ExternalLink, Edit2, CheckCircle2, Search, X, Loader2, Trash2, Paperclip, ChevronDown, ChevronRight } from 'lucide-react';
 import { ensureTaskFolder } from './TaskAdapter';
 import { pickApiBase } from '../../lib/openers'
+import { getStoredApiBase } from '../../utils/apiBase'
 
 const kindMap = {
   folder: { icon: <Folder className="w-5 h-5 text-yellow-600" />, label: 'תיקייה' },
@@ -11,7 +12,7 @@ const kindMap = {
 };
 
 export default function TaskFiles({ task }) {
-  const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const API = getStoredApiBase();
   const [rows, setRows] = useState([]);
   const [folder, setFolder] = useState({ id: null, web_url: null });
   const [primary, setPrimary] = useState(null);
@@ -23,6 +24,11 @@ export default function TaskFiles({ task }) {
   const [emailQuery, setEmailQuery] = useState('');
   const [emailHits, setEmailHits] = useState([]);
   const [searchingEmails, setSearchingEmails] = useState(false);
+  const [clientEmails, setClientEmails] = useState([]);
+  const [loadingClientEmails, setLoadingClientEmails] = useState(false);
+  const [clientEmailsError, setClientEmailsError] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const [expandedEmailId, setExpandedEmailId] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [editLink, setEditLink] = useState(null); // { current_web_url, new_web_url, user_title }
@@ -177,20 +183,73 @@ export default function TaskFiles({ task }) {
   async function searchEmails() {
     if (!emailQuery.trim()) return;
     setSearchingEmails(true);
-    const r = await fetch(`${API}/email/search?q=${encodeURIComponent(emailQuery)}`);
-    if (r.ok) {
-      const j = await r.json();
-      setEmailHits(j.items || []);
+    setSearchError('');
+    try {
+      const r = await fetch(`${API}/email/search?q=${encodeURIComponent(emailQuery)}`);
+      if (r.ok) {
+        const j = await r.json();
+        setEmailHits(j.items || []);
+        if (j.items?.length === 0) {
+          setSearchError('לא נמצאו אימיילים תואמים');
+        }
+      } else {
+        const errorText = await r.text();
+        console.error('searchEmails HTTP error:', r.status, errorText);
+        setSearchError(`שגיאה בחיפוש (${r.status})`);
+      }
+    } catch (err) {
+      console.error('searchEmails', err);
+      setSearchError('שגיאת רשת - לא ניתן לחפש');
     }
     setSearchingEmails(false);
+  }
+
+  async function fetchClientEmails() {
+    if (!clientName) return;
+    setLoadingClientEmails(true);
+    setClientEmailsError('');
+    try {
+      const encodedName = encodeURIComponent(clientName);
+      const r = await fetch(`${API}/email/by_client?name=${encodedName}&limit=25&offset=0`);
+      if (r.ok) {
+        const j = await r.json();
+        setClientEmails(j.items || []);
+      } else {
+        const errorText = await r.text();
+        console.error('fetchClientEmails HTTP error:', r.status, errorText);
+        setClientEmailsError(`שגיאה בטעינת אימיילים (${r.status})`);
+      }
+    } catch (err) {
+      console.error('fetchClientEmails', err);
+      setClientEmailsError('שגיאת רשת - לא ניתן לטעון אימיילים');
+    }
+    setLoadingClientEmails(false);
+  }
+
+  function openEmailModal() {
+    setEmailModal(true);
+    setEmailHits([]);
+    setEmailQuery('');
+    fetchClientEmails();
   }
 
   async function attachEmail(hit) {
     await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/emails/attach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: hit.id, client_name: clientName, task_title: taskTitle, save_pdf: false, save_attachments: true })
+      body: JSON.stringify({
+        id: hit.id,
+        subject: hit.subject || '',
+        from: hit.from || '',
+        received: hit.received || '',
+        has_attachments: hit.has_attachments || false,
+        attachments_count: hit.attachments_count || 0,
+        preview: hit.preview || '',
+        client_name: clientName,
+        task_title: taskTitle,
+      })
     });
+    setClientEmails([]);
     setEmailHits([]);
     setEmailQuery('');
     setEmailModal(false);
@@ -326,7 +385,7 @@ export default function TaskFiles({ task }) {
         {toolbarButton('tm.assets.add.file', 'assets.add.file', 'קובץ', <FileText className="w-4 h-4" />, triggerUpload, uploading)}
         {toolbarButton('tm.assets.add.link', 'assets.add.link', 'לינק', <LinkIcon className="w-4 h-4" />, () => setLinkOpen(true))}
         {toolbarButton('tm.assets.add.folder', 'assets.add.folder', 'תיקייה', <Folder className="w-4 h-4" />, pickAndLinkFolder)}
-        {toolbarButton('tm.assets.add.email', 'assets.add.email', 'אימייל', <Mail className="w-4 h-4" />, () => setEmailModal(true))}
+        {toolbarButton('tm.assets.add.email', 'assets.add.email', 'אימייל', <Mail className="w-4 h-4" />, openEmailModal)}
         {toast && <span className="text-xs text-slate-500">{toast}</span>}
       </div>
 
@@ -412,30 +471,117 @@ export default function TaskFiles({ task }) {
 
       {emailModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" data-testid="tm.attach-email" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
-            <div className="bg-petrol text-white px-6 py-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="bg-petrol text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="font-semibold">צרף אימייל</div>
               <button onClick={() => setEmailModal(false)} className="hover:text-copper"><X className="w-5 h-5" /></button>
             </div>
-            <div className="p-6 space-y-4">
-              <label className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-slate-500" />
-                <input className="flex-1 focus:outline-none" placeholder="Subject או כתובת" value={emailQuery} onChange={e => setEmailQuery(e.target.value)} />
-                <button type="button" className="text-sm text-petrol" onClick={searchEmails} data-testid="tm.email.search" data-action="email.search">
-                  {searchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : 'חפש'}
-                </button>
-              </label>
-              <div className="space-y-2 max-h-72 overflow-auto">
-                {emailHits.map(hit => (
-                  <div key={hit.id} className="p-3 border border-slate-200 rounded-lg flex items-center justify-between text-sm">
-                    <div>
-                      <div className="font-medium text-slate-900">{hit.subject}</div>
-                      <div className="text-slate-500">{hit.from}</div>
-                    </div>
-                    <button className="px-3 py-1 rounded bg-petrol text-white text-xs" data-testid="tm.email.attach" data-action="email.attach" onClick={() => attachEmail(hit)}>צרף</button>
+            <div className="p-6 space-y-4 overflow-auto flex-1">
+              {/* Client's recent emails - shown automatically */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700">אימיילים אחרונים של {clientName || 'הלקוח'}</div>
+                {clientEmailsError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{clientEmailsError}</div>
+                )}
+                {loadingClientEmails && (
+                  <div className="flex items-center justify-center py-6 text-slate-500 gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> טוען אימיילים...
                   </div>
-                ))}
-                {!emailHits.length && !searchingEmails && <div className="text-center text-slate-400 text-sm py-6">חפש אימיילים כדי לצרף</div>}
+                )}
+                {!loadingClientEmails && clientEmails.length === 0 && (
+                  <div className="text-center text-slate-400 text-sm py-4">לא נמצאו אימיילים</div>
+                )}
+                <div className="space-y-2 max-h-80 overflow-auto">
+                  {clientEmails.map(email => {
+                    const isExpanded = expandedEmailId === email.id;
+                    const hasAttachments = email.has_attachments || email.attachments_count > 0;
+                    return (
+                      <div key={email.id} className="border border-slate-200 rounded-lg text-sm hover:border-petrol/40 transition-colors">
+                        <div className="p-3 flex items-center gap-2">
+                          <button
+                            className="text-slate-400 hover:text-petrol flex-shrink-0"
+                            onClick={() => setExpandedEmailId(isExpanded ? null : email.id)}
+                            title={isExpanded ? 'סגור תצוגה מקדימה' : 'הצג תצוגה מקדימה'}
+                          >
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-slate-900 truncate flex items-center gap-2">
+                              {email.subject || '(ללא נושא)'}
+                              {hasAttachments && (
+                                <span className="text-slate-400 flex items-center gap-0.5" title={email.attachments_count ? `${email.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}>
+                                  <Paperclip className="w-3.5 h-3.5" />
+                                  {email.attachments_count > 0 && <span className="text-xs">{email.attachments_count}</span>}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-slate-500 text-xs truncate">{email.from} · {email.received ? new Date(email.received).toLocaleDateString('he-IL') : ''}</div>
+                          </div>
+                          <button className="px-3 py-1 rounded bg-petrol text-white text-xs flex-shrink-0" data-testid="tm.email.attach" data-action="email.attach" onClick={() => attachEmail(email)}>צרף</button>
+                        </div>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-0 mr-6 text-xs text-slate-600 border-t border-slate-100">
+                            <div className="pt-2 whitespace-pre-wrap line-clamp-4">{email.preview || 'אין תצוגה מקדימה זמינה'}</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Search for other emails */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="text-sm font-medium text-slate-700">חיפוש אימיילים נוספים</div>
+                {searchError && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-2 text-sm">{searchError}</div>
+                )}
+                <label className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2">
+                  <Search className="w-4 h-4 text-slate-500" />
+                  <input className="flex-1 focus:outline-none" placeholder="Subject או כתובת" value={emailQuery} onChange={e => setEmailQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchEmails()} />
+                  <button type="button" className="text-sm text-petrol" onClick={searchEmails} data-testid="tm.email.search" data-action="email.search">
+                    {searchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : 'חפש'}
+                  </button>
+                </label>
+                {emailHits.length > 0 && (
+                  <div className="space-y-2 max-h-56 overflow-auto">
+                    {emailHits.map(hit => {
+                      const isExpanded = expandedEmailId === hit.id;
+                      const hasAttachments = hit.has_attachments || hit.attachments_count > 0;
+                      return (
+                        <div key={hit.id} className="border border-slate-200 rounded-lg text-sm hover:border-petrol/40 transition-colors">
+                          <div className="p-3 flex items-center gap-2">
+                            <button
+                              className="text-slate-400 hover:text-petrol flex-shrink-0"
+                              onClick={() => setExpandedEmailId(isExpanded ? null : hit.id)}
+                              title={isExpanded ? 'סגור תצוגה מקדימה' : 'הצג תצוגה מקדימה'}
+                            >
+                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-slate-900 truncate flex items-center gap-2">
+                                {hit.subject || '(ללא נושא)'}
+                                {hasAttachments && (
+                                  <span className="text-slate-400 flex items-center gap-0.5" title={hit.attachments_count ? `${hit.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}>
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                    {hit.attachments_count > 0 && <span className="text-xs">{hit.attachments_count}</span>}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-slate-500 text-xs truncate">{hit.from}</div>
+                            </div>
+                            <button className="px-3 py-1 rounded bg-petrol text-white text-xs flex-shrink-0" data-testid="tm.email.attach" data-action="email.attach" onClick={() => attachEmail(hit)}>צרף</button>
+                          </div>
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-0 mr-6 text-xs text-slate-600 border-t border-slate-100">
+                              <div className="pt-2 whitespace-pre-wrap line-clamp-4">{hit.preview || 'אין תצוגה מקדימה זמינה'}</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>

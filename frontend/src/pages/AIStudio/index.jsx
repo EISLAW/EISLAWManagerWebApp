@@ -123,7 +123,7 @@ function ConversationList({ conversations, activeId, onSelect, onNew, onDelete }
       <div className="p-4 border-b border-slate-200">
         <button
           onClick={onNew}
-          className="w-full flex items-center justify-center gap-2 bg-petrol text-white rounded-lg px-4 py-2 hover:bg-petrol/90 transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-petrol text-white rounded-lg px-4 py-2 min-h-[44px] hover:bg-petrol/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
           שיחה חדשה
@@ -154,7 +154,7 @@ function ConversationList({ conversations, activeId, onSelect, onNew, onDelete }
                 e.stopPropagation()
                 onDelete(conv.id)
               }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all"
+              className="opacity-0 group-hover:opacity-100 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-red-100 rounded transition-all"
             >
               <Trash2 className="w-3 h-3 text-red-500" />
             </button>
@@ -414,7 +414,7 @@ export default function AIStudio() {
   return (
     <div className="h-[calc(100vh-64px)] flex" dir="rtl">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-l border-slate-200 flex-shrink-0">
+      <div className="hidden md:block w-64 bg-white border-l border-slate-200 flex-shrink-0">
         <ConversationList
           conversations={conversations}
           activeId={activeConversationId}
@@ -442,15 +442,15 @@ export default function AIStudio() {
             {toolsAvailable && (
               <button
                 onClick={() => setToolsEnabled(!toolsEnabled)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg text-sm transition-colors ${
                   toolsEnabled
                     ? 'bg-amber-100 text-amber-800 border border-amber-300'
                     : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                 }`}
-                title={toolsEnabled ? 'Tools enabled - AI can perform actions' : 'Enable tools to let AI perform actions'}
+                title={toolsEnabled ? 'Agent Mode enabled - AI can search clients, create tasks, and more' : 'Click to enable Agent Mode - AI will be able to perform actions in the system'}
               >
                 <Wrench className="w-4 h-4" />
-                <span className="hidden sm:inline">{toolsEnabled ? 'Agent Mode' : 'Chat Mode'}</span>
+                <span className="hidden sm:inline">Agent Mode {toolsEnabled ? '✓' : ''}</span>
               </button>
             )}
             <ProviderSelect

@@ -18,6 +18,7 @@ import MarketingLeads from './components/MarketingLeads.jsx'
 import MarketingCampaigns from './components/MarketingCampaigns.jsx'
 import MarketingInsights from './components/MarketingInsights.jsx'
 import AIStudio from './pages/AIStudio/index.jsx'
+import QuoteTemplatesPage from './pages/QuoteTemplates/index.jsx'
 
 const RoutesRoot = (
   <>
@@ -30,6 +31,7 @@ const RoutesRoot = (
     <Route path="/settings" element={<Admin/>} />
     <Route path="/settings/prompts" element={<MarketingPromptsManager/>} />
     <Route path="/settings/leads" element={<LeadScoringSettings/>} />
+    <Route path="/settings/quotes" element={<QuoteTemplatesPage/>} />
     <Route path="/marketing" element={<MarketingDashboard/>} />
     <Route path="/marketing/content" element={<Marketing/>} />
     <Route path="/marketing/leads" element={<MarketingLeads/>} />

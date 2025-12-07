@@ -35,6 +35,17 @@ const LABELS = {
   searching: 'מחפש...',
   airtableId: 'מזהה Airtable',
   contacts: 'אנשי קשר',
+  addContact: 'הוסף איש קשר',
+  editContact: 'ערוך איש קשר',
+  contactName: 'שם',
+  contactRole: 'תפקיד',
+  contactEmail: 'אימייל',
+  contactPhone: 'טלפון',
+  contactPrimary: 'איש קשר ראשי',
+  saveContact: 'שמור',
+  cancelContact: 'ביטול',
+  deleteContact: 'מחק',
+  noContacts: 'אין אנשי קשר',
 }
 
 const CLIENT_TYPES = [
@@ -137,6 +148,20 @@ export default function AddClientModal({
   const [submitError, setSubmitError] = useState('')
   const [duplicateWarning, setDuplicateWarning] = useState(null)
 
+  // Contacts state
+  const [contacts, setContacts] = useState([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingContact, setEditingContact] = useState(null)
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    role: '',
+    email: '',
+    phone: '',
+    is_primary: false,
+  })
+  const [pendingContactDeletes, setPendingContactDeletes] = useState([]) // IDs to delete on save
+
   // ─────────────────────────────────────────────────────────────────────────
   // Derived Values
   // ─────────────────────────────────────────────────────────────────────────
@@ -176,9 +201,50 @@ export default function AddClientModal({
           notes: normalized.notes || '',
         })
         setSearchQuery(normalized.name || '')
+
+        // Initialize contacts from normalized data
+        if (normalized.contacts?.length > 0) {
+          setContacts(normalized.contacts)
+        }
+
+        // Load existing folder/SharePoint info and contacts from client summary
+        const clientName = normalized.name || initialClient.display_name || initialClient.name
+        const clientId = initialClient.id || normalized.id
+        if (clientName && isEditMode) {
+          // Fetch client summary for folder info
+          fetch(`${API}/api/client/summary?name=${encodeURIComponent(clientName)}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const client = data?.client
+              if (client?.sharepoint_url) {
+                setFolder({ path: client.sharepoint_url, status: 'linked', message: '' })
+              } else if (client?.folder) {
+                setFolder({ path: client.folder, status: 'linked', message: '' })
+              }
+              // Also get contacts from summary if available
+              if (client?.contacts?.length > 0) {
+                setContacts(client.contacts)
+              }
+            })
+            .catch(() => {})
+
+          // Fetch contacts from API if we have a client ID
+          if (clientId) {
+            setContactsLoading(true)
+            fetch(`${API}/contacts/${clientId}`)
+              .then(res => res.ok ? res.json() : null)
+              .then(data => {
+                if (data?.contacts?.length > 0) {
+                  setContacts(data.contacts)
+                }
+              })
+              .catch(() => {})
+              .finally(() => setContactsLoading(false))
+          }
+        }
       }
     }
-  }, [initialClient])
+  }, [initialClient, isEditMode, API])
 
   // Smart Search with debounce
   useEffect(() => {
@@ -297,6 +363,93 @@ export default function AddClientModal({
     setFormData(prev => ({ ...prev, name: searchQuery.trim() }))
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Contact Management Handlers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const resetContactForm = () => {
+    setContactForm({ name: '', role: '', email: '', phone: '', is_primary: false })
+    setEditingContact(null)
+    setShowContactForm(false)
+  }
+
+  const handleAddContact = () => {
+    setEditingContact(null)
+    setContactForm({ name: '', role: '', email: '', phone: '', is_primary: false })
+    setShowContactForm(true)
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setContactForm({
+      name: contact.name || '',
+      role: contact.role || contact.role_desc || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      is_primary: contact.is_primary || false,
+    })
+    setShowContactForm(true)
+  }
+
+  const handleDeleteContact = (contact) => {
+    if (contact.id) {
+      // Mark for deletion on save (if existing contact)
+      setPendingContactDeletes(prev => [...prev, contact.id])
+    }
+    // Remove from local state
+    setContacts(prev => prev.filter(c => c !== contact && c.id !== contact.id))
+  }
+
+  const handleSaveContact = () => {
+    if (!contactForm.name.trim()) return
+
+    const newContact = {
+      id: editingContact?.id || `temp_${Date.now()}`,
+      name: contactForm.name.trim(),
+      role: contactForm.role.trim(),
+      role_desc: contactForm.role.trim(), // Alias for compatibility
+      email: contactForm.email.trim(),
+      phone: contactForm.phone.trim(),
+      is_primary: contactForm.is_primary,
+      _isNew: !editingContact?.id || editingContact.id.startsWith('temp_'),
+      _isModified: editingContact?.id && !editingContact.id.startsWith('temp_'),
+    }
+
+    // If marking as primary, unmark others
+    if (newContact.is_primary) {
+      setContacts(prev => prev.map(c =>
+        c === editingContact || c.id === editingContact?.id
+          ? newContact
+          : { ...c, is_primary: false }
+      ))
+    }
+
+    if (editingContact) {
+      // Update existing
+      setContacts(prev => prev.map(c =>
+        c === editingContact || c.id === editingContact.id ? newContact : c
+      ))
+    } else {
+      // Add new
+      if (newContact.is_primary) {
+        // Unmark others when adding primary
+        setContacts(prev => [...prev.map(c => ({ ...c, is_primary: false })), newContact])
+      } else {
+        setContacts(prev => [...prev, newContact])
+      }
+    }
+
+    resetContactForm()
+  }
+
+  const handleSetPrimary = (contact) => {
+    setContacts(prev => prev.map(c => ({
+      ...c,
+      is_primary: c === contact || c.id === contact.id,
+      _isModified: c._isModified || (c.id && !c.id.startsWith('temp_')),
+    })))
+  }
+
   const handleBrowseFolder = async () => {
     if (!formData.name.trim()) {
       setFolder({ path: '', status: 'error', message: 'הזן שם לקוח תחילה' })
@@ -304,40 +457,67 @@ export default function AddClientModal({
     }
 
     setFolder(s => ({ ...s, status: 'linking', message: '' }))
+    const clientName = formData.name.trim()
 
     try {
-      const res = await fetch(`${API}/dev/open_folder?name=${encodeURIComponent(formData.name)}`, { method: 'POST' })
+      // First, try to get existing client folder from summary
+      const sumRes = await fetch(`${API}/api/client/summary?name=${encodeURIComponent(clientName)}`)
+      if (sumRes.ok) {
+        const sumData = await sumRes.json()
+        const client = sumData?.client
+        if (client?.sharepoint_url) {
+          window.open(client.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({ path: client.sharepoint_url, status: 'linked', message: '' })
+          return
+        }
+      }
+
+      // Try dev/open_folder (for local folder picker)
+      const res = await fetch(`${API}/dev/open_folder?name=${encodeURIComponent(clientName)}`, { method: 'POST' })
       const payload = await res.json().catch(() => null)
 
-      if (!res.ok) {
-        throw new Error(payload?.detail || 'Folder picker failed')
-      }
+      if (res.ok) {
+        const localPath = payload?.path?.trim() || ''
+        const sharePointUrl = payload?.webUrl?.trim() || ''
 
-      const localPath = payload?.path?.trim() || ''
-      const sharePointUrl = payload?.webUrl?.trim() || ''
-
-      if (localPath) {
-        setFolder({ path: localPath, status: 'linked', message: '' })
-      } else if (sharePointUrl) {
-        window.open(sharePointUrl, '_blank', 'noopener,noreferrer')
-        setFolder({ path: sharePointUrl, status: 'linked', message: '' })
-      } else {
-        throw new Error('No folder path returned')
-      }
-    } catch (err) {
-      // Try SharePoint link fallback
-      try {
-        const spRes = await fetch(`${API}/api/client/sharepoint_link?name=${encodeURIComponent(formData.name)}`)
-        if (spRes.ok) {
-          const spData = await spRes.json()
-          if (spData?.webUrl) {
-            window.open(spData.webUrl, '_blank', 'noopener,noreferrer')
-            setFolder({ path: spData.webUrl, status: 'linked', message: '' })
-            return
-          }
+        if (localPath) {
+          setFolder({ path: localPath, status: 'linked', message: '' })
+          return
+        } else if (sharePointUrl) {
+          window.open(sharePointUrl, '_blank', 'noopener,noreferrer')
+          setFolder({ path: sharePointUrl, status: 'linked', message: '' })
+          return
         }
-      } catch {}
+      }
 
+      // Try SharePoint link endpoint
+      const spRes = await fetch(`${API}/api/client/sharepoint_link?name=${encodeURIComponent(clientName)}`)
+      if (spRes.ok) {
+        const spData = await spRes.json()
+        if (spData?.webUrl) {
+          window.open(spData.webUrl, '_blank', 'noopener,noreferrer')
+          setFolder({ path: spData.webUrl, status: 'linked', message: '' })
+          return
+        }
+      }
+
+      // Try to create SharePoint folder
+      const createRes = await fetch(`${API}/sp/folder_create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clientName }),
+      })
+      if (createRes.ok) {
+        const createData = await createRes.json()
+        if (createData?.webUrl) {
+          window.open(createData.webUrl, '_blank', 'noopener,noreferrer')
+          setFolder({ path: createData.webUrl, status: 'linked', message: '' })
+          return
+        }
+      }
+
+      throw new Error('No folder found or created')
+    } catch (err) {
       setFolder({ path: '', status: 'error', message: 'לא ניתן לקשר תיקייה' })
     }
   }
@@ -355,7 +535,13 @@ export default function AddClientModal({
       client_type: formData.clientTypes,
       stage: formData.stage,
       notes: formData.notes.trim(),
-      contacts: [],
+      contacts: contacts.map(c => ({
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        role_desc: c.role || c.role_desc,
+        is_primary: c.is_primary,
+      })),
     }
 
     if (folder.path) {
@@ -402,6 +588,47 @@ export default function AddClientModal({
           throw new Error('לקוח עם שם זה כבר קיים')
         }
         throw new Error(errData.detail || 'Failed to save client')
+      }
+
+      const savedClient = await regRes.json().catch(() => ({}))
+      const clientId = savedClient.id || selectedClient?.id || initialClient?.id
+
+      // Save contacts via API (if we have a client ID)
+      if (clientId) {
+        // Delete pending contacts
+        for (const contactId of pendingContactDeletes) {
+          if (!contactId.startsWith('temp_')) {
+            await fetch(`${API}/contacts/${contactId}`, { method: 'DELETE' }).catch(() => {})
+          }
+        }
+
+        // Save new/modified contacts
+        for (const contact of contacts) {
+          const contactPayload = {
+            client_id: clientId,
+            name: contact.name,
+            email: contact.email || '',
+            phone: contact.phone || '',
+            role_desc: contact.role || contact.role_desc || '',
+            is_primary: contact.is_primary || false,
+          }
+
+          if (contact._isNew || contact.id?.startsWith('temp_')) {
+            // Create new contact
+            await fetch(`${API}/contacts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(contactPayload),
+            }).catch(() => {})
+          } else if (contact._isModified && contact.id) {
+            // Update existing contact
+            await fetch(`${API}/contacts/${contact.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(contactPayload),
+            }).catch(() => {})
+          }
+        }
       }
 
       setSubmitStatus('success')
@@ -657,6 +884,182 @@ export default function AddClientModal({
                 />
               </div>
 
+              {/* Contacts Section */}
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-slate-700">
+                    {LABELS.contacts}
+                    {contacts.length > 0 && (
+                      <span className="text-xs text-slate-400 mr-2">({contacts.length})</span>
+                    )}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddContact}
+                    className="flex items-center gap-1 px-3 py-1.5 min-h-[44px] rounded-lg bg-petrol/10 text-petrol text-sm font-medium hover:bg-petrol/20 transition"
+                  >
+                    <span className="text-lg">+</span>
+                    {LABELS.addContact}
+                  </button>
+                </div>
+
+                {/* Contact Form (inline) */}
+                {showContactForm && (
+                  <div className="mb-4 p-4 rounded-lg border border-petrol/30 bg-petrol/5">
+                    <div className="text-sm font-medium text-slate-700 mb-3">
+                      {editingContact ? LABELS.editContact : LABELS.addContact}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">
+                          {LABELS.contactName} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={contactForm.name}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="שם מלא"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactRole}</label>
+                        <input
+                          type="text"
+                          value={contactForm.role}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, role: e.target.value }))}
+                          placeholder="תפקיד"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactEmail}</label>
+                        <input
+                          type="email"
+                          value={contactForm.email}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="email@example.com"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactPhone}</label>
+                        <input
+                          type="tel"
+                          value={contactForm.phone}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="052-1234567"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={contactForm.is_primary}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, is_primary: e.target.checked }))}
+                          className="w-4 h-4 rounded border-slate-300 text-petrol focus:ring-petrol"
+                        />
+                        <span className="text-sm text-slate-700">{LABELS.contactPrimary}</span>
+                      </label>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={resetContactForm}
+                        className="px-4 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
+                      >
+                        {LABELS.cancelContact}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveContact}
+                        disabled={!contactForm.name.trim()}
+                        className="px-4 py-2 min-h-[44px] rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover disabled:bg-slate-300 disabled:cursor-not-allowed"
+                      >
+                        {LABELS.saveContact}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contacts List */}
+                {contactsLoading ? (
+                  <div className="flex items-center justify-center py-4 text-sm text-slate-500">
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    טוען אנשי קשר...
+                  </div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-6 text-sm text-slate-500 border border-dashed border-slate-200 rounded-lg">
+                    {LABELS.noContacts}
+                  </div>
+                ) : (
+                  <div className="max-h-[200px] overflow-y-auto space-y-2">
+                    {contacts.map((contact, idx) => (
+                      <div
+                        key={contact.id || idx}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-slate-200 transition"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {contact.is_primary && (
+                              <span className="text-amber-500" title={LABELS.contactPrimary}>★</span>
+                            )}
+                            <span className="font-medium text-slate-800 truncate">{contact.name}</span>
+                            {(contact.role || contact.role_desc) && (
+                              <span className="text-slate-500 text-sm">({contact.role || contact.role_desc})</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3 mt-1 text-xs text-slate-600">
+                            {contact.email && (
+                              <span className="flex items-center gap-1">
+                                <span>✉</span>
+                                <span className="truncate max-w-[150px]">{contact.email}</span>
+                              </span>
+                            )}
+                            {contact.phone && (
+                              <span className="flex items-center gap-1">
+                                <span>📞</span>
+                                {contact.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 mr-2">
+                          {!contact.is_primary && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimary(contact)}
+                              className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
+                              title="הגדר כראשי"
+                            >
+                              ☆
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEditContact(contact)}
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-petrol hover:bg-petrol/10 transition"
+                            title="ערוך"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteContact(contact)}
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition"
+                            title={LABELS.deleteContact}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Folder Link (optional) */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -666,7 +1069,13 @@ export default function AddClientModal({
                 <div className="flex items-center gap-2">
                   <div className="flex-1 flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 bg-slate-50">
                     <span className="ml-2">📁</span>
-                    <span className="truncate">{folder.path || 'לא נבחרה תיקייה'}</span>
+                    <span className="truncate">
+                      {folder.path
+                        ? (folder.path.includes('sharepoint.com')
+                            ? `SharePoint: ${formData.name || 'לקוח'}`
+                            : folder.path)
+                        : 'לא נבחרה תיקייה'}
+                    </span>
                   </div>
                   <button
                     type="button"

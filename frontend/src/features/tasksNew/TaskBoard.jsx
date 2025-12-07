@@ -75,7 +75,7 @@ export default function TaskBoard({ clientName, showClientBadge = false, allowGl
                 </select>
               </label>
             )}
-            <button className="inline-flex items-center gap-1 px-3 py-2 rounded bg-petrol text-white disabled:opacity-50" onClick={add} disabled={!newTitle.trim()}>
+            <button className="inline-flex items-center gap-1 px-3 py-2 rounded bg-petrol text-white disabled:opacity-50 min-h-[44px]" onClick={add} disabled={!newTitle.trim()}>
               <Plus className="w-4 h-4" /> צור משימה
             </button>
           </div>

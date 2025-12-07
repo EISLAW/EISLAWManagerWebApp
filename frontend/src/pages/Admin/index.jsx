@@ -34,8 +34,7 @@ export default function Admin(){
       title: 'תבניות הצעות מחיר',
       titleEn: 'Quote Templates',
       description: 'נהל תבניות להצעות מחיר ומסמכים',
-      color: 'copper',
-      comingSoon: true
+      color: 'copper'
     }
   ]
 
@@ -89,7 +88,7 @@ export default function Admin(){
       <div className="card">
         <button
           onClick={() => setShowOwners(!showOwners)}
-          className="w-full flex items-center justify-between"
+          className="w-full flex items-center justify-between min-h-[44px]"
         >
           <div className="subheading flex items-center gap-2">
             <Users className="w-4 h-4" />

@@ -1,5 +1,9 @@
 from datetime import datetime, timedelta
 import uuid
+try:
+    from backend import rag_sqlite
+except ImportError:
+    import rag_sqlite
 from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -14,10 +18,16 @@ try:
     from backend import fixtures
     from backend import fillout_integration
     from backend import privacy_db
+    from backend import privacy_fillout_sync
+    from backend import privacy_scoring
+    from backend import privacy_email
 except ImportError:
     import fixtures
     import fillout_integration
     import privacy_db
+    import privacy_fillout_sync
+    import privacy_scoring
+    import privacy_email
 try:
     from backend import templates_api, word_api
 except ImportError:
@@ -78,6 +88,31 @@ def get_airtable_config():
 
 
 # ─────────────────────────────────────────────────────────────
+
+
+def get_graph_access_token():
+    """Get an access token for Microsoft Graph API using MSAL."""
+    creds = get_graph_credentials()
+    if not all([creds.get("client_id"), creds.get("client_secret"), creds.get("tenant_id")]):
+        raise HTTPException(status_code=500, detail="Microsoft Graph credentials not configured")
+
+    authority = f"https://login.microsoftonline.com/{creds['tenant_id']}"
+    app = msal.ConfidentialClientApplication(
+        creds["client_id"],
+        authority=authority,
+        client_credential=creds["client_secret"],
+    )
+
+    # Request token for Microsoft Graph
+    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+
+    if "access_token" not in result:
+        error = result.get("error_description", result.get("error", "Unknown error"))
+        raise HTTPException(status_code=500, detail=f"Failed to get Graph token: {error}")
+
+    return result["access_token"]
+
+
 # Local Client Registry (~/.eislaw/store/clients.json)
 # ─────────────────────────────────────────────────────────────
 def get_clients_store_path():
@@ -343,30 +378,21 @@ def ensure_dirs():
 # ─────────────────────────────────────────────────────────────
 
 def load_tasks():
-    # Try SQLite first
-    result = db_api_helpers.load_tasks_from_sqlite()
-    if result:
-        return result
-    # Fallback to JSON
-    if not TASKS_PATH.exists():
-        return []
+    """Load tasks from SQLite only - single source of truth."""
     try:
-        return json.loads(TASKS_PATH.read_text("utf-8"))
-    except Exception:
+        return db_api_helpers.load_tasks_from_sqlite()
+    except Exception as e:
+        print(f"Error loading tasks from SQLite: {e}")
         return []
 
 
 def save_tasks(tasks):
-    # Save to JSON as backup
-    TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    TASKS_PATH.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Sync new tasks to SQLite
+    """Save tasks to SQLite only - single source of truth."""
     try:
         for t in tasks:
-            if not db_api_helpers.find_task_by_id(t.get("id", "")):
-                db_api_helpers.create_task_in_sqlite(t)
+            db_api_helpers.update_or_create_task_in_sqlite(t)
     except Exception as e:
-        print(f"Error syncing to SQLite: {e}")
+        print(f"Error saving tasks to SQLite: {e}")
 
 
 def load_tasks_archive():
@@ -384,13 +410,12 @@ def save_tasks_archive(tasks):
 
 
 def find_task(task_id: str):
-    result = db_api_helpers.find_task_by_id(task_id)
-    if result:
-        return result
-    for t in load_tasks():
-        if t.get("id") == task_id:
-            return t
-    return None
+    """Find task by ID from SQLite only."""
+    try:
+        return db_api_helpers.find_task_by_id(task_id)
+    except Exception as e:
+        print(f"Error finding task {task_id}: {e}")
+        return None
 
 
 def load_index():
@@ -987,20 +1012,178 @@ def import_tasks(payload: dict = Body(...)):
 
 
 @app.get("/api/privacy/submissions")
-def get_privacy_submissions(top: int = 50):
-    return fixtures.privacy_submissions(top)
+def get_privacy_submissions(limit: int = 50, offset: int = 0):
+    """Get privacy submissions from SQLite (Phase 5B)"""
+    try:
+        submissions = privacy_fillout_sync.get_submissions_from_sqlite(limit=limit, offset=offset)
+        total = privacy_fillout_sync.get_submissions_count()
+        return {"submissions": submissions, "total": total}
+    except Exception as e:
+        # Fallback to fixtures if SQLite fails
+        return {"submissions": fixtures.privacy_submissions(limit), "total": 0, "error": str(e)}
+
+
+@app.get("/api/privacy/submissions/{submission_id}")
+def get_privacy_submission_detail(submission_id: str):
+    """Get single privacy submission detail (Phase 5B)"""
+    submission = privacy_fillout_sync.get_submission_by_id(submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return submission
+
+
+@app.get("/api/privacy/sync_fillout")
+def sync_privacy_from_fillout(form_id: Optional[str] = None, limit: int = 100):
+    """Sync privacy submissions from Fillout API to SQLite (Phase 5B)"""
+    result = privacy_fillout_sync.sync_from_fillout(form_id=form_id, limit=limit)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────
+# Privacy Scoring API - Phase 5C
+# ─────────────────────────────────────────────────────────────
+
+@app.post("/api/privacy/score/{submission_id}")
+def score_privacy_submission(submission_id: str):
+    """Run scoring algorithm on a privacy submission (Phase 5C)"""
+    result = privacy_scoring.score_submission(submission_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.post("/api/privacy/score_all")
+def score_all_privacy_submissions():
+    """Score all unscored privacy submissions (Phase 5C)"""
+    result = privacy_scoring.score_all_submissions()
+    return result
+
+
+class ReviewOverrideBody:
+    def __init__(self, override_level: Optional[str] = None, notes: Optional[str] = None, reviewed_by: Optional[str] = None, status: str = "reviewed"):
+        self.override_level = override_level
+        self.notes = notes
+        self.reviewed_by = reviewed_by
+        self.status = status
+
+
+@app.post("/api/privacy/save_review")
+def save_privacy_review(
+    submission_id: str,
+    override_level: Optional[str] = None,
+    notes: Optional[str] = None,
+    reviewed_by: Optional[str] = None,
+    status: str = "reviewed"
+):
+    """Save human override/review for a privacy submission (Phase 5C)"""
+    result = privacy_scoring.save_review_override(
+        submission_id=submission_id,
+        override_level=override_level,
+        notes=notes,
+        reviewed_by=reviewed_by,
+        status=status
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.get("/api/privacy/metrics")
+def get_privacy_metrics():
+    """Get privacy scoring metrics and statistics (Phase 5C)"""
+    return privacy_scoring.get_metrics()
+
+
+@app.get("/api/privacy/review/{submission_id}")
+def get_privacy_review(submission_id: str):
+    """Get review details for a submission (Phase 5C)"""
+    result = privacy_scoring.get_review_by_submission(submission_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return result
+
+
+# ─────────────────────────────────────────────────────────────
+# Privacy Email & Reports (Phase 5D)
+# ─────────────────────────────────────────────────────────────
+
+@app.post("/api/privacy/preview_email/{submission_id}")
+def privacy_preview_email(submission_id: str):
+    """
+    Preview email for a privacy submission (Phase 5D).
+    Returns HTML preview and metadata.
+    """
+    result = privacy_email.preview_email(submission_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.post("/api/privacy/send_email/{submission_id}")
+def privacy_send_email(submission_id: str, payload: dict = Body(default={})):
+    """
+    Send privacy results email via Graph API (Phase 5D).
+    Optional body: {"custom_html": "..."} to override template.
+    """
+    custom_html = payload.get("custom_html") if payload else None
+    result = privacy_email.send_email(
+        submission_id,
+        get_token_func=get_graph_access_token,
+        custom_html=custom_html
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/api/privacy/approve_and_publish/{submission_id}")
+def privacy_approve_and_publish(submission_id: str):
+    """
+    Approve submission and generate public report token (Phase 5D).
+    Returns the report URL for sharing.
+    """
+    result = privacy_email.approve_and_publish(submission_id)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.get("/api/privacy/report/{token}")
+def privacy_report(token: str):
+    """
+    Get public privacy report by token (Phase 5D).
+    Returns report data for frontend rendering.
+    """
+    result = privacy_email.get_report_by_token(token)
+    if not result:
+        raise HTTPException(status_code=404, detail="Report not found or not approved")
+    return result
+
+
+@app.get("/api/privacy/report/{token}/html")
+def privacy_report_html(token: str):
+    """
+    Get full HTML report page by token (Phase 5D).
+    Returns standalone HTML page for printing/sharing.
+    """
+    from fastapi.responses import HTMLResponse
+    html = privacy_email.get_report_html(token)
+    if not html:
+        raise HTTPException(status_code=404, detail="Report not found or not approved")
+    return HTMLResponse(content=html, media_type="text/html")
 
 
 @app.get("/api/rag/search")
-def rag_search(q: str, client: Optional[str] = None):
-    # demo
-    return {"query": q, "client": client, "results": []}
-
+def rag_search(q: str, client: Optional[str] = None, domain: Optional[str] = None, limit: int = 20):
+    """Search transcripts using SQLite."""
+    return rag_sqlite.rag_search_sqlite(q, client, domain, limit)
 
 @app.get("/api/rag/inbox")
 def rag_inbox():
-    ensure_dirs()
-    return {"items": load_index()}
+    """List transcripts from SQLite (status = draft or reviewed)."""
+    return rag_sqlite.rag_inbox_sqlite()
+
+# REMOVED: Old JSON-based rag_inbox (now using SQLite)
 
 
 @app.post("/api/rag/ingest")
@@ -1015,52 +1198,48 @@ async def rag_ingest(
     model: Optional[str] = Form(None),
 ):
     """
-    Minimal ingest stub: saves the uploaded file to Transcripts/Inbox/{hash}_filename
-    and records a manifest entry with status=transcribing. Duplicate hashes return
-    a duplicate status without re-saving.
+    Ingest audio file: saves to disk, transcribes with Gemini, stores in SQLite.
+    Duplicate hashes return existing entry without re-processing.
     """
     ensure_dirs()
-    existing = next((i for i in load_index() if i.get("hash") == hash), None)
-    if existing:
-        return {
-            "id": existing.get("id"),
-            "status": "duplicate",
-            "note": "File already exists",
-            "hash": hash,
-            "client": existing.get("client"),
-        }
-
     safe_name = filename or file.filename or "upload.bin"
     target_path = INBOX_DIR / f"{hash}_{safe_name}"
+
+    # Save file to disk
     with target_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    transcript, note, status = [], "Saved to inbox; transcription pending", "transcribing"
+    # Transcribe
+    segments, note, status = [], "Saved to inbox; transcription pending", "draft"
+    content_text = ""
     try:
-        transcript = gemini_transcribe_audio(str(target_path), model=model)
-        note = f"Transcribed with {model or os.environ.get('GEMINI_MODEL', 'gemini-3-pro-preview')}"
+        segments = gemini_transcribe_audio(str(target_path), model=model)
+        content_text = "\n".join(seg.get("text", "") for seg in segments)
+        # note variable removed - using model_used directly
         status = "ready"
     except Exception as exc:
         note = f"Transcription failed: {exc}"
         status = "error"
 
-    item = {
-        "id": f"rag-{uuid.uuid4().hex[:8]}",
-        "fileName": safe_name,
-        "hash": hash,
-        "status": status,
-        "client": client,
-        "domain": domain,
-        "date": date,
-        "note": note,
-        "size": int(size) if size and size.isdigit() else None,
-        "createdAt": datetime.utcnow().isoformat(),
-        "transcript": transcript,
-        "modelUsed": model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
-        "filePath": str(target_path),
-    }
-    upsert_item(item)
-    return item
+    # Store in SQLite
+    result = rag_sqlite.ingest_transcript_sqlite(
+        file_hash=hash,
+        filename=safe_name,
+        file_path=str(target_path),
+        content=content_text,
+        segments=segments,
+        client=client,
+        domain=domain,
+        model_used=model or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash"),
+        status=status
+    )
+
+    # Add extra fields for compatibility
+    result["modelUsed"] = model or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    result["filePath"] = str(target_path)
+    result["transcript"] = segments
+
+    return result
 
 
 @app.post("/api/rag/transcribe_doc")
@@ -1099,84 +1278,35 @@ async def rag_transcribe_doc(
 
 @app.post("/api/rag/publish/{item_id}")
 def rag_publish(item_id: str):
-    """
-    Stub: moves file from Inbox to Library and marks status ready.
-    """
-    ensure_dirs()
-    item = find_item(item_id)
-    if not item:
+    """Publish a transcript to library (SQLite)."""
+    result = rag_sqlite.publish_transcript_sqlite(
+        item_id,
+        meilisearch_index_func=rag_sqlite.index_transcript_in_meilisearch
+    )
+    if not result:
         raise HTTPException(status_code=404, detail="Not found")
-    hash_prefix = item.get("hash")
-    # locate file in inbox
-    file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
-    dest_dir = LIBRARY_DIR / (item.get("domain") or "UNKNOWN") / (item.get("client") or "Unassigned")
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{item.get('fileName','file')}")
-    if file_path and file_path.exists():
-        shutil.move(str(file_path), dest_path)
-    updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path), "filePath": str(dest_path)}
-    upsert_item(updated)
-    return updated
+    return result
 
 
 @app.get("/api/rag/reviewer/{item_id}")
 def rag_reviewer_get(item_id: str):
-    ensure_dirs()
-    item = find_item(item_id)
-    if not item:
+    """Get transcript for reviewer (SQLite)."""
+    payload = rag_sqlite.get_transcript_for_reviewer(item_id)
+    if not payload:
         raise HTTPException(status_code=404, detail="Not found")
-    raw_text = None
-    path = item.get("filePath")
-    if path and Path(path).exists():
-        try:
-            raw_text = Path(path).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            raw_text = None
-    # If transcript is missing/one-stub and raw_text exists, attempt a simple parse of "Speaker: text" lines
-    parsed = []
-    if raw_text and (not item.get("transcript") or len(item.get("transcript")) <= 1):
-        for line in raw_text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            speaker = "Speaker 1"
-            text = line
-            if ":" in line:
-                parts = line.split(":", 1)
-                speaker = parts[0].strip() or speaker
-                text = parts[1].strip()
-            parsed.append({"speaker": speaker, "start": "", "end": "", "text": text})
-    payload = {**item}
-    if raw_text is not None:
-        payload["rawText"] = raw_text
-    if parsed:
-        payload["parsedSegments"] = parsed
     return payload
 
 
 @app.patch("/api/rag/reviewer/{item_id}")
 def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
-    ensure_dirs()
-    item = find_item(item_id)
-    if not item:
+    """Update transcript via reviewer (SQLite)."""
+    updated = rag_sqlite.update_transcript_sqlite(
+        item_id,
+        payload,
+        meilisearch_index_func=rag_sqlite.index_transcript_in_meilisearch
+    )
+    if not updated:
         raise HTTPException(status_code=404, detail="Not found")
-    updated = {**item}
-    if "transcript" in payload:
-        updated["transcript"] = payload["transcript"]
-    for key in ["client", "domain", "date", "tags", "note", "status"]:
-        if key in payload:
-            updated[key] = payload[key]
-    if updated.get("status") == "ready":
-        hash_prefix = updated.get("hash")
-        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
-        dest_dir = LIBRARY_DIR / (updated.get("domain") or "UNKNOWN") / (updated.get("client") or "Unassigned")
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{updated.get('fileName','file')}")
-        if file_path and file_path.exists():
-            shutil.move(str(file_path), dest_path)
-        updated["libraryPath"] = str(dest_path)
-        updated["filePath"] = str(dest_path)
-    upsert_item(updated)
     return updated
 
 
@@ -1207,152 +1337,118 @@ def rag_models():
 
 @app.patch("/api/rag/file/{item_id}")
 def rag_update(item_id: str, payload: dict = Body(...)):
-    """
-    Update metadata/status for an inbox item. If status is set to 'ready', we attempt to move to Library.
-    """
-    ensure_dirs()
-    item = find_item(item_id)
-    if not item:
+    """Update transcript metadata (SQLite)."""
+    updated = rag_sqlite.update_transcript_sqlite(
+        item_id,
+        payload,
+        meilisearch_index_func=rag_sqlite.index_transcript_in_meilisearch
+    )
+    if not updated:
         raise HTTPException(status_code=404, detail="Not found")
-    updated = {**item}
-    for key in ["client", "domain", "date", "status", "note", "tags"]:
-        if key in payload:
-            updated[key] = payload[key]
-
-    # if moving to ready and file still in inbox, move to library folder
-    if updated.get("status") == "ready":
-        hash_prefix = updated.get("hash")
-        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
-        dest_dir = LIBRARY_DIR / (updated.get("domain") or "UNKNOWN") / (updated.get("client") or "Unassigned")
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{updated.get('fileName','file')}")
-        if file_path and file_path.exists():
-            shutil.move(str(file_path), dest_path)
-        updated["libraryPath"] = str(dest_path)
-        updated["filePath"] = str(dest_path)
-
-    upsert_item(updated)
     return updated
 
 
 @app.delete("/api/rag/file/{item_id}")
 def rag_delete(item_id: str):
-    """
-    Stub hard delete: removes index entry and associated files (Inbox + Library).
-    """
-    ensure_dirs()
-    item = find_item(item_id)
-    if not item:
+    """Delete transcript (SQLite soft delete)."""
+    deleted = rag_sqlite.delete_transcript_sqlite(
+        item_id,
+        meilisearch_delete_func=rag_sqlite.remove_from_meilisearch
+    )
+    if not deleted:
         raise HTTPException(status_code=404, detail="Not found")
-    hash_prefix = item.get("hash")
-    for p in INBOX_DIR.glob(f"{hash_prefix}_*"):
-        p.unlink(missing_ok=True)
-    for p in LIBRARY_DIR.glob(f"**/{hash_prefix}_*"):
-        p.unlink(missing_ok=True)
-    removed = remove_item(item_id)
-    return {"deleted": removed, "id": item_id}
+    return {"deleted": True, "id": item_id}
 
 
 @app.get("/api/rag/audio/{item_id}")
 def rag_audio(item_id: str):
-    """
-    Stream the audio file for a given item (Inbox or Library).
-    """
+    """Stream the audio file for a transcript (SQLite lookup)."""
     ensure_dirs()
-    item = find_item(item_id)
+    item = rag_sqlite.find_transcript_by_id(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    path = item.get("filePath")
+
+    path = item.get("filePath") or item.get("file_path")
     if not path or not Path(path).exists():
-        # try to resolve by hash
-        hash_prefix = item.get("hash")
-        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None) or next(
-            LIBRARY_DIR.glob(f"**/{hash_prefix}_*"), None
-        )
-        if not file_path:
-            raise HTTPException(status_code=404, detail="File not found")
-        path = file_path
+        # Try to find by recording's azure_blob info
+        if item.get("recording_id"):
+            db = rag_sqlite.get_sqlite_db()
+            rec = db.execute_one("SELECT azure_blob FROM recordings WHERE id = ?", (item["recording_id"],))
+            if rec and rec.get("azure_blob"):
+                # File might be in INBOX_DIR with hash prefix
+                hash_prefix = (item.get("hash") or item.get("id", ""))[:8]
+                file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None) or next(
+                    LIBRARY_DIR.glob(f"**/{hash_prefix}_*"), None
+                )
+                if file_path:
+                    path = file_path
+
+    if not path or not Path(path).exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
     return FileResponse(path, filename=Path(path).name)
 
 
 @app.post("/api/rag/assistant")
 def rag_assistant(payload: dict = Body(default=None)):
-    """
-    Lightweight assistant stub: searches local manifest and stitches snippets.
-    Replace with real RAG+LLM when ready.
-    """
-    ensure_dirs()
+    """Chat with AI using RAG sources (Meilisearch + LLM)."""
     if payload is None:
         payload = {}
     q = (payload.get("question") or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="question is required")
-    client = (payload.get("client") or "").strip() or None
-    domain = (payload.get("domain") or "").strip() or None
-    include_personal = bool(payload.get("include_personal"))
-    include_drafts = bool(payload.get("include_drafts"))
 
-    items = load_index()
-    results = []
-    for it in items:
-        if client and (it.get("client") or "").lower() != client.lower():
-            continue
-        if domain and domain.lower() != "all" and (it.get("domain") or "").lower() != domain.lower():
-            continue
-        if not include_personal and (it.get("domain") or "").lower() == "personal":
-            continue
-        if not include_drafts and (it.get("status") or "") != "ready":
-            continue
-        txt = ""
-        transcript = it.get("transcript") or []
-        if transcript and isinstance(transcript, list):
-            txt = " ".join(seg.get("text") or "" for seg in transcript)
-        snippet = txt[:400] + ("…" if len(txt) > 400 else "")
-        if q.lower() in txt.lower() or not txt:
-            results.append({**it, "snippet": snippet})
+    # Get context from Meilisearch (or SQLite fallback)
+    context, sources = rag_sqlite.get_rag_context_for_assistant(q, limit=5)
 
-    snippets = [r.get("snippet") or "" for r in results if r.get("snippet")]
-    answer = "\n\n".join(snippets[:3]) if snippets else "לא נמצאו מקורות רלוונטיים. נסה ניסוח אחר או הרחב את החיפוש."
-    sources = [
-        {
-          "id": r.get("id"),
-          "file": r.get("fileName") or r.get("file"),
-          "client": r.get("client"),
-          "domain": r.get("domain"),
-          "path": r.get("libraryPath") or r.get("filePath"),
-          "hash": r.get("hash"),
+    # If no sources found, return a message
+    if not sources:
+        return {
+            "answer": "No relevant documents found in the knowledge base.",
+            "sources": [],
+            "model": "none"
         }
-        for r in results[:5]
-    ]
-    return {"answer": answer, "sources": sources}
+
+    # Build prompt with context
+    system_prompt = """You are a helpful legal assistant for EISLAW. Answer questions based on the provided document context.
+    If the context doesn't contain relevant information, say so clearly.
+    Always cite your sources when possible."""
+
+    user_prompt = f"""Based on the following documents:
+{context}
+
+Question: {q}
+
+Please provide a helpful answer based on the document context above."""
+
+    # Try to get LLM response (Gemini, OpenAI, or Claude)
+    try:
+        import google.generativeai as genai
+        secrets = load_secrets()
+        api_key = secrets.get("gemini", {}).get("api_key") or os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(user_prompt)
+            return {
+                "answer": response.text,
+                "sources": sources,
+                "model": "gemini-1.5-flash"
+            }
+    except Exception as e:
+        print(f"Gemini error: {e}")
+
+    # Fallback: return context without LLM processing
+    return {
+        "answer": f"Found {len(sources)} relevant documents. LLM processing unavailable.",
+        "sources": sources,
+        "context_preview": context[:500] + "..." if len(context) > 500 else context,
+        "model": "fallback"
+    }
 
 
-# ─────────────────────────────────────────────────────────────
-# Microsoft Graph Email Sync
-# ─────────────────────────────────────────────────────────────
 
-def get_graph_access_token():
-    """Get an access token for Microsoft Graph API using MSAL."""
-    creds = get_graph_credentials()
-    if not all([creds.get("client_id"), creds.get("client_secret"), creds.get("tenant_id")]):
-        raise HTTPException(status_code=500, detail="Microsoft Graph credentials not configured")
-
-    authority = f"https://login.microsoftonline.com/{creds['tenant_id']}"
-    app = msal.ConfidentialClientApplication(
-        creds["client_id"],
-        authority=authority,
-        client_credential=creds["client_secret"],
-    )
-
-    # Request token for Microsoft Graph
-    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
-
-    if "access_token" not in result:
-        error = result.get("error_description", result.get("error", "Unknown error"))
-        raise HTTPException(status_code=500, detail=f"Failed to get Graph token: {error}")
-
-    return result["access_token"]
-
+# ========== EMAIL HELPER FUNCTIONS (restored 2025-12-07) ==========
 
 def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 50):
     """
@@ -1396,21 +1492,16 @@ def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 5
     if not client_emails:
         search_queries = [client_name.replace('"', '\\"')]
     else:
-        # Build search queries for each email address
         search_queries = [email.replace('"', '\\"') for email in client_emails]
 
     emails_found = []
 
     with httpx.Client(timeout=60.0) as http_client:
-        # Get primary user's mailbox
         users_url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName&$top=10"
         users_resp = http_client.get(users_url, headers=headers)
 
         if users_resp.status_code != 200:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Cannot access mailboxes: {users_resp.text}"
-            )
+            raise HTTPException(status_code=502, detail=f"Cannot access mailboxes: {users_resp.text}")
 
         users_data = users_resp.json()
         users = users_data.get("value", [])
@@ -1421,21 +1512,11 @@ def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 5
             if not user_id:
                 continue
 
-            # Search for each client email address
             for search_query in search_queries:
-                # Use from: or to: syntax for email address searches
-                if "@" in search_query:
-                    # Search for emails from or to this address
-                    search_term = f"from:{search_query} OR to:{search_query}"
-                else:
-                    search_term = search_query
-
-                # Note: Graph API doesn't support $filter with $search, so we filter by date in the search term
-                # Use received: for date filtering within search
                 if "@" in search_query:
                     search_term_with_date = f"(from:{search_query} OR to:{search_query}) AND received>={from_date[:10]}"
                 else:
-                    search_term_with_date = f"{search_term} AND received>={from_date[:10]}"
+                    search_term_with_date = f"{search_query} AND received>={from_date[:10]}"
 
                 messages_url = (
                     f"https://graph.microsoft.com/v1.0/users/{user_id}/messages"
@@ -1461,15 +1542,14 @@ def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 5
                                 "date": msg.get("receivedDateTime"),
                                 "preview": msg.get("bodyPreview", "")[:200],
                                 "has_attachments": msg.get("hasAttachments", False),
+                                "attachments_count": len(msg.get("attachments", [])) if msg.get("hasAttachments") else 0,
                                 "is_read": msg.get("isRead", True),
                                 "webLink": msg.get("webLink"),
                                 "mailbox": user_email,
                             })
                 except Exception:
-                    # Skip mailboxes that aren't accessible
                     continue
 
-    # Sort by date (newest first) and deduplicate by id
     seen_ids = set()
     unique_emails = []
     for email in sorted(emails_found, key=lambda x: x.get("date", ""), reverse=True):
@@ -1478,6 +1558,173 @@ def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 5
             unique_emails.append(email)
 
     return unique_emails[:top]
+
+
+# ========== ADDITIONAL EMAIL ENDPOINTS (added 2025-12-07) ==========
+
+@app.get("/email/search")
+def email_search(q: str, limit: int = 25):
+    """
+    Search all mailboxes for emails matching a query.
+    Used by TaskFiles attach email modal search box.
+    """
+    if not q or len(q.strip()) < 2:
+        return {"items": [], "total": 0}
+
+    token = get_graph_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    emails_found = []
+    search_term = q.strip().replace('"', '\\"')
+
+    with httpx.Client(timeout=60.0) as http_client:
+        # Get users
+        users_url = "https://graph.microsoft.com/v1.0/users?$select=id,mail&$top=5"
+        users_resp = http_client.get(users_url, headers=headers)
+
+        if users_resp.status_code != 200:
+            return {"items": [], "total": 0, "error": "Cannot access mailboxes"}
+
+        users = users_resp.json().get("value", [])
+
+        for user in users:
+            user_id = user.get("id")
+            if not user_id:
+                continue
+
+            messages_url = (
+                f"https://graph.microsoft.com/v1.0/users/{user_id}/messages"
+                f"?$search=\"{search_term}\""
+                f"&$select=id,subject,from,receivedDateTime,bodyPreview,hasAttachments"
+                f"&$top={limit}"
+            )
+
+            try:
+                msg_resp = http_client.get(messages_url, headers=headers)
+                if msg_resp.status_code == 200:
+                    for msg in msg_resp.json().get("value", []):
+                        from_addr = msg.get("from", {}).get("emailAddress", {})
+                        emails_found.append({
+                            "id": msg.get("id"),
+                            "subject": msg.get("subject", "(ללא נושא)"),
+                            "from": from_addr.get("address", ""),
+                            "received": msg.get("receivedDateTime"),
+                            "preview": msg.get("bodyPreview", "")[:200],
+                            "has_attachments": msg.get("hasAttachments", False),
+                        })
+            except Exception:
+                continue
+
+    # Dedupe and limit
+    seen = set()
+    items = []
+    for e in emails_found:
+        if e["id"] not in seen:
+            seen.add(e["id"])
+            items.append(e)
+            if len(items) >= limit:
+                break
+
+    return {"items": items, "total": len(items)}
+
+
+@app.get("/email/content")
+def email_content(id: str, client: str = ""):
+    """
+    Get full email content (HTML body) for viewing in modal.
+    """
+    if not id:
+        raise HTTPException(status_code=400, detail="Email ID required")
+
+    token = get_graph_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    with httpx.Client(timeout=30.0) as http_client:
+        # Get users to search through
+        users_url = "https://graph.microsoft.com/v1.0/users?$select=id,mail&$top=5"
+        users_resp = http_client.get(users_url, headers=headers)
+
+        if users_resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Cannot access mailboxes")
+
+        users = users_resp.json().get("value", [])
+
+        for user in users:
+            user_id = user.get("id")
+            if not user_id:
+                continue
+
+            msg_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/messages/{id}?$select=id,subject,from,toRecipients,receivedDateTime,body"
+
+            try:
+                msg_resp = http_client.get(msg_url, headers=headers)
+                if msg_resp.status_code == 200:
+                    msg = msg_resp.json()
+                    from_addr = msg.get("from", {}).get("emailAddress", {})
+                    return {
+                        "id": msg.get("id"),
+                        "subject": msg.get("subject", ""),
+                        "from": from_addr.get("address", ""),
+                        "received": msg.get("receivedDateTime"),
+                        "html": msg.get("body", {}).get("content", ""),
+                    }
+            except Exception:
+                continue
+
+    raise HTTPException(status_code=404, detail="Email not found")
+
+
+@app.post("/email/open")
+def email_open(payload: dict = Body(...)):
+    """
+    Get Outlook Web App link for an email.
+    Returns the OWA deeplink URL.
+    """
+    email_id = payload.get("id", "")
+    if not email_id:
+        raise HTTPException(status_code=400, detail="Email ID required")
+
+    token = get_graph_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    with httpx.Client(timeout=30.0) as http_client:
+        users_url = "https://graph.microsoft.com/v1.0/users?$select=id,mail&$top=5"
+        users_resp = http_client.get(users_url, headers=headers)
+
+        if users_resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Cannot access mailboxes")
+
+        users = users_resp.json().get("value", [])
+
+        for user in users:
+            user_id = user.get("id")
+            user_mail = user.get("mail", "")
+            if not user_id:
+                continue
+
+            msg_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/messages/{email_id}?$select=id,webLink"
+
+            try:
+                msg_resp = http_client.get(msg_url, headers=headers)
+                if msg_resp.status_code == 200:
+                    msg = msg_resp.json()
+                    web_link = msg.get("webLink", "")
+                    if web_link:
+                        return {"link": web_link, "desktop_launched": False}
+            except Exception:
+                continue
+
+    raise HTTPException(status_code=404, detail="Email not found")
+
 
 
 @app.post("/email/sync_client")
@@ -2266,6 +2513,10 @@ def _update_zoom_manifest(updater_func):
 
 @app.get("/api/zoom/recordings")
 def list_zoom_recordings(status: str = None, participant: str = None):
+    """List all recordings from SQLite database with optional filters."""
+    return rag_sqlite.zoom_recordings_sqlite(status, participant)
+
+def list_zoom_recordings(status: str = None, participant: str = None):
     """
     List all recordings from manifest with optional filters.
 
@@ -2596,6 +2847,24 @@ def _create_zoom_notification(zoom_id: str, topic: str):
 
 
 @app.post("/api/zoom/skip/{zoom_id}")
+
+
+@app.post("/api/zoom/transcribe/{zoom_id}")
+async def zoom_transcribe(zoom_id: str, background_tasks: BackgroundTasks):
+    """Transcribe a downloaded Zoom recording using Gemini."""
+    result = rag_sqlite.zoom_transcribe_start(zoom_id, load_secrets, HTTPException)
+    if result.get("recording"):
+        # Start background transcription
+        recording = result.pop("recording")
+        background_tasks.add_task(
+            rag_sqlite.run_transcription_task,
+            zoom_id,
+            recording,
+            load_secrets,
+            gemini_transcribe_audio
+        )
+    return result
+
 def skip_zoom_recording(zoom_id: str, reason: str = None):
     """Mark a recording as skipped."""
     manifest = _load_zoom_manifest()
@@ -2814,3 +3083,553 @@ def gemini_transcribe_with_speaker_id(file_path: str, topic: str = "", model: Op
     
     # Fallback: return as single segment
     return [{"speaker": "דובר", "text": text.strip()}]
+
+
+# ═════════════════════════════════════════════════════════════
+# CLIENT MANAGEMENT ENDPOINTS (Phase 4I - 2025-12-06)
+# ═════════════════════════════════════════════════════════════
+
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
+
+class ClientCreate(BaseModel):
+    display_name: str
+    email: Optional[List[str]] = []
+    phone: Optional[str] = None
+    client_type: Optional[List[str]] = []
+    stage: Optional[str] = "new"
+    notes: Optional[str] = None
+    folder: Optional[str] = None
+    airtable_id: Optional[str] = None
+    airtable_url: Optional[str] = None
+    sharepoint_url: Optional[str] = None
+
+class ClientUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[List[str]] = None
+    phone: Optional[str] = None
+    client_type: Optional[List[str]] = None
+    stage: Optional[str] = None
+    notes: Optional[str] = None
+
+class ContactCreate(BaseModel):
+    client_id: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    is_primary: Optional[bool] = False
+
+class ContactUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    is_primary: Optional[bool] = None
+
+# Task Attachments Models (Phase 4H)
+class EmailAttachment(BaseModel):
+    id: str
+    subject: str = ""
+    from_addr: str = Field("", alias="from")
+    received: str = ""
+    has_attachments: bool = False
+    attachments_count: int = 0
+    client_name: str = ""
+    task_title: str = ""
+
+class LinkAdd(BaseModel):
+    url: str
+    user_title: str = ""
+
+class LinkUpdate(BaseModel):
+    url: str = None
+    user_title: str = None
+
+class FolderLinkAdd(BaseModel):
+    local_path: str
+
+class AssetRemove(BaseModel):
+    index: int
+
+class FileRename(BaseModel):
+    new_title: str
+
+
+@app.post("/registry/clients")
+def create_client(client: ClientCreate):
+    """Create or update a client in local SQLite registry."""
+    try:
+        from backend.db import clients as clients_db
+
+        client_data = {
+            "name": client.display_name,
+            "email": json.dumps(client.email) if client.email else None,
+            "phone": client.phone,
+            "stage": client.stage or "new",
+            "types": json.dumps(client.client_type) if client.client_type else "[]",
+            "notes": client.notes,
+            "local_folder": client.folder,
+            "airtable_id": client.airtable_id,
+            "airtable_url": client.airtable_url,
+            "sharepoint_url": client.sharepoint_url,
+            "active": 1,
+        }
+
+        client_id = clients_db.save(client_data)
+        saved = clients_db.get(client_id)
+
+        return {"success": True, "client_id": client_id, "client": saved}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create client: {str(e)}")
+
+@app.patch("/registry/clients/{client_id}")
+def update_client(client_id: str, update: ClientUpdate):
+    """Update an existing client."""
+    try:
+        from backend.db import clients as clients_db
+
+        existing = clients_db.get(client_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        update_data = {"id": client_id}
+        if update.name is not None:
+            update_data["name"] = update.name
+        if update.email is not None:
+            update_data["email"] = json.dumps(update.email)
+        if update.phone is not None:
+            update_data["phone"] = update.phone
+        if update.client_type is not None:
+            update_data["types"] = json.dumps(update.client_type)
+        if update.stage is not None:
+            update_data["stage"] = update.stage
+        if update.notes is not None:
+            update_data["notes"] = update.notes
+
+        clients_db.save(update_data)
+        updated = clients_db.get(client_id)
+        return {"success": True, "client": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update client: {str(e)}")
+
+@app.get("/registry/clients/{client_id}")
+def get_client_with_contacts(client_id: str):
+    """Get client by ID with all contacts."""
+    try:
+        from backend.db import clients as clients_db, contacts as contacts_db
+
+        client = clients_db.get(client_id)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        contacts_list = contacts_db.list_for_client(client_id)
+        return {"client": client, "contacts": contacts_list}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get client: {str(e)}")
+
+# ──────────────────────────────────────────────────────────────
+# CONTACTS ENDPOINTS
+# ──────────────────────────────────────────────────────────────
+
+@app.get("/contacts/{client_id}")
+def list_contacts(client_id: str):
+    """List all contacts for a client."""
+    try:
+        from backend.db import contacts as contacts_db
+        contacts_list = contacts_db.list_for_client(client_id)
+        return {"contacts": contacts_list}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list contacts: {str(e)}")
+
+@app.post("/contacts")
+def create_contact(contact: ContactCreate):
+    """Create a new contact for a client."""
+    try:
+        from backend.db import contacts as contacts_db
+
+        contact_data = {
+            "client_id": contact.client_id,
+            "name": contact.name,
+            "email": contact.email,
+            "phone": contact.phone,
+            "role": contact.role,
+            "is_primary": 1 if contact.is_primary else 0,
+        }
+
+        contact_id = contacts_db.save(contact_data)
+        saved = contacts_db.get(contact_id)
+        return {"success": True, "contact_id": contact_id, "contact": saved}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create contact: {str(e)}")
+
+@app.patch("/contacts/{contact_id}")
+def update_contact(contact_id: str, update: ContactUpdate):
+    """Update an existing contact."""
+    try:
+        from backend.db import contacts as contacts_db
+
+        existing = contacts_db.get(contact_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Contact not found")
+
+        update_data = {"id": contact_id}
+        if update.name is not None:
+            update_data["name"] = update.name
+        if update.email is not None:
+            update_data["email"] = update.email
+        if update.phone is not None:
+            update_data["phone"] = update.phone
+        if update.role is not None:
+            update_data["role"] = update.role
+        if update.is_primary is not None:
+            update_data["is_primary"] = 1 if update.is_primary else 0
+
+        contacts_db.save(update_data)
+        updated = contacts_db.get(contact_id)
+        return {"success": True, "contact": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update contact: {str(e)}")
+
+@app.delete("/contacts/{contact_id}")
+def delete_contact(contact_id: str):
+    """Delete a contact."""
+    try:
+        from backend.db import contacts as contacts_db
+
+        existing = contacts_db.get(contact_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Contact not found")
+
+        contacts_db.delete(contact_id)
+        return {"success": True, "message": "Contact deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete contact: {str(e)}")
+
+# ──────────────────────────────────────────────────────────────
+# AIRTABLE ENDPOINTS
+# ──────────────────────────────────────────────────────────────
+
+@app.get("/airtable/search")
+def search_airtable(q: str = Query(..., min_length=1)):
+    """Search Airtable clients by name, email, or phone."""
+    try:
+        config = get_airtable_config()
+        token = config["token"]
+        base_id = config["base_id"]
+        clients_table = config.get("clients_table", "לקוחות")
+        view_id = config.get("view_clients")
+
+        headers = {"Authorization": f"Bearer {token}"}
+
+        search_filter = f"OR(FIND(LOWER('{q}'), LOWER({{לקוחות}})), FIND(LOWER('{q}'), LOWER({{אימייל}})), FIND(LOWER('{q}'), LOWER({{מספר טלפון}})))"
+
+        params = {"filterByFormula": search_filter, "maxRecords": 20}
+        if view_id:
+            params["view"] = view_id
+
+        url = f"https://api.airtable.com/v0/{base_id}/{clients_table}"
+
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(url, headers=headers, params=params)
+
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail=f"Airtable API error: {resp.text}")
+
+            data = resp.json()
+            records = data.get("records", [])
+
+            results = []
+            for record in records:
+                fields = record.get("fields", {})
+                results.append({
+                    "id": record.get("id"),
+                    "display_name": fields.get("לקוחות", ""),
+                    "name": fields.get("לקוחות", ""),
+                    "emails": fields.get("אימייל", []) if isinstance(fields.get("אימייל"), list) else [fields.get("אימייל")] if fields.get("אימייל") else [],
+                    "phone": fields.get("מספר טלפון", ""),
+                    "client_type": fields.get("סוג לקוח", []),
+                    "stage": fields.get("בטיפול", ""),
+                    "notes": fields.get("הערות", ""),
+                    "airtable_id": record.get("id"),
+                    "airtable_url": f"https://airtable.com/{base_id}/{clients_table}/{record.get('id')}",
+                })
+
+            return {"items": results, "total": len(results)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Airtable search failed: {str(e)}")
+
+@app.post("/airtable/clients_upsert")
+def sync_client_to_airtable(data: Dict = Body(...)):
+    """Sync a client from SQLite to Airtable."""
+    try:
+        from backend.db import clients as clients_db
+
+        config = get_airtable_config()
+        token = config["token"]
+        base_id = config["base_id"]
+        clients_table = config.get("clients_table", "לקוחות")
+
+        client_id = data.get("client_id")
+        if not client_id:
+            name = data.get("name") or data.get("display_name")
+            email = data.get("email")
+            phone = data.get("phone")
+            airtable_id = data.get("airtable_id")
+        else:
+            client = clients_db.get(client_id)
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            name = client.get("name")
+            email_str = client.get("email", "")
+            email = json.loads(email_str) if email_str and email_str.startswith("[") else email_str
+            phone = client.get("phone")
+            airtable_id = client.get("airtable_id")
+
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+        fields = {"לקוחות": name}
+        if email:
+            # FIXED: Airtable email field expects a STRING
+            if isinstance(email, list) and email:
+                fields["אימייל"] = email[0]
+            elif isinstance(email, str):
+                if email.startswith("["):
+                    parsed = json.loads(email)
+                    fields["אימייל"] = parsed[0] if parsed else ""
+                else:
+                    fields["אימייל"] = email
+            else:
+                fields["אימייל"] = str(email)
+        if phone:
+            fields["מספר טלפון"] = phone
+
+        url = f"https://api.airtable.com/v0/{base_id}/{clients_table}"
+
+        with httpx.Client(timeout=30.0) as client:
+            if airtable_id:
+                patch_url = f"{url}/{airtable_id}"
+                payload = {"fields": fields}
+                resp = client.patch(patch_url, headers=headers, json=payload)
+            else:
+                payload = {"fields": fields}
+                resp = client.post(url, headers=headers, json=payload)
+
+            if resp.status_code not in [200, 201]:
+                raise HTTPException(status_code=resp.status_code, detail=f"Airtable API error: {resp.text}")
+
+            result = resp.json()
+            new_airtable_id = result.get("id")
+
+            if client_id and new_airtable_id and not airtable_id:
+                clients_db.save({
+                    "id": client_id,
+                    "airtable_id": new_airtable_id,
+                    "airtable_url": f"https://airtable.com/{base_id}/{clients_table}/{new_airtable_id}"
+                })
+
+            return {"success": True, "airtable_id": new_airtable_id, "record": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Airtable sync failed: {str(e)}")
+
+
+# ═════════════════════════════════════════════════════════════
+# TASK ATTACHMENTS ENDPOINTS (Phase 4H - 2025-12-07)
+# ═════════════════════════════════════════════════════════════
+
+@app.get("/tasks/{task_id}/files")
+async def get_task_files(task_id: str):
+    try:
+        # Using load_tasks() from main.py
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        files = []
+        for att in attachments:
+            file_entry = {"kind": att.get("kind", "file"), "drive_id": att.get("drive_id"), "web_url": att.get("web_url"), "local_path": att.get("local_path"), "source_name": att.get("source_name"), "user_title": att.get("user_title")}
+            if att.get("kind") == "email":
+                file_entry["email_meta"] = {"id": att.get("id"), "subject": att.get("subject"), "from": att.get("from"), "received": att.get("received"), "has_attachments": att.get("has_attachments", False), "attachments_count": att.get("attachments_count", 0)}
+            files.append(file_entry)
+        return {"files": files, "folder": {"id": None, "web_url": None}, "primary_output_drive_id": None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get task files: {str(e)}")
+
+@app.post("/tasks/{task_id}/emails/attach")
+async def attach_email_to_task(task_id: str, email: EmailAttachment):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        if "attachments" not in task or task["attachments"] is None:
+            task["attachments"] = []
+        attachments = task["attachments"]
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        for att in attachments:
+            if att.get("kind") == "email" and att.get("id") == email.id:
+                return {"status": "already_attached", "attachment_count": len(attachments)}
+        task["attachments"] = attachments
+        attachments.append({"kind": "email", "id": email.id, "subject": email.subject, "from": email.from_addr, "received": email.received, "has_attachments": email.has_attachments, "attachments_count": email.attachments_count, "client_name": email.client_name, "task_title": email.task_title, "attached_at": datetime.utcnow().isoformat() + "Z"})
+        save_task_json(task_id, task)
+        return {"status": "attached", "attachment_count": len(attachments)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to attach email: {str(e)}")
+
+@app.post("/tasks/{task_id}/links/add")
+async def add_link_to_task(task_id: str, link: LinkAdd):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        attachments.append({"kind": "link", "web_url": link.url, "user_title": link.user_title})
+        task["attachments"] = attachments
+        save_task_json(task_id, task)
+        return {"status": "added", "attachment_count": len(attachments)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to add link: {str(e)}")
+
+@app.post("/tasks/{task_id}/folder_link_add")
+async def add_folder_link_to_task(task_id: str, folder: FolderLinkAdd):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        attachments.append({"kind": "folder", "local_path": folder.local_path})
+        task["attachments"] = attachments
+        save_task_json(task_id, task)
+        return {"status": "added", "attachment_count": len(attachments)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to add folder link: {str(e)}")
+
+@app.post("/tasks/{task_id}/assets/remove")
+async def remove_asset_from_task(task_id: str, asset: AssetRemove):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        if 0 <= asset.index < len(attachments):
+            attachments.pop(asset.index)
+            save_task_json(task_id, task)
+            return {"status": "removed", "attachment_count": len(attachments)}
+        else:
+            raise HTTPException(400, "Invalid attachment index")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to remove asset: {str(e)}")
+
+@app.patch("/tasks/{task_id}/links/update")
+async def update_link_in_task(task_id: str, link_update: LinkUpdate):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        for att in attachments:
+            if att.get("kind") == "link":
+                if link_update.url:
+                    att["web_url"] = link_update.url
+                if link_update.user_title is not None:
+                    att["user_title"] = link_update.user_title
+                break
+        save_task_json(task_id, task)
+        return {"status": "updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to update link: {str(e)}")
+
+@app.patch("/tasks/{task_id}/files/{drive_id}/title")
+async def rename_file_in_task(task_id: str, drive_id: str, rename: FileRename):
+    import json
+    try:
+        # Using load_tasks() from main.py, update_task_in_sqlite
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        attachments = task.get("attachments", [])
+        if isinstance(attachments, str):
+            attachments = json.loads(attachments) if attachments else []
+        for att in attachments:
+            if att.get("kind") == "file" and att.get("drive_id") == drive_id:
+                att["user_title"] = rename.new_title
+                break
+        save_task_json(task_id, task)
+        return {"status": "renamed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to rename file: {str(e)}")
+
+@app.post("/tasks/{task_id}/files/upload")
+async def upload_file_to_task(task_id: str, file: UploadFile = File(...)):
+    try:
+        # Using load_tasks() from main.py
+        task = find_task_json(task_id)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        return {"status": "not_implemented", "message": "File upload requires SharePoint integration", "filename": file.filename}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to upload file: {str(e)}")
+
+# Helper function for task attachments (uses JSON file, not SQLite)
+def find_task_json(task_id: str):
+    tasks = load_tasks()
+    for t in tasks:
+        if t.get('id') == task_id:
+            return t
+    return None
+
+def save_task_json(task_id: str, task_data: dict):
+    tasks = load_tasks()
+    for i, t in enumerate(tasks):
+        if t.get('id') == task_id:
+            tasks[i] = task_data
+            save_tasks(tasks)
+            return True
+    return False

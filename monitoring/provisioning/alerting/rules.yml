@@ -1,0 +1,211 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: EISLAW Health Alerts
+    folder: EISLAW Alerts
+    interval: 1m
+    rules:
+      # Alert 1: System Unhealthy
+      - uid: eislaw-system-unhealthy
+        title: EISLAW System Unhealthy
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: eislaw-api
+            model:
+              type: json
+              source: url
+              url: http://api:8799/api/db/health
+              parser: backend
+              columns:
+                - selector: status
+                  text: status
+                  type: string
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: not_equals
+                    params:
+                      - healthy
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: EISLAW system health check failed
+          description: The system status is not "healthy". Check the API and database.
+        labels:
+          severity: critical
+          team: eislaw
+
+      # Alert 2: Backup Stale
+      - uid: eislaw-backup-stale
+        title: EISLAW Backup Stale
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: eislaw-api
+            model:
+              type: json
+              source: url
+              url: http://api:8799/api/db/health
+              parser: backend
+              columns:
+                - selector: backup.age_hours
+                  text: age_hours
+                  type: number
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 48
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: EISLAW backup is more than 48 hours old
+          description: Database backup is stale. Last backup was {{ $values.B }} hours ago.
+        labels:
+          severity: warning
+          team: eislaw
+
+      # Alert 3: Database Large
+      - uid: eislaw-db-large
+        title: EISLAW Database Large
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: eislaw-api
+            model:
+              type: json
+              source: url
+              url: http://api:8799/api/db/health
+              parser: backend
+              columns:
+                - selector: size_mb
+                  text: size_mb
+                  type: number
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 500
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: EISLAW database exceeds 500 MB
+          description: Database size is {{ $values.B }} MB. Consider cleanup or archival.
+        labels:
+          severity: info
+          team: eislaw
+
+      # Alert 4: Integrity Check Failed
+      - uid: eislaw-integrity-failed
+        title: EISLAW DB Integrity Failed
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: eislaw-api
+            model:
+              type: json
+              source: url
+              url: http://api:8799/api/db/health
+              parser: backend
+              columns:
+                - selector: checks.integrity
+                  text: integrity
+                  type: string
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: not_equals
+                    params:
+                      - true
+        noDataState: Alerting
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: EISLAW database integrity check failed
+          description: SQLite integrity check returned false. Database may be corrupted!
+        labels:
+          severity: critical
+          team: eislaw

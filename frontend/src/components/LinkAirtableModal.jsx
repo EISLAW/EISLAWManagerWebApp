@@ -123,21 +123,18 @@ export default function LinkAirtableModal({
         throw new Error(msg || 'Airtable upsert failed')
       }
 
-      const registryPayload = {
-        display_name: clientName,
-        email: emails,
-        phone: selected.phone || existing.phone || '',
-        client_type: existing.client_type || [],
-        stage: existing.stage || existing.status || '',
-        notes: existing.notes || '',
-        contacts: existing.contacts || [],
-        airtable_id: selected.id,
-        airtable_url: selected.airtable_url || '',
+      // Update existing client with airtable_id (PATCH, not POST)
+      const clientId = existing.id
+      if (!clientId) {
+        throw new Error('Client ID not found. Cannot link Airtable record.')
       }
-      if (existing.folder) registryPayload.folder = existing.folder
-      const regRes = await fetch(`${API}/registry/clients`, {
-        ...payloadBase,
-        body: JSON.stringify(registryPayload),
+      const regRes = await fetch(`${API}/registry/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          airtable_id: selected.id,
+          airtable_url: selected.airtable_url || '',
+        }),
       })
       if (!regRes.ok) {
         const msg = await regRes.text()

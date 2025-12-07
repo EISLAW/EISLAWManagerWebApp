@@ -1,15 +1,20 @@
 """
-Word Document Generation API - Full SharePoint Integration V2
-Fixed P0 issues:
-- MSAL token caching (don't recreate app each call)
-- Added rate limiting
-- Better error handling
+Word Document Generation API - Full SharePoint Integration V3
+Phase 4G: Document Generation Feature
+
+Fixed from V2:
+- Updated TEMPLATES_FOLDER to correct SharePoint path
+- Changed to look for .dotx files (not .docx)
+- Added GET /word/client_folder_url/{client_name} endpoint
+- Updated POST /word/generate to handle multiple templates
+- Template naming: replace "template" with client name
 """
 import os
 import re
 import io
 import json
 import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -28,9 +33,10 @@ except ImportError:
 
 router = APIRouter(prefix="/word", tags=["word"])
 
-# SharePoint configuration
+# SharePoint configuration - UPDATED for Phase 4G
 SHAREPOINT_SITE_NAME = "EISLAWTEAM"
-TEMPLATES_FOLDER = "טמפלייטים וורד שיירפוינט"
+TEMPLATES_FOLDER = "לקוחות משרד/לקוחות משרד_טמפלייטים"  # Updated path
+CLIENTS_FOLDER = "לקוחות משרד"  # Client folders root
 SHAREPOINT_BASE_URL = "https://eislaw.sharepoint.com/sites/EISLAWTEAM"
 
 # Cache for site/drive IDs and MSAL app
@@ -189,8 +195,36 @@ async def get_site_and_drive_ids() -> tuple:
         return site_id, drive_id
 
 
+def extract_display_name(filename: str) -> str:
+    """Extract display name from template filename.
+    e.g., 'template_פרטיות_הצהרה.dotx' -> 'פרטיות - הצהרה'
+    """
+    # Remove extension
+    name = filename.replace(".dotx", "").replace(".docx", "")
+    # Remove 'template_' prefix (Hebrew or English)
+    name = re.sub(r'^(template_|טמפלייט_)', '', name, flags=re.IGNORECASE)
+    # Replace underscores with spaces/dashes
+    name = name.replace("_", " - ", 1).replace("_", " ")
+    return name
+
+
+def generate_output_filename(template_name: str, client_name: str) -> str:
+    """Generate output filename by replacing 'template' with client name.
+    e.g., 'template_פרטיות_הצהרה.dotx' + 'גליל' -> 'גליל_פרטיות_הצהרה.docx'
+    """
+    # Remove .dotx extension
+    base = template_name.replace(".dotx", "")
+    # Replace template prefix with client name
+    output = re.sub(r'^(template_|טמפלייט_)', f'{client_name}_', base, flags=re.IGNORECASE)
+    # If no prefix was found, prepend client name
+    if output == base:
+        output = f"{client_name}_{base}"
+    # Add .docx extension
+    return f"{output}.docx"
+
+
 async def list_sharepoint_templates() -> List[Dict]:
-    """List templates from SharePoint Templates folder"""
+    """List .dotx templates from SharePoint Templates folder (including subfolders)"""
     token = await get_graph_token()
     if not token:
         return []
@@ -204,27 +238,28 @@ async def list_sharepoint_templates() -> List[Dict]:
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         # List items in Templates folder
-        folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{TEMPLATES_FOLDER}:/children"
+        encoded_path = urllib.parse.quote(TEMPLATES_FOLDER)
+        folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/children"
         resp = await client.get(folder_url, headers=headers)
 
         if resp.status_code != 200:
-            print(f"Failed to list templates folder: {resp.text}")
-            # Try alternative path
-            folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/Templates:/children"
-            resp = await client.get(folder_url, headers=headers)
-            if resp.status_code != 200:
-                return []
+            print(f"Failed to list templates folder: {resp.status_code} - {resp.text}")
+            return []
 
         items = resp.json().get("value", [])
 
         for item in items:
             name = item.get("name", "")
-            if name.endswith(".docx"):
+
+            # Check for .dotx files (templates)
+            if name.lower().endswith(".dotx"):
                 templates.append({
-                    "name": name.replace(".docx", ""),
-                    "path": item.get("id"),  # Use item ID as path
+                    "name": name,
+                    "display_name": extract_display_name(name),
+                    "path": f"{TEMPLATES_FOLDER}/{name}",
+                    "item_id": item.get("id"),
+                    "folder": "",  # Root templates folder
                     "webUrl": item.get("webUrl", ""),
-                    "category": "SharePoint",
                     "size": item.get("size", 0),
                     "modified": item.get("lastModifiedDateTime", "")
                 })
@@ -233,16 +268,19 @@ async def list_sharepoint_templates() -> List[Dict]:
                 subfolder_name = name
                 subfolder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item['id']}/children"
                 sub_resp = await client.get(subfolder_url, headers=headers)
+
                 if sub_resp.status_code == 200:
                     sub_items = sub_resp.json().get("value", [])
                     for sub_item in sub_items:
                         sub_name = sub_item.get("name", "")
-                        if sub_name.endswith(".docx"):
+                        if sub_name.lower().endswith(".dotx"):
                             templates.append({
-                                "name": sub_name.replace(".docx", ""),
-                                "path": sub_item.get("id"),
+                                "name": sub_name,
+                                "display_name": extract_display_name(sub_name),
+                                "path": f"{TEMPLATES_FOLDER}/{subfolder_name}/{sub_name}",
+                                "item_id": sub_item.get("id"),
+                                "folder": subfolder_name,
                                 "webUrl": sub_item.get("webUrl", ""),
-                                "category": subfolder_name,
                                 "size": sub_item.get("size", 0),
                                 "modified": sub_item.get("lastModifiedDateTime", "")
                             })
@@ -250,8 +288,8 @@ async def list_sharepoint_templates() -> List[Dict]:
     return templates
 
 
-async def download_template(item_id: str) -> Optional[bytes]:
-    """Download a template file from SharePoint by item ID"""
+async def download_template_by_path(path: str) -> Optional[bytes]:
+    """Download a template file from SharePoint by path"""
     token = await get_graph_token()
     if not token:
         return None
@@ -263,14 +301,15 @@ async def download_template(item_id: str) -> Optional[bytes]:
     headers = {"Authorization": f"Bearer {token}"}
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # Get download URL
-        download_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/content"
+        # URL-encode the path
+        encoded_path = urllib.parse.quote(path)
+        download_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/content"
         resp = await client.get(download_url, headers=headers, follow_redirects=True)
 
         if resp.status_code == 200:
             return resp.content
         else:
-            print(f"Failed to download template: {resp.status_code}")
+            print(f"Failed to download template: {resp.status_code} - {path}")
             return None
 
 
@@ -345,16 +384,14 @@ async def upload_to_client_folder(client_name: str, filename: str, content: byte
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     }
 
-    # Sanitize client name for folder path
+    # Sanitize client name for folder path (keep Hebrew characters)
     safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
-    # Limit length
-    if len(safe_client) > 100:
-        safe_client = safe_client[:100]
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # Try to upload to client folder (create folder if needed)
-        upload_path = f"לקוחות משרד/{safe_client}/{filename}"
-        upload_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{upload_path}:/content"
+        # Upload to client folder under לקוחות משרד
+        upload_path = f"{CLIENTS_FOLDER}/{safe_client}/{filename}"
+        encoded_path = urllib.parse.quote(upload_path)
+        upload_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/content"
 
         resp = await client.put(upload_url, headers=headers, content=content)
 
@@ -369,51 +406,82 @@ async def upload_to_client_folder(client_name: str, filename: str, content: byte
             }
         else:
             print(f"Failed to upload: {resp.status_code} - {resp.text}")
+            return None
 
-            # Fallback: upload to root/Generated folder
-            fallback_path = f"מסמכים מיוצרים/{safe_client}_{filename}"
-            fallback_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{fallback_path}:/content"
-            resp = await client.put(fallback_url, headers=headers, content=content)
 
-            if resp.status_code in [200, 201]:
-                result = resp.json()
-                return {
-                    "id": result.get("id"),
-                    "name": result.get("name"),
-                    "webUrl": result.get("webUrl"),
-                    "path": fallback_path,
-                    "size": result.get("size")
-                }
+async def get_client_folder_url(client_name: str) -> Optional[str]:
+    """Get the SharePoint URL for a client's folder"""
+    token = await get_graph_token()
+    if not token:
+        return None
 
-    return None
+    site_id, drive_id = await get_site_and_drive_ids()
+    if not drive_id:
+        return None
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Sanitize client name
+    safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
+    folder_path = f"{CLIENTS_FOLDER}/{safe_client}"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Check if folder exists
+        encoded_path = urllib.parse.quote(folder_path)
+        folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}"
+        resp = await client.get(folder_url, headers=headers)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("webUrl")
+        elif resp.status_code == 404:
+            # Folder doesn't exist - return the expected URL anyway
+            # (frontend can create it or show message)
+            return f"{SHAREPOINT_BASE_URL}/{urllib.parse.quote(folder_path)}"
+        else:
+            print(f"Error getting client folder: {resp.status_code}")
+            return None
 
 
 # Fallback templates if SharePoint not available
 FALLBACK_TEMPLATES = [
-    {"name": "הסכם שירות - בסיסי", "path": "local/service_basic", "category": "הסכמים"},
-    {"name": "הסכם שירות - מורחב", "path": "local/service_extended", "category": "הסכמים"},
-    {"name": "הסכם סודיות (NDA)", "path": "local/nda", "category": "הסכמים"},
-    {"name": "הסכם עבודה", "path": "local/employment", "category": "הסכמים"},
-    {"name": "מדיניות פרטיות", "path": "local/privacy_policy", "category": "פרטיות"},
-    {"name": "תנאי שימוש", "path": "local/terms_of_use", "category": "פרטיות"},
-    {"name": "הודעה על איסוף מידע", "path": "local/collection_notice", "category": "פרטיות"},
-    {"name": "הסכם עיבוד מידע (DPA)", "path": "local/dpa", "category": "פרטיות"},
-    {"name": "מכתב התראה", "path": "local/warning_letter", "category": "מכתבים"},
-    {"name": "מכתב סיום התקשרות", "path": "local/termination", "category": "מכתבים"},
+    {"name": "template_הסכם_שירות_בסיסי.dotx", "display_name": "הסכם - שירות בסיסי", "path": "local/service_basic", "folder": "הסכמים"},
+    {"name": "template_הסכם_שירות_מורחב.dotx", "display_name": "הסכם - שירות מורחב", "path": "local/service_extended", "folder": "הסכמים"},
+    {"name": "template_הסכם_סודיות.dotx", "display_name": "הסכם - סודיות (NDA)", "path": "local/nda", "folder": "הסכמים"},
+    {"name": "template_הסכם_עבודה.dotx", "display_name": "הסכם - עבודה", "path": "local/employment", "folder": "הסכמים"},
+    {"name": "template_מדיניות_פרטיות.dotx", "display_name": "מדיניות - פרטיות", "path": "local/privacy_policy", "folder": "פרטיות"},
+    {"name": "template_תנאי_שימוש.dotx", "display_name": "תנאי - שימוש", "path": "local/terms_of_use", "folder": "פרטיות"},
+    {"name": "template_הודעה_איסוף_מידע.dotx", "display_name": "הודעה - איסוף מידע", "path": "local/collection_notice", "folder": "פרטיות"},
+    {"name": "template_הסכם_עיבוד_מידע.dotx", "display_name": "הסכם - עיבוד מידע (DPA)", "path": "local/dpa", "folder": "פרטיות"},
+    {"name": "template_מכתב_התראה.dotx", "display_name": "מכתב - התראה", "path": "local/warning_letter", "folder": "מכתבים"},
+    {"name": "template_מכתב_סיום.dotx", "display_name": "מכתב - סיום התקשרות", "path": "local/termination", "folder": "מכתבים"},
 ]
 
 
 class GenerateRequest(BaseModel):
+    """Request model for single template generation (legacy)"""
     client_name: str
     template_path: str
+    extra_data: Optional[Dict] = None
+
+
+class GenerateMultipleRequest(BaseModel):
+    """Request model for multiple template generation (Phase 4G)"""
+    client_name: str
+    template_paths: List[str]
     extra_data: Optional[Dict] = None
 
 
 @router.get("/templates")
 async def list_templates():
     """
-    List available Word document templates.
+    List available Word document templates (.dotx files).
     First tries SharePoint, falls back to local templates.
+
+    Returns:
+        templates: List of template objects with name, display_name, path, folder
+        total: Total count of templates
+        source: 'sharepoint' or 'local'
     """
     # Try SharePoint first
     sp_templates = await list_sharepoint_templates()
@@ -421,36 +489,65 @@ async def list_templates():
     if sp_templates:
         return {
             "templates": sp_templates,
-            "source": "sharepoint",
-            "count": len(sp_templates)
+            "total": len(sp_templates),
+            "source": "sharepoint"
         }
 
     # Fallback to local templates
     return {
         "templates": FALLBACK_TEMPLATES,
-        "source": "local",
-        "count": len(FALLBACK_TEMPLATES)
+        "total": len(FALLBACK_TEMPLATES),
+        "source": "local"
     }
 
 
 @router.get("/templates_root")
 async def get_templates_root():
     """Get the templates folder path/URL for the 'Open Folder' button"""
+    encoded_path = urllib.parse.quote(TEMPLATES_FOLDER)
     return {
         "path": TEMPLATES_FOLDER,
-        "url": f"{SHAREPOINT_BASE_URL}/{TEMPLATES_FOLDER.replace(' ', '%20')}"
+        "url": f"{SHAREPOINT_BASE_URL}/{encoded_path}"
     }
+
+
+@router.get("/client_folder_url/{client_name}")
+async def get_client_folder_url_endpoint(client_name: str):
+    """
+    Get SharePoint folder URL for a client.
+    Used by 'תיקיית לקוח בשרפוינט' button.
+
+    Args:
+        client_name: Client display name
+
+    Returns:
+        url: SharePoint folder URL
+        exists: Whether the folder exists
+    """
+    url = await get_client_folder_url(client_name)
+
+    if url:
+        return {
+            "url": url,
+            "client_name": client_name,
+            "exists": True
+        }
+    else:
+        # Return constructed URL even if we couldn't verify
+        safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
+        folder_path = f"{CLIENTS_FOLDER}/{safe_client}"
+        return {
+            "url": f"{SHAREPOINT_BASE_URL}/{urllib.parse.quote(folder_path)}",
+            "client_name": client_name,
+            "exists": False
+        }
 
 
 @router.post("/generate")
 async def generate_document(req: GenerateRequest):
     """
-    Generate a Word document from a template.
-
-    1. Download template from SharePoint (or use local)
-    2. Fill placeholders with client data
-    3. Upload to client's SharePoint folder
-    4. Return URL to the generated document
+    Generate a single Word document from a template (legacy endpoint).
+    Use POST /word/generate_multiple for multiple templates.
     """
     # Rate limiting
     _check_rate_limit()
@@ -463,28 +560,21 @@ async def generate_document(req: GenerateRequest):
         raise HTTPException(status_code=400, detail="Client name is required")
     if len(client_name) > 200:
         raise HTTPException(status_code=400, detail="Client name too long")
-
     if not template_path:
         raise HTTPException(status_code=400, detail="Template path is required")
 
-    # Generate output filename
-    safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Check if it's a local fallback template
+    is_local = template_path.startswith("local/")
 
-    # Check if it's a SharePoint template (path is item ID) or local
-    is_sharepoint = not template_path.startswith("local/")
-
-    if is_sharepoint:
+    if not is_local:
         # Download from SharePoint
-        template_bytes = await download_template(template_path)
+        template_bytes = await download_template_by_path(template_path)
 
         if not template_bytes:
             raise HTTPException(status_code=404, detail="Template not found or could not be downloaded")
 
-        # Get template name from templates list
-        templates = await list_sharepoint_templates()
-        template_info = next((t for t in templates if t["path"] == template_path), None)
-        template_name = template_info["name"] if template_info else "document"
+        # Get template filename from path
+        template_filename = template_path.split("/")[-1]
 
         # Fill placeholders
         if DOCX_AVAILABLE:
@@ -492,50 +582,152 @@ async def generate_document(req: GenerateRequest):
         else:
             filled_bytes = template_bytes
 
-        # Generate filename
-        output_filename = f"{template_name}_{timestamp}.docx"
+        # Generate output filename
+        output_filename = generate_output_filename(template_filename, client_name)
 
         # Upload to client folder
         upload_result = await upload_to_client_folder(client_name, output_filename, filled_bytes)
 
         if upload_result:
+            # Get client folder URL for auto-open
+            folder_url = await get_client_folder_url(client_name)
+
             return {
                 "success": True,
-                "message": f"Document generated: {template_name}",
-                "path": upload_result["path"],
-                "webUrl": upload_result["webUrl"],
-                "template": template_name,
+                "files_created": [{
+                    "name": output_filename,
+                    "url": upload_result["webUrl"],
+                    "path": upload_result["path"]
+                }],
+                "folder_url": folder_url,
                 "client": client_name,
                 "source": "sharepoint"
             }
         else:
-            # SharePoint upload failed, return mock URL
-            return {
-                "success": True,
-                "message": f"Document generated: {template_name} (upload pending)",
-                "path": f"/generated/{safe_client}/{output_filename}",
-                "webUrl": f"{SHAREPOINT_BASE_URL}/Clients/{safe_client}/{output_filename}",
-                "template": template_name,
-                "client": client_name,
-                "source": "local_pending"
-            }
+            raise HTTPException(status_code=500, detail="Failed to upload generated document")
     else:
-        # Local/fallback template
-        template_basename = template_path.replace("local/", "")
+        # Local fallback - just return mock result
         template_info = next((t for t in FALLBACK_TEMPLATES if t["path"] == template_path), None)
-        template_name = template_info["name"] if template_info else template_basename
+        template_name = template_info["name"] if template_info else "document.dotx"
+        output_filename = generate_output_filename(template_name, client_name)
 
-        output_filename = f"{template_name}_{timestamp}.docx"
+        safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
+        folder_path = f"{CLIENTS_FOLDER}/{safe_client}"
 
         return {
             "success": True,
-            "message": f"Document generated: {template_name}",
-            "path": f"/generated/{safe_client}/{output_filename}",
-            "webUrl": f"{SHAREPOINT_BASE_URL}/Clients/{safe_client}/{output_filename}",
-            "template": template_name,
+            "files_created": [{
+                "name": output_filename,
+                "url": f"{SHAREPOINT_BASE_URL}/{urllib.parse.quote(folder_path)}/{urllib.parse.quote(output_filename)}",
+                "path": f"{folder_path}/{output_filename}"
+            }],
+            "folder_url": f"{SHAREPOINT_BASE_URL}/{urllib.parse.quote(folder_path)}",
             "client": client_name,
             "source": "local"
         }
+
+
+@router.post("/generate_multiple")
+async def generate_multiple_documents(req: GenerateMultipleRequest):
+    """
+    Generate multiple Word documents from templates (Phase 4G).
+
+    Args:
+        client_name: Client display name
+        template_paths: List of template paths to generate
+        extra_data: Optional placeholder data
+
+    Returns:
+        success: Boolean
+        files_created: List of created file info
+        folder_url: Client's SharePoint folder URL
+    """
+    # Rate limiting
+    _check_rate_limit()
+
+    client_name = req.client_name.strip()
+    template_paths = req.template_paths
+
+    # Input validation
+    if not client_name:
+        raise HTTPException(status_code=400, detail="Client name is required")
+    if not template_paths:
+        raise HTTPException(status_code=400, detail="At least one template path is required")
+    if len(template_paths) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 templates per request")
+
+    files_created = []
+    errors = []
+
+    for template_path in template_paths:
+        template_path = template_path.strip()
+        is_local = template_path.startswith("local/")
+
+        if not is_local:
+            try:
+                # Download from SharePoint
+                template_bytes = await download_template_by_path(template_path)
+
+                if not template_bytes:
+                    errors.append({"template": template_path, "error": "Template not found"})
+                    continue
+
+                # Get template filename from path
+                template_filename = template_path.split("/")[-1]
+
+                # Fill placeholders
+                if DOCX_AVAILABLE:
+                    filled_bytes = fill_template_placeholders(template_bytes, client_name, req.extra_data)
+                else:
+                    filled_bytes = template_bytes
+
+                # Generate output filename
+                output_filename = generate_output_filename(template_filename, client_name)
+
+                # Upload to client folder
+                upload_result = await upload_to_client_folder(client_name, output_filename, filled_bytes)
+
+                if upload_result:
+                    files_created.append({
+                        "name": output_filename,
+                        "url": upload_result["webUrl"],
+                        "path": upload_result["path"],
+                        "template": template_filename
+                    })
+                else:
+                    errors.append({"template": template_path, "error": "Upload failed"})
+
+            except Exception as e:
+                errors.append({"template": template_path, "error": str(e)})
+        else:
+            # Local fallback
+            template_info = next((t for t in FALLBACK_TEMPLATES if t["path"] == template_path), None)
+            template_name = template_info["name"] if template_info else "document.dotx"
+            output_filename = generate_output_filename(template_name, client_name)
+
+            safe_client = re.sub(r'[<>:"/\\|?*]', '', client_name).strip()
+            folder_path = f"{CLIENTS_FOLDER}/{safe_client}"
+
+            files_created.append({
+                "name": output_filename,
+                "url": f"{SHAREPOINT_BASE_URL}/{urllib.parse.quote(folder_path)}/{urllib.parse.quote(output_filename)}",
+                "path": f"{folder_path}/{output_filename}",
+                "template": template_name,
+                "source": "local"
+            })
+
+    # Get client folder URL
+    folder_url = await get_client_folder_url(client_name)
+
+    return {
+        "success": len(files_created) > 0,
+        "files_created": files_created,
+        "errors": errors if errors else None,
+        "folder_url": folder_url,
+        "client": client_name,
+        "total_created": len(files_created),
+        "total_errors": len(errors)
+    }
 
 
 @router.get("/health")
@@ -546,9 +738,12 @@ async def word_api_health():
 
     return {
         "status": "ok",
+        "version": "3.0",  # Phase 4G
         "graph_connected": token is not None,
         "sharepoint_connected": drive_id is not None,
         "docx_available": DOCX_AVAILABLE,
+        "templates_folder": TEMPLATES_FOLDER,
+        "clients_folder": CLIENTS_FOLDER,
         "site_id": site_id[:20] + "..." if site_id else None,
         "drive_id": drive_id[:20] + "..." if drive_id else None,
         "token_cached": _cache["token"] is not None,
