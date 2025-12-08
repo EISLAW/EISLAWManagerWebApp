@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Paperclip, RefreshCcw, Loader2, X, CheckSquare, ExternalLink } from 'lucide-react'
+import { ChevronRight, Paperclip, RefreshCcw, Loader2, X, Reply, ExternalLink, Download } from 'lucide-react'
 import { getStoredApiBase } from '../utils/apiBase'
-import { addClientTask, updateTaskFields } from '../features/tasksNew/TaskAdapter.js'
 
 /**
  * Format relative time in Hebrew
@@ -44,12 +43,31 @@ export default function EmailsWidget({ clientName }) {
   const [syncing, setSyncing] = useState(false)
   const [total, setTotal] = useState(0)
   const [viewer, setViewer] = useState({ open: false, loading: false, error: '', html: '', meta: {} })
+  const [savingAttachments, setSavingAttachments] = useState(false)
+  const [saveToast, setSaveToast] = useState({ show: false, message: '', tone: 'success' })
+  const toastTimer = useRef(null)
 
   const API = useMemo(() => {
     return (getStoredApiBase() || import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
   }, [])
 
   const encodedName = useMemo(() => encodeURIComponent(clientName), [clientName])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current)
+      }
+    }
+  }, [])
+
+  function showSaveToast(message, tone = 'success') {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current)
+    }
+    setSaveToast({ show: true, message, tone })
+    toastTimer.current = setTimeout(() => setSaveToast({ show: false, message: '', tone }), 4000)
+  }
 
   // Fetch all emails (up to 100)
   async function fetchEmails() {
@@ -97,6 +115,8 @@ export default function EmailsWidget({ clientName }) {
   // Show email content inline
   async function showEmailInline(item) {
     if (!item?.id) return
+    const hasAttachments = item.has_attachments || Number(item.attachments_count || 0) > 0
+    const attachmentsCount = Number(item.attachments_count || 0)
     setViewer({
       open: true,
       loading: true,
@@ -106,7 +126,9 @@ export default function EmailsWidget({ clientName }) {
         id: item.id,
         subject: item.subject || '',
         from: item.from || '',
-        received: item.received || ''
+        received: item.received || '',
+        has_attachments: hasAttachments,
+        attachments_count: attachmentsCount
       }
     })
     try {
@@ -126,7 +148,9 @@ export default function EmailsWidget({ clientName }) {
           id: item.id,
           subject: data.subject || item.subject || '',
           from: data.from || item.from || '',
-          received: data.received || item.received || ''
+          received: data.received || item.received || '',
+          has_attachments: hasAttachments,
+          attachments_count: attachmentsCount
         }
       })
     } catch (err) {
@@ -139,6 +163,10 @@ export default function EmailsWidget({ clientName }) {
   }
 
   function closeViewer() {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current)
+    }
+    setSaveToast({ show: false, message: '', tone: 'success' })
     setViewer({ open: false, loading: false, error: '', html: '', meta: {} })
   }
 
@@ -162,73 +190,61 @@ export default function EmailsWidget({ clientName }) {
     }
   }
 
-  // Create Task from Email
-  // Build task title from email subject
-  function buildTaskTitle(item) {
-    if (!item?.subject) return ''
-    // Extract text from: prefix (if present) + first ~40 chars
-    let title = item.subject.replace(/^(RE:|FW:|FWD:|תשובה:|השב:)/i, '').trim()
-    if (title.length > 40) title = title.slice(0, 40) + '...'
-    return title
-  }
-
-  async function createTaskFromEmail(item) {
+  // Reply in Outlook
+  async function replyInOutlook(item) {
     if (!item?.id) return
     try {
-      const title = buildTaskTitle(item)
-      const displayTitle = title ? `Email · ${title}` : 'Email Follow-up'
-      const task = addClientTask(clientName, displayTitle)
-      const descParts = [
-        item.from ? `From: ${item.from}` : null,
-        item.received ? `Received: ${item.received}` : null,
-        item.subject ? `Subject: ${item.subject}` : null,
-      ].filter(Boolean)
-      updateTaskFields(task.id, {
-        desc: descParts.join('\n'),
-        source: 'email',
-        emailRefs: [
-          ...(task.emailRefs || []),
-          {
-            id: item.id,
-            subject: item.subject || '',
-            from: item.from || '',
-            received: item.received || '',
-            hasAttachments: !!item.has_attachments,
-            attachmentsCount: item.attachments_count || 0,
-          },
-        ],
+      const res = await fetch(`${API}/email/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id })
       })
-      // Try to create folder and attach email (non-blocking)
-      try {
-        await fetch(`${API}/tasks/create_or_get_folder`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ client_name: clientName, task_title: displayTitle, task_id: task.id }),
-        })
-      } catch(err) {
-        console.error('tasks/create_or_get_folder', err)
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.link) {
+          window.open(data.link, '_blank')
+        }
       }
-      try {
-        await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/emails/attach`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: item.id,
-            client_name: clientName,
-            task_title: displayTitle,
-            save_pdf: false,
-            save_attachments: true
-          }),
-        })
-      } catch(err) {
-        console.error('tasks/emails/attach', err)
-      }
-      window.dispatchEvent(new CustomEvent('tasks:refresh', { detail: { client: clientName } }))
-      alert('משימה נוצרה מהאימייל. עבור לטאב המשימות כדי להמשיך לעבוד עליה.')
-      closeViewer()
     } catch (err) {
-      console.error('createTaskFromEmail', err)
-      alert('יצירת משימה מהאימייל נכשלה.')
+      console.error('replyInOutlook', err)
+    }
+  }
+
+  const viewerHasAttachments = viewer?.meta?.has_attachments || Number(viewer?.meta?.attachments_count || 0) > 0
+
+  async function saveAttachmentsToSharePoint() {
+    if (!API || !viewer?.meta?.id || savingAttachments) return
+    setSavingAttachments(true)
+    try {
+      const res = await fetch(`${API}/api/email/attachments/save-to-sharepoint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_id: viewer.meta.id, client_name: clientName })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data?.success) {
+        const count = Number(data.count || 0)
+        if (count === 0) {
+          showSaveToast(data?.message || 'לא נמצאו קבצים באימייל', 'warn')
+        } else {
+          showSaveToast(`נשמרו ${count} קבצים ל-SharePoint`, 'success')
+        }
+      } else {
+        const errorCode = data?.error
+        if (errorCode === 'no_sharepoint_folder') {
+          showSaveToast('לא הוגדרה תיקיית SharePoint ללקוח', 'error')
+        } else if (errorCode === 'invalid_sharepoint_folder') {
+          showSaveToast('לא נמצאה תיקיית היעד ב-SharePoint', 'error')
+        } else if (data?.message === 'Email has no attachments') {
+          showSaveToast('לאימייל זה אין קבצים מצורפים', 'warn')
+        } else {
+          showSaveToast(data?.message || 'שמירת הקבצים נכשלה', 'error')
+        }
+      }
+    } catch (err) {
+      showSaveToast('שמירת הקבצים נכשלה', 'error')
+    } finally {
+      setSavingAttachments(false)
     }
   }
 
@@ -337,7 +353,20 @@ export default function EmailsWidget({ clientName }) {
       {/* Email Viewer Modal */}
       {viewer.open && (
         <div className="fixed inset-0 z-50 bg-black/40 px-4 py-6 flex items-start justify-center overflow-auto">
-          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200">
+          <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200">
+            {saveToast.show && (
+              <div
+                className={`absolute top-3 right-4 px-3 py-2 rounded-lg border text-sm shadow-sm ${
+                  saveToast.tone === 'error'
+                    ? 'bg-rose-50 border-rose-100 text-rose-700'
+                    : saveToast.tone === 'warn'
+                      ? 'bg-amber-50 border-amber-100 text-amber-800'
+                      : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                }`}
+              >
+                {saveToast.message}
+              </div>
+            )}
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div>
                 <div className="text-base font-semibold text-petrol">{viewer.meta.subject || 'אימייל'}</div>
@@ -347,6 +376,19 @@ export default function EmailsWidget({ clientName }) {
                 </div>
               </div>
               <div className="flex gap-2">
+                <button
+                  className="flex items-center gap-1 text-sm text-petrol hover:underline min-h-[44px] px-2 disabled:opacity-50"
+                  onClick={saveAttachmentsToSharePoint}
+                  disabled={!viewerHasAttachments || savingAttachments}
+                  data-testid="email.saveToSharePoint"
+                >
+                  {savingAttachments ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {savingAttachments ? 'שומר...' : 'שמור קבצים ל-SharePoint'}
+                </button>
                 <button
                   className="flex items-center gap-1 text-sm text-petrol hover:underline min-h-[44px] px-2"
                   onClick={() => {
@@ -362,12 +404,12 @@ export default function EmailsWidget({ clientName }) {
                   className="flex items-center gap-1 text-sm text-petrol hover:underline min-h-[44px] px-2"
                   onClick={() => {
                     if (viewer.meta.id) {
-                      createTaskFromEmail({ id: viewer.meta.id, subject: viewer.meta.subject, from: viewer.meta.from, received: viewer.meta.received })
+                      replyInOutlook({ id: viewer.meta.id })
                     }
                   }}
                 >
-                  <CheckSquare className="w-4 h-4" />
-                  צור משימה
+                  <Reply className="w-4 h-4" />
+                  השב
                 </button>
                 <button
                   className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm min-h-[44px] hover:bg-slate-200"
@@ -387,13 +429,19 @@ export default function EmailsWidget({ clientName }) {
               {!viewer.loading && viewer.error && (
                 <div className="rounded bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{viewer.error}</div>
               )}
-              {!viewer.loading && !viewer.error && (
+              {!viewer.loading && !viewer.error && viewer.html && viewer.html.replace(/<[^>]*>/g, '').trim().length > 10 && (
                 <iframe
                   title="תוכן האימייל"
                   className="w-full h-[70vh] border rounded"
-                  sandbox=""
+                  sandbox="allow-same-origin"
                   srcDoc={viewer.html}
                 />
+              )}
+              {!viewer.loading && !viewer.error && (!viewer.html || viewer.html.replace(/<[^>]*>/g, '').trim().length <= 10) && (
+                <div className="text-center text-slate-500 py-8">
+                  <p className="text-lg mb-2">📎 אימייל זה מכיל רק קובץ מצורף</p>
+                  <p className="text-sm">לחץ על "פתח ב-Outlook" לצפייה בקובץ</p>
+                </div>
               )}
             </div>
           </div>

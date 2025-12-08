@@ -1,7 +1,7 @@
 # API Endpoints Inventory
 
 **Author:** Alex (Full-Stack)
-**Date:** 2025-12-06
+**Date:** 2025-12-08
 **Purpose:** Complete list of all API endpoints for UI and AI Agent use
 **Status:** Living Document - Update when adding new endpoints
 
@@ -23,24 +23,31 @@ This document lists ALL available API endpoints in the EISLAW system. Each endpo
 
 > ⚠️ **HANDSHAKE RULE:** Every frontend `fetch()` call MUST have a corresponding backend endpoint. See `Testing_Episodic_Log.md` for verification commands.
 
-### Implementation Summary (2025-12-07 - Updated with Phase 4G)
+### Implementation Summary (2025-12-08 - AI Studio endpoints documented)
 
-| Category | Total | ✅ Implemented | ⚠️ Known Issues | ❌ Missing | 🔄 VM Only |
-|----------|-------|----------------|-----------------|------------|------------|
-| Client | 13 | 12 | 1 | 3 | 0 |
-| Contacts | 4 | 4 | 0 | 0 | 0 |
-| Task | 18 | 9 | 0 | 9 | 0 |
-| Email | 7 | 4 | 0 | 1 | 2 |
-| RAG | 12 | 12 | 0 | 0 | 0 |
-| SharePoint | 4 | 3 | 0 | 1 | 0 |
-| **Word/Docs** | **6** | **6** | **0** | **0** | **0** |
-| Privacy | 3 | 3 | 0 | 0 | 0 |
-| System | 4 | 4 | 0 | 0 | 0 |
-| Dev | 4 | 0 | 0 | 4 | 0 |
-| AI Studio | 2 | 2 | 0 | 0 | 0 |
-| **TOTAL** | **77** | **59** | **1** | **18** | **2** |
+| Category | Total | ✅ Implemented | ⚠️ Known Issues | ❌ Missing | 🔄 VM Only | ⏳ Planned |
+|----------|-------|----------------|-----------------|------------|------------|------------|
+| Client | 17 | 14 | 1 | 3 | 0 | 0 |
+| Contacts | 4 | 4 | 0 | 0 | 0 | 0 |
+| Task | 18 | 9 | 0 | 9 | 0 | 0 |
+| Email | 7 | 4 | 0 | 1 | 2 | 0 |
+| RAG | 12 | 12 | 0 | 0 | 0 | 0 |
+| SharePoint | 4 | 3 | 0 | 1 | 0 | 0 |
+| **Word/Docs** | **6** | **6** | **0** | **0** | **0** | **0** |
+| Privacy | 3 | 3 | 0 | 0 | 0 | 0 |
+| System | 4 | 4 | 0 | 0 | 0 | 0 |
+| Dev | 4 | 0 | 0 | 4 | 0 | 0 |
+| AI Studio | 6 | 6 | 0 | 0 | 0 | 0 |
+| **TOTAL** | **83** | **65** | **1** | **18** | **2** | **0** |
 
-**AI Agent Tools:** 14 tools implemented (7 Clients + 4 Tasks + 3 Documents). See sections below.
+**AI Agent Tools:** 16 implemented in `ai_studio_tools.py`:
+- Clients: 4 (search_clients, get_client_details, archive_client, restore_client)
+- Contacts: 2 (get_client_contacts, add_contact)
+- Tasks: 3 (search_tasks, create_task, update_task_status)
+- Documents: 2 (list_templates, generate_document)
+- Privacy: 4 (score_privacy_submission, send_privacy_email, get_privacy_metrics, search_privacy_submissions)
+- System: 1 (get_system_summary)
+
 **Known Issue:** Airtable upsert has field type config issue (not code bug).
 
 ---
@@ -64,6 +71,20 @@ This document lists ALL available API endpoints in the EISLAW system. Each endpo
 | `/registry/clients/{id}` | PATCH | Update client details | UI | ✅ (Added 2025-12-06) |
 | `/airtable/clients_upsert` | POST | Sync client to Airtable | UI | ⚠️ Bug: Email field format error |
 | `/airtable/search` | GET | Search Airtable clients | UI | ✅ (Added 2025-12-06) |
+| `/api/clients/{id}/archive` | POST | Archive client | UI, Agent | ✅ |
+| `/api/clients/{id}/restore` | POST | Restore archived client | UI, Agent | ✅ |
+
+### Archive Feature (CLI-006 - Implemented)
+
+> **Status:** Implemented per `PRD_CLIENT_ARCHIVE.md` (CLI-006)
+
+| Endpoint | Method | Purpose | Request | Response |
+|----------|--------|---------|---------|----------|
+| `GET /api/clients?archived=` | GET | Filter clients | `?archived=0` (default), `1`, `all` | Array of clients |
+| `POST /api/clients/{id}/archive` | POST | Archive client | `{}` | `{ success, archived_at }` |
+| `POST /api/clients/{id}/restore` | POST | Restore client | `{}` | `{ success }` |
+
+**Error Codes:** 404 (not found), 409 (already in target state)
 
 ### Client Endpoint Notes
 
@@ -72,16 +93,18 @@ This document lists ALL available API endpoints in the EISLAW system. Each endpo
 | `POST /registry/clients` | ✅ Working | Expects `display_name` (by design), `email` as array |
 | `POST /airtable/clients_upsert` | ⚠️ Known Issue | Airtable field "אימייל" type mismatch - needs Airtable config fix, not code bug |
 
-### AI Agent Tools (Clients) - 7 Implemented
+### AI Agent Tools (Clients) - 9 Implemented
 | Tool | Status | Endpoint |
 |------|--------|----------|
-| `search_clients` | ✅ Implemented | SQLite via `clients_db.list()` |
+| `search_clients` | ✅ Implemented | API `/api/clients` (supports `include_archived`) |
 | `get_client_details` | ✅ Implemented | GET `/registry/clients/{id}` |
 | `update_client` | ✅ Implemented | PATCH `/registry/clients/{id}` |
 | `create_client` | ✅ Implemented | POST `/registry/clients` |
 | `get_client_contacts` | ✅ Implemented | GET `/contacts/{client_id}` |
 | `add_contact` | ✅ Implemented | POST `/contacts` |
 | `sync_client_to_airtable` | ✅ Implemented | POST `/airtable/clients_upsert` |
+| `archive_client` | ✅ Implemented | POST `/api/clients/{id}/archive` |
+| `restore_client` | ✅ Implemented | POST `/api/clients/{id}/restore` |
 
 ### Missing Agent Tools (Clients)
 - `get_client_emails` - Get client's emails
@@ -287,15 +310,86 @@ Reply:       https://outlook.office365.com/owa/?ItemID={encoded_id}&action=Reply
 
 ## Privacy Endpoints
 
-| Endpoint | Method | Purpose | Status | Backend |
-|----------|--------|---------|--------|---------|
-| `/api/privacy/submissions` | GET | List privacy submissions | UI | ✅ |
-| `/api/clients/{cid}/privacy/scores` | GET | Get privacy scores | UI | ✅ |
-| `/api/clients/{cid}/privacy/deliver` | POST | Deliver privacy report | UI | ✅ |
+> **Database:** All privacy data stored in `data/privacy.db` (separate from eislaw.db)
+> **Source:** Fillout form submissions via webhook
 
-### Missing Agent Tools (Privacy)
-- `get_privacy_score` - Get client's privacy score
-- `run_privacy_check` - Run privacy algorithm
+### Core Data Endpoints
+
+| Endpoint | Method | Purpose | Params | Response |
+|----------|--------|---------|--------|----------|
+| `/api/privacy/submissions` | GET | List all submissions | `limit` (default 50), `status` | `{submissions: [...], total: N}` |
+| `/api/privacy/submissions/{id}` | GET | Single submission detail | - | Full submission object |
+| `/api/privacy/db-submissions` | GET | Alt list (same data) | `limit`, `status` | `{submissions: [...]}` |
+
+### Monitoring & Stats
+
+| Endpoint | Method | Purpose | Response |
+|----------|--------|---------|----------|
+| `/api/privacy/activity` | GET | Webhook event log | `{activities: [...]}` with timestamps, event_type, duration_ms |
+| `/api/privacy/stats` | GET | Summary counts | `{total, by_level: {lone, basic, mid, high}, pending, approved}` |
+| `/api/privacy/metrics` | GET | Dashboard KPIs | Aggregated metrics |
+
+### Scoring & Review Workflow
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/privacy/score/{id}` | POST | Re-run scoring algorithm |
+| `/api/privacy/score_all` | POST | Re-score all submissions |
+| `/api/privacy/review/{id}` | GET | Get review status |
+| `/api/privacy/save_review` | POST | Save review decision |
+| `/api/privacy/approve_and_publish/{id}` | POST | Approve & generate report |
+
+### Email & Reports
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/privacy/preview_email/{id}` | POST | Preview result email |
+| `/api/privacy/send_email/{id}` | POST | Send results to client |
+| `/api/privacy/report/{token}` | GET | Public report (JSON) |
+| `/api/privacy/report/{token}/html` | GET | Public report (HTML) |
+| `/api/privacy/public-results/{id}` | GET | Public-safe results |
+
+### Webhook & Sync
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/privacy/webhook` | POST | Receive Fillout form submission |
+| `/api/privacy/sync_fillout` | GET | Pull submissions from Fillout API |
+
+### Client-Specific
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/clients/{cid}/privacy/scores` | GET | Get client's privacy scores |
+| `/api/clients/{cid}/privacy/deliver` | POST | Deliver report to client |
+
+### Example: AI Aggregation Query
+
+```bash
+# Get last N submissions with scoring results
+curl "http://20.217.86.4:8799/api/privacy/submissions?limit=10"
+
+# Response structure:
+{
+  "submissions": [
+    {
+      "submission_id": "uuid",
+      "contact_name": "שם",
+      "business_name": "עסק",
+      "contact_email": "email@example.com",
+      "submitted_at": "2025-12-07T10:46:04.883Z",
+      "score_level": "high",      // lone, basic, mid, high
+      "score_color": "red",       // yellow, orange, red
+      "score_dpo": 1,             // 0/1 - DPO required
+      "score_reg": 1,             // 0/1 - Registration required
+      "score_report": 0,          // 0/1 - Annual report required
+      "score_requirements": "[...]", // JSON array
+      "review_status": "pending"  // pending, approved, rejected
+    }
+  ],
+  "total": 21
+}
+```
 
 ---
 
@@ -325,20 +419,59 @@ Reply:       https://outlook.office365.com/owa/?ItemID={encoded_id}&action=Reply
 
 ## AI Studio Endpoints
 
+> **Router:** `ai_studio.py` → prefix `/api/ai-studio`
+> **Updated:** 2025-12-08
+
 | Endpoint | Method | Purpose | Status | Backend |
 |----------|--------|---------|--------|---------|
-| `/ai/chat` | POST | Send message to AI | UI | ✅ |
-| `/ai/tools` | GET | List available tools | UI | ✅ |
+| `/api/ai-studio/chat` | POST | Send message to AI (SSE streaming) | UI | ✅ |
+| `/api/ai-studio/conversations` | GET | List all conversations | UI | ✅ |
+| `/api/ai-studio/conversations/{id}` | GET | Get conversation with messages | UI | ✅ |
+| `/api/ai-studio/conversations/{id}` | DELETE | Delete conversation | UI | ✅ |
+| `/api/ai-studio/providers` | GET | List available LLM providers | UI | ✅ |
+| `/api/ai-studio/tools` | GET | List available AI agent tools | UI | ✅ |
 
-### Currently Implemented AI Tools
-| Tool Name | Description |
-|-----------|-------------|
-| `search_clients` | Search clients by name/email/phone |
-| `get_client_details` | Get client details by ID |
-| `search_tasks` | Search tasks with filters |
-| `create_task` | Create new task |
-| `update_task_status` | Update task status |
-| `get_system_summary` | Get system statistics |
+### Chat Request Schema
+```json
+{
+  "conversation_id": "uuid or null for new",
+  "message": "User message text",
+  "provider": "gemini|claude|openai",
+  "system_prompt": "optional custom prompt",
+  "tools_enabled": true
+}
+```
+
+### SSE Event Types
+| Event | Data | Description |
+|-------|------|-------------|
+| `token` | `{"content": "..."}` | Streaming text token |
+| `tool_call` | `{"tool": "...", "arguments": {...}}` | Agent invoking a tool |
+| `tool_result` | `{"tool": "...", "result": {...}}` | Tool execution result |
+| `conversation` | `{"conversation_id": "..."}` | Final conversation ID |
+| `done` | `{"status": "complete"}` | Stream complete |
+| `error` | `{"error": "..."}` | Error occurred |
+
+### Currently Implemented AI Tools (16 Total)
+
+| Category | Tool Name | Description |
+|----------|-----------|-------------|
+| **Clients** | `search_clients` | Search clients by name/email/phone (supports `include_archived`) |
+| | `get_client_details` | Get client details by ID |
+| | `archive_client` | Archive a client |
+| | `restore_client` | Restore archived client |
+| **Contacts** | `get_client_contacts` | Get contacts for a client |
+| | `add_contact` | Add contact to client |
+| **Tasks** | `search_tasks` | Search tasks with filters |
+| | `create_task` | Create new task |
+| | `update_task_status` | Update task status |
+| **Documents** | `list_templates` | List SharePoint templates |
+| | `generate_document` | Generate docs from templates |
+| **Privacy** | `score_privacy_submission` | Score a privacy submission |
+| | `send_privacy_email` | Send privacy results email |
+| | `get_privacy_metrics` | Get privacy module stats |
+| | `search_privacy_submissions` | Search privacy submissions |
+| **System** | `get_system_summary` | Get system statistics |
 
 ---
 

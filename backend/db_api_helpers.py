@@ -1,418 +1,616 @@
-"""
-SQLite API Helpers for main.py
-
-This module provides wrapper functions that return data in the format
-expected by the frontend API, reading from SQLite instead of JSON files.
-"""
 import json
-from typing import Optional, List, Dict, Any
+import os
+import sqlite3
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-try:
-    from backend import db as sqlite_db
-except ImportError:
-    import db as sqlite_db
-
-
-
-
-def _log_activity(event_type: str, entity_type: str, entity_id: str, details: dict = None):
-    """Log activity for audit trail."""
-    try:
-        db = sqlite_db.get_db()
-        sqlite_db.log_activity(db, event_type, entity_type, entity_id, details)
-    except Exception as e:
-        print(f"Warning: Failed to log activity: {e}")
+DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).resolve().parent.parent / "data" / "eislaw.db"))
 
 
-def load_clients_from_sqlite() -> List[Dict]:
+def _connect():
+    """Create SQLite connection with sensible defaults."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def _ensure_tables(conn: sqlite3.Connection):
+    """Create required tables if missing."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS clients (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            stage TEXT,
+            types TEXT,
+            airtable_id TEXT,
+            airtable_url TEXT,
+            sharepoint_url TEXT,
+            local_folder TEXT,
+            active INTEGER,
+            notes TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            last_synced_at TEXT,
+            sync_source TEXT,
+            slug TEXT,
+            sharepoint_id TEXT,
+            last_activity_at TEXT,
+            archived INTEGER DEFAULT 0,
+            archived_at TEXT,
+            archived_reason TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            desc TEXT,
+            status TEXT,
+            priority TEXT DEFAULT 'medium',
+            due_at TEXT,
+            client_name TEXT,
+            client_folder_path TEXT,
+            owner_id TEXT,
+            parent_id TEXT,
+            source TEXT DEFAULT 'manual',
+            comments TEXT,
+            attachments TEXT,
+            template_ref TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            done_at TEXT,
+            deleted_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS contacts (
+            id TEXT PRIMARY KEY,
+            client_id TEXT,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            role TEXT,
+            notes TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS airtable_contacts (
+            id TEXT PRIMARY KEY,
+            airtable_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            types TEXT,
+            stage TEXT,
+            notes TEXT,
+            whatsapp_url TEXT,
+            meeting_email_url TEXT,
+            airtable_created_at TEXT,
+            airtable_modified_at TEXT,
+            activated INTEGER DEFAULT 0,
+            activated_at TEXT,
+            client_id TEXT,
+            first_synced_at TEXT DEFAULT (datetime('now')),
+            last_synced_at TEXT DEFAULT (datetime('now')),
+            sync_hash TEXT,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sync_state (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            last_sync_at TEXT,
+            last_sync_cursor TEXT,
+            status TEXT DEFAULT 'idle',
+            error_message TEXT,
+            records_synced INTEGER DEFAULT 0
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_clients_archived ON clients(archived)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_airtable_contacts_airtable_id ON airtable_contacts(airtable_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_airtable_contacts_name ON airtable_contacts(name)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_airtable_contacts_activated ON airtable_contacts(activated)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_airtable_contacts_client ON airtable_contacts(client_id)")
+    conn.commit()
+
+
+def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    return {k: row[k] for k in row.keys()}
+
+
+def _normalize_client_row(row: sqlite3.Row) -> Dict[str, Any]:
+    """Normalize a client row to the shape expected by API/agents."""
+    item = _row_to_dict(row)
+    item["type"] = json.loads(item["types"]) if item.get("types") else []
+    item["active"] = bool(item.get("active", 1)) if item.get("active") is not None else True
+    item["archived"] = bool(item.get("archived", 0)) if item.get("archived") is not None else False
+    item["createdAt"] = item.get("created_at")
+    item["updatedAt"] = item.get("updated_at")
+    item["archivedAt"] = item.get("archived_at")
+    item["archivedReason"] = item.get("archived_reason")
+    item["folderPath"] = item.get("local_folder") or item.get("sharepoint_url") or ""
+    return item
+
+
+# ─────────────────────────────────────────────────────────────
+# Clients helpers
+# ─────────────────────────────────────────────────────────────
+
+def load_clients_from_sqlite() -> List[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM clients")
+    rows = cur.fetchall()
+    conn.close()
+    return [_normalize_client_row(r) for r in rows]
+
+
+def list_clients(archived_filter: str = "0") -> List[Dict[str, Any]]:
     """
-    Load clients from SQLite database.
-    Returns data in the same format as the original JSON-based API.
+    List clients filtered by archive state.
+    archived_filter: "0" (active/default), "1" (archived), "all"
     """
-    try:
-        db = sqlite_db.get_db()
-        clients_db = sqlite_db.ClientsDB(db)
-        contacts_db = sqlite_db.ContactsDB(db)
-
-        clients = clients_db.list(active_only=False, limit=1000)
-
-        result = []
-        for c in clients:
-            # Skip test clients
-            if c.get("name", "").startswith("ZZZ Test"):
-                continue
-
-            # Get contacts for this client
-            client_contacts = contacts_db.list_for_client(c.get("id", ""))
-            contacts_list = [
-                {
-                    "name": ct.get("name", ""),
-                    "email": ct.get("email", ""),
-                    "phone": ct.get("phone", ""),
-                    "role": ct.get("role", "")
-                }
-                for ct in client_contacts
-            ]
-
-            # Parse types if stored as JSON string
-            types = c.get("types", [])
-            if isinstance(types, str):
-                try:
-                    types = json.loads(types)
-                except:
-                    types = []
-
-            result.append({
-                "id": c.get("id"),
-                "name": c.get("name", ""),
-                "email": c.get("email", ""),
-                "phone": c.get("phone", ""),
-                "type": types,
-                "stage": c.get("stage", ""),
-                "notes": c.get("notes", ""),
-                "folderPath": c.get("local_folder", ""),
-                "airtableId": c.get("airtable_id", ""),
-                "contacts": contacts_list,
-                "createdAt": c.get("created_at"),
-                "active": bool(c.get("active", 1)),
-                "archivedAt": None if c.get("active", 1) else c.get("updated_at"),
-            })
-        return result
-    except Exception as e:
-        print(f"Error loading clients from SQLite: {e}")
-        return []
+    conn = _connect()
+    _ensure_tables(conn)
+    query = "SELECT * FROM clients"
+    params: List[Any] = []
+    if archived_filter == "0":
+        query += " WHERE archived = 0 OR archived IS NULL"
+    elif archived_filter == "1":
+        query += " WHERE archived = 1"
+    cur = conn.execute(query, params)
+    rows = cur.fetchall()
+    conn.close()
+    return [_normalize_client_row(r) for r in rows]
 
 
-def find_client_by_id(client_id: str) -> Optional[Dict]:
-    """Find a single client by ID from SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        clients_db = sqlite_db.ClientsDB(db)
-        contacts_db = sqlite_db.ContactsDB(db)
-
-        c = clients_db.get(client_id)
-        if not c:
-            return None
-
-        # Get contacts
-        client_contacts = contacts_db.list_for_client(client_id)
-        contacts_list = [
-            {"name": ct.get("name", ""), "email": ct.get("email", ""), "phone": ct.get("phone", "")}
-            for ct in client_contacts
-        ]
-
-        types = c.get("types", [])
-        if isinstance(types, str):
-            try:
-                types = json.loads(types)
-            except:
-                types = []
-
-        return {
-            "id": c.get("id"),
-            "name": c.get("name", ""),
-            "email": c.get("email", ""),
-            "phone": c.get("phone", ""),
-            "type": types,
-            "stage": c.get("stage", ""),
-            "notes": c.get("notes", ""),
-            "folderPath": c.get("local_folder", ""),
-            "airtableId": c.get("airtable_id", ""),
-            "contacts": contacts_list,
-            "createdAt": c.get("created_at"),
-            "active": bool(c.get("active", 1)),
-            "archivedAt": None,
-        }
-    except Exception as e:
-        print(f"Error finding client in SQLite: {e}")
+def find_client_by_id(client_id: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
         return None
+    return _normalize_client_row(row)
 
 
-def find_client_by_name(name: str) -> Optional[Dict]:
-    """Find a client by name from SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        clients_db = sqlite_db.ClientsDB(db)
-        contacts_db = sqlite_db.ContactsDB(db)
+def create_client(client: Dict[str, Any]) -> Dict[str, Any]:
+    conn = _connect()
+    _ensure_tables(conn)
+    now = datetime.utcnow().isoformat() + "Z"
+    client_id = client.get("id") or str(uuid.uuid4())
+    types_str = json.dumps(client.get("types") or client.get("type") or [])
+    existing = find_client_by_id(client_id)
+    slug = client.get("slug")
+    sharepoint_id = client.get("sharepoint_id")
+    last_activity_at = client.get("last_activity_at") or client.get("lastActivityAt")
+    archived_value = client.get("archived")
+    archived_at = client.get("archived_at") or client.get("archivedAt")
+    archived_reason = client.get("archived_reason") or client.get("archivedReason")
 
-        c = clients_db.get_by_name(name)
-        if not c:
-            return None
-
-        client_id = c.get("id")
-        client_contacts = contacts_db.list_for_client(client_id)
-        contacts_list = [
-            {"name": ct.get("name", ""), "email": ct.get("email", ""), "phone": ct.get("phone", "")}
-            for ct in client_contacts
-        ]
-
-        types = c.get("types", [])
-        if isinstance(types, str):
-            try:
-                types = json.loads(types)
-            except:
-                types = []
-
-        emails = [c.get("email", "")] if c.get("email") else []
-
-        return {
-            "id": c.get("id"),
-            "name": c.get("name", ""),
-            "emails": emails,
-            "phone": c.get("phone", ""),
-            "client_type": types,
-            "stage": c.get("stage", ""),
-            "notes": c.get("notes", ""),
-            "folder": c.get("local_folder", ""),
-            "airtable_id": c.get("airtable_id", ""),
-            "airtable_url": c.get("airtable_url", ""),
-            "sharepoint_url": c.get("sharepoint_url", ""),
-            "sharepoint_id": "",
-            "contacts": contacts_list,
-            "created_at": c.get("created_at"),
-            "active": bool(c.get("active", 1)),
-            "archived_at": None,
-        }
-    except Exception as e:
-        print(f"Error finding client by name in SQLite: {e}")
-        return None
-
-
-def archive_client(client_name: str) -> bool:
-    """Archive a client (set active=0) in SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        clients_db = sqlite_db.ClientsDB(db)
-
-        client = clients_db.get_by_name(client_name)
-        if not client:
-            return False
-
-        clients_db.archive(client["id"])
-        _log_activity("client_archived", "client", client["id"], {"name": client_name})
-        return True
-    except Exception as e:
-        print(f"Error archiving client in SQLite: {e}")
-        return False
-
-
-def restore_client(client_name: str) -> bool:
-    """Restore a client (set active=1) in SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        clients_db = sqlite_db.ClientsDB(db)
-
-        client = clients_db.get_by_name(client_name)
-        if not client:
-            return False
-
-        clients_db.restore(client["id"])
-        _log_activity("client_restored", "client", client["id"], {"name": client_name})
-        return True
-    except Exception as e:
-        print(f"Error restoring client in SQLite: {e}")
-        return False
-
-
-def load_tasks_from_sqlite() -> List[Dict]:
-    """Load tasks from SQLite database."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-
-        sqlite_tasks = tasks_db.list(limit=1000)
-
-        result = []
-        for t in sqlite_tasks:
-            # Map SQLite status to JSON status
-            status_map = {"todo": "new", "doing": "in_progress", "done": "done", "cancelled": "cancelled"}
-            status = status_map.get(t.get("status", "todo"), t.get("status", "new"))
-
-            result.append({
-                "id": t.get("id"),
-                "title": t.get("title", ""),
-                "desc": t.get("description", ""),
-                "status": status,
-                "dueAt": t.get("due_date"),
-                "priority": t.get("priority"),
-                "clientName": t.get("client_name"),
-                "clientFolderPath": None,
-                "ownerId": t.get("assigned_to"),
-                "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
-                "comments": [],
-                "attachments": json.loads(t.get("attachments", "[]")) if t.get("attachments") else [],
-                "templateRef": None,
-                "source": t.get("source_type") or "manual",
-                "createdAt": t.get("created_at"),
-                "updatedAt": t.get("updated_at"),
-                "doneAt": t.get("completed_at"),
-                "deletedAt": None,
-            })
-        return result
-    except Exception as e:
-        print(f"Error loading tasks from SQLite: {e}")
-        return []
-
-
-def find_task_by_id(task_id: str) -> Optional[Dict]:
-    """Find a task by ID from SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-
-        t = tasks_db.get(task_id)
-        if not t:
-            return None
-
-        status_map = {"todo": "new", "doing": "in_progress", "done": "done", "cancelled": "cancelled"}
-        status = status_map.get(t.get("status", "todo"), t.get("status", "new"))
-
-        return {
-            "id": t.get("id"),
-            "title": t.get("title", ""),
-            "desc": t.get("description", ""),
-            "status": status,
-            "dueAt": t.get("due_date"),
-            "priority": t.get("priority"),
-            "clientName": t.get("client_name"),
-            "clientFolderPath": None,
-            "ownerId": t.get("assigned_to"),
-            "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
-            "comments": [],
-            "attachments": json.loads(t.get("attachments", "[]")) if t.get("attachments") else [],
-            "templateRef": None,
-            "source": t.get("source_type") or "manual",
-            "createdAt": t.get("created_at"),
-            "updatedAt": t.get("updated_at"),
-            "doneAt": t.get("completed_at"),
-            "deletedAt": None,
-        }
-    except Exception as e:
-        print(f"Error finding task in SQLite: {e}")
-        return None
-
-
-def create_task_in_sqlite(task_data: Dict) -> str:
-    """Create a task in SQLite. Returns task ID."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-
-        # Map status
-        status_map = {"new": "todo", "in_progress": "doing", "done": "done", "cancelled": "cancelled"}
-        status = status_map.get(task_data.get("status", "new"), "todo")
-
-        # Extract due date without time
-        due_at = task_data.get("dueAt")
-        due_date = due_at.split("T")[0] if due_at else None
-
-        sqlite_data = {
-            "id": task_data.get("id"),
-            "title": task_data.get("title", ""),
-            "description": task_data.get("desc", ""),
-            "status": status,
-            "priority": task_data.get("priority") or "medium",
-            "due_date": due_date,
-            "client_name": task_data.get("clientName"),
-            "assigned_to": task_data.get("ownerId"),
-            "source_type": task_data.get("source", "manual"),
-            "source_id": task_data.get("parentId"),
-        }
-
-        task_id = tasks_db.save(sqlite_data)
-        _log_activity("task_created", "task", task_id, {"title": task_data.get("title", "")})
-        return task_id
-    except Exception as e:
-        print(f"Error creating task in SQLite: {e}")
-        raise
-
-
-def update_task_in_sqlite(task_id: str, updates: Dict) -> bool:
-    """Update a task in SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-
-        # Map status
-        status_map = {"new": "todo", "in_progress": "doing", "done": "done", "cancelled": "cancelled"}
-
-        sqlite_updates = {"id": task_id}
-
-        if "title" in updates:
-            sqlite_updates["title"] = updates["title"]
-        if "desc" in updates:
-            sqlite_updates["description"] = updates["desc"]
-        if "status" in updates:
-            sqlite_updates["status"] = status_map.get(updates["status"], updates["status"])
-            if updates["status"] == "done":
-                sqlite_updates["done"] = 1
-            else:
-                sqlite_updates["done"] = 0
-        if "dueAt" in updates:
-            due_at = updates["dueAt"]
-            sqlite_updates["due_date"] = due_at.split("T")[0] if due_at else None
-        if "priority" in updates:
-            sqlite_updates["priority"] = updates["priority"]
-        if "clientName" in updates:
-            sqlite_updates["client_name"] = updates["clientName"]
-        if "ownerId" in updates:
-            sqlite_updates["assigned_to"] = updates["ownerId"]
-        if "attachments" in updates:
-            att = updates["attachments"]; sqlite_updates["attachments"] = json.dumps(att, ensure_ascii=False) if isinstance(att, list) else att
-
-        tasks_db.save(sqlite_updates)
-        _log_activity("task_updated", "task", task_id, updates)
-        return True
-    except Exception as e:
-        print(f"Error updating task in SQLite: {e}")
-        return False
-
-
-def delete_task_from_sqlite(task_id: str) -> bool:
-    """Delete a task from SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-        tasks_db.delete(task_id)
-        _log_activity("task_deleted", "task", task_id)
-        return True
-    except Exception as e:
-        print(f"Error deleting task from SQLite: {e}")
-        return False
-
-
-def mark_task_done_in_sqlite(task_id: str, done: bool = True) -> bool:
-    """Mark task as done/undone in SQLite."""
-    try:
-        db = sqlite_db.get_db()
-        tasks_db = sqlite_db.TasksDB(db)
-
-        if done:
-            tasks_db.complete(task_id)
-            _log_activity("task_completed", "task", task_id)
-        else:
-            tasks_db.save({"id": task_id, "done": 0, "status": "todo"})
-            _log_activity("task_reopened", "task", task_id)
-        return True
-    except Exception as e:
-        print(f"Error marking task done in SQLite: {e}")
-        return False
-
-def update_or_create_task_in_sqlite(task_data: Dict) -> str:
-    """
-    Update existing task or create new one.
-    Returns task ID.
-    """
-    task_id = task_data.get("id")
-    if not task_id:
-        raise ValueError("Task must have an id")
-    
-    # Check if exists
-    existing = find_task_by_id(task_id)
     if existing:
-        # Update
-        update_task_in_sqlite(task_id, task_data)
-        return task_id
+        if slug is None:
+            slug = existing.get("slug")
+        if sharepoint_id is None:
+            sharepoint_id = existing.get("sharepoint_id")
+        if last_activity_at is None:
+            last_activity_at = existing.get("last_activity_at") or existing.get("lastActivityAt")
+        if archived_value is None:
+            archived_value = existing.get("archived", 0)
+        if archived_at is None:
+            archived_at = existing.get("archived_at") or existing.get("archivedAt")
+        if archived_reason is None:
+            archived_reason = existing.get("archived_reason") or existing.get("archivedReason")
+
+    archived_int = int(archived_value) if archived_value is not None else 0
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO clients (
+            id, name, email, phone, stage, types, airtable_id, airtable_url,
+            sharepoint_url, local_folder, active, notes, created_at, updated_at,
+            last_synced_at, sync_source, slug, sharepoint_id, last_activity_at, archived, archived_at, archived_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            client_id,
+            client.get("name"),
+            client.get("email"),
+            client.get("phone"),
+            client.get("stage"),
+            types_str,
+            client.get("airtable_id"),
+            client.get("airtable_url"),
+            client.get("sharepoint_url"),
+            client.get("local_folder"),
+            int(client.get("active", 1)),
+            client.get("notes"),
+            client.get("created_at") or now,
+            client.get("updated_at") or now,
+            client.get("last_synced_at"),
+            client.get("sync_source"),
+            slug,
+            sharepoint_id,
+            last_activity_at,
+            archived_int,
+            archived_at,
+            archived_reason,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    client["id"] = client_id
+    client["types"] = json.loads(types_str) if types_str else []
+    client["slug"] = slug
+    client["sharepoint_id"] = sharepoint_id
+    client["last_activity_at"] = last_activity_at
+    client["archived"] = bool(archived_int)
+    client["archived_at"] = archived_at
+    client["archived_reason"] = archived_reason
+    return client
+
+
+def update_client_archive_state(client_id: str, archive: bool, reason: str = "manual") -> Tuple[Optional[Dict[str, Any]], bool, Optional[str]]:
+    """
+    Update archive state for a client.
+    Returns (client, changed_flag, conflict_reason)
+    conflict_reason is 'already_archived' or 'already_active' when applicable.
+    """
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return None, False, None
+
+    current = _normalize_client_row(row)
+    if archive and current.get("archived"):
+        conn.close()
+        return current, False, "already_archived"
+    if not archive and not current.get("archived"):
+        conn.close()
+        return current, False, "already_active"
+
+    now = datetime.utcnow().isoformat() + "Z"
+    archived_at = now if archive else None
+    archived_reason = reason if archive else None
+    archived_value = 1 if archive else 0
+    active_value = 0 if archive else 1
+
+    conn.execute(
+        """
+        UPDATE clients
+        SET archived = ?, archived_at = ?, archived_reason = ?, active = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (archived_value, archived_at, archived_reason, active_value, now, client_id),
+    )
+    conn.commit()
+
+    cur = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
+    updated_row = cur.fetchone()
+    conn.close()
+    return _normalize_client_row(updated_row), True, None
+
+
+# ─────────────────────────────────────────────────────────────
+# Tasks helpers
+# ─────────────────────────────────────────────────────────────
+
+def _deserialize_task(row: sqlite3.Row) -> Dict[str, Any]:
+    task = _row_to_dict(row)
+    task["comments"] = json.loads(task["comments"]) if task.get("comments") else []
+    task["attachments"] = json.loads(task["attachments"]) if task.get("attachments") else []
+    task["dueAt"] = task.get("due_at")
+    task["clientName"] = task.get("client_name")
+    task["clientFolderPath"] = task.get("client_folder_path")
+    task["templateRef"] = task.get("template_ref")
+    task["createdAt"] = task.get("created_at")
+    task["updatedAt"] = task.get("updated_at")
+    task["doneAt"] = task.get("done_at")
+    task["deletedAt"] = task.get("deleted_at")
+    return task
+
+
+def load_tasks_from_sqlite() -> List[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM tasks")
+    rows = cur.fetchall()
+    conn.close()
+    return [_deserialize_task(r) for r in rows]
+
+
+def find_task_by_id(task_id: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cur.fetchone()
+    conn.close()
+    return _deserialize_task(row) if row else None
+
+
+def create_task_in_sqlite(task: Dict[str, Any]) -> None:
+    conn = _connect()
+    _ensure_tables(conn)
+    now = datetime.utcnow().isoformat() + "Z"
+    task_id = task.get("id") or str(uuid.uuid4())
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO tasks (
+            id, title, desc, status, priority, due_at, client_name, client_folder_path,
+            owner_id, parent_id, source, comments, attachments, template_ref,
+            created_at, updated_at, done_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            task_id,
+            task.get("title"),
+            task.get("desc"),
+            task.get("status"),
+            task.get("priority"),
+            task.get("dueAt") or task.get("due_at"),
+            task.get("clientName") or task.get("client_name"),
+            task.get("clientFolderPath") or task.get("client_folder_path"),
+            task.get("ownerId") or task.get("owner_id"),
+            task.get("parentId") or task.get("parent_id"),
+            task.get("source") or "manual",
+            json.dumps(task.get("comments") or []),
+            json.dumps(task.get("attachments") or []),
+            task.get("templateRef") or task.get("template_ref"),
+            task.get("createdAt") or task.get("created_at") or now,
+            task.get("updatedAt") or task.get("updated_at") or now,
+            task.get("doneAt") or task.get("done_at"),
+            task.get("deletedAt") or task.get("deleted_at"),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_task_in_sqlite(task_id: str, payload: Dict[str, Any]) -> None:
+    conn = _connect()
+    _ensure_tables(conn)
+    now = datetime.utcnow().isoformat() + "Z"
+    fields = []
+    params: List[Any] = []
+    mapping = {
+        "title": "title",
+        "desc": "desc",
+        "status": "status",
+        "priority": "priority",
+        "dueAt": "due_at",
+        "due_at": "due_at",
+        "clientName": "client_name",
+        "client_folder_path": "client_folder_path",
+        "clientFolderPath": "client_folder_path",
+        "ownerId": "owner_id",
+        "owner_id": "owner_id",
+        "parentId": "parent_id",
+        "parent_id": "parent_id",
+        "source": "source",
+        "comments": "comments",
+        "attachments": "attachments",
+        "templateRef": "template_ref",
+        "template_ref": "template_ref",
+        "doneAt": "done_at",
+        "deletedAt": "deleted_at",
+    }
+    for key, column in mapping.items():
+        if key in payload:
+            val = payload[key]
+            if key in ["comments", "attachments"] and not isinstance(val, str):
+                val = json.dumps(val or [])
+            fields.append(f"{column} = ?")
+            params.append(val)
+    fields.append("updated_at = ?")
+    params.append(payload.get("updatedAt") or payload.get("updated_at") or now)
+    params.append(task_id)
+    conn.execute(f"UPDATE tasks SET {', '.join(fields)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+
+
+def delete_task_from_sqlite(task_id: str) -> None:
+    conn = _connect()
+    _ensure_tables(conn)
+    conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+
+def mark_task_done_in_sqlite(task_id: str, done: bool) -> None:
+    conn = _connect()
+    _ensure_tables(conn)
+    now = datetime.utcnow().isoformat() + "Z"
+    conn.execute(
+        "UPDATE tasks SET status = ?, done_at = ?, updated_at = ? WHERE id = ?",
+        ("done" if done else "new", now if done else None, now, task_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_or_create_task_in_sqlite(task: Dict[str, Any]) -> None:
+    existing = find_task_by_id(task.get("id"))
+    if existing:
+        update_task_in_sqlite(task["id"], task)
     else:
-        # Create
-        return create_task_in_sqlite(task_data)
+        create_task_in_sqlite(task)
+
+
+# ─────────────────────────────────────────────────────────────
+# Airtable contacts helpers
+# ─────────────────────────────────────────────────────────────
+
+def upsert_airtable_contact(contact: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
+    """
+    Upsert airtable_contacts row.
+    Returns (saved_contact, created_flag)
+    """
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM airtable_contacts WHERE airtable_id = ?", (contact["airtable_id"],))
+    row = cur.fetchone()
+    now = datetime.utcnow().isoformat() + "Z"
+    contact_id = contact.get("id") or (row["id"] if row else str(uuid.uuid4()))
+    types_str = json.dumps(contact.get("types") or [])
+    sync_hash = contact.get("sync_hash")
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO airtable_contacts (
+            id, airtable_id, name, email, phone, types, stage, notes, whatsapp_url,
+            meeting_email_url, airtable_created_at, airtable_modified_at, activated,
+            activated_at, client_id, first_synced_at, last_synced_at, sync_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            contact_id,
+            contact["airtable_id"],
+            contact.get("name"),
+            contact.get("email"),
+            contact.get("phone"),
+            types_str,
+            contact.get("stage"),
+            contact.get("notes"),
+            contact.get("whatsapp_url"),
+            contact.get("meeting_email_url"),
+            contact.get("airtable_created_at"),
+            contact.get("airtable_modified_at"),
+            int(contact.get("activated", row["activated"] if row else 0) or 0),
+            contact.get("activated_at") or (row["activated_at"] if row else None),
+            contact.get("client_id") or (row["client_id"] if row else None),
+            row["first_synced_at"] if row else contact.get("first_synced_at") or now,
+            contact.get("last_synced_at") or now,
+            sync_hash or (row["sync_hash"] if row else None),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    saved = contact.copy()
+    saved["id"] = contact_id
+    saved["types"] = json.loads(types_str) if types_str else []
+    return saved, row is None
+
+
+def list_airtable_contacts(activated: Optional[bool] = None, search: Optional[str] = None) -> List[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    query = "SELECT * FROM airtable_contacts"
+    params: List[Any] = []
+    clauses = []
+    if activated is not None:
+        clauses.append("activated = ?")
+        params.append(1 if activated else 0)
+    if search:
+        clauses.append("LOWER(name) LIKE ?")
+        params.append(f"%{search.lower()}%")
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY last_synced_at DESC"
+    cur = conn.execute(query, tuple(params))
+    rows = cur.fetchall()
+    conn.close()
+    results: List[Dict[str, Any]] = []
+    for row in rows:
+        item = _row_to_dict(row)
+        item["types"] = json.loads(item["types"]) if item.get("types") else []
+        results.append(item)
+    return results
+
+
+def get_airtable_contact_by_airtable_id(airtable_id: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM airtable_contacts WHERE airtable_id = ?", (airtable_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    item = _row_to_dict(row)
+    item["types"] = json.loads(item["types"]) if item.get("types") else []
+    return item
+
+
+def get_airtable_contact_by_id(contact_id: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM airtable_contacts WHERE id = ?", (contact_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    item = _row_to_dict(row)
+    item["types"] = json.loads(item["types"]) if item.get("types") else []
+    return item
+
+
+def mark_contact_activated(contact_id: str, client_id: str) -> None:
+    conn = _connect()
+    _ensure_tables(conn)
+    now = datetime.utcnow().isoformat() + "Z"
+    conn.execute(
+        "UPDATE airtable_contacts SET activated = 1, activated_at = ?, client_id = ? WHERE id = ?",
+        (now, client_id, contact_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# Sync state helpers
+# ─────────────────────────────────────────────────────────────
+
+def get_sync_state(source: str, entity_type: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    _ensure_tables(conn)
+    cur = conn.execute("SELECT * FROM sync_state WHERE source = ? AND entity_type = ?", (source, entity_type))
+    row = cur.fetchone()
+    conn.close()
+    return _row_to_dict(row) if row else None
+
+
+def set_sync_state(source: str, entity_type: str, last_sync_at: Optional[str], cursor: Optional[str], status: str, records_synced: int, error_message: Optional[str] = None) -> Dict[str, Any]:
+    conn = _connect()
+    _ensure_tables(conn)
+    state_id = f"{source}:{entity_type}"
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO sync_state (id, source, entity_type, last_sync_at, last_sync_cursor, status, error_message, records_synced)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (state_id, source, entity_type, last_sync_at, cursor, status, error_message, records_synced),
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "id": state_id,
+        "source": source,
+        "entity_type": entity_type,
+        "last_sync_at": last_sync_at,
+        "last_sync_cursor": cursor,
+        "status": status,
+        "error_message": error_message,
+        "records_synced": records_synced,
+    }

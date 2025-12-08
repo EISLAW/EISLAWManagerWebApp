@@ -26,6 +26,11 @@ AVAILABLE_TOOLS = [
                         "type": "string",
                         "description": "Search query - can be client name, email, or phone number"
                     },
+                    "include_archived": {
+                        "type": "boolean",
+                        "description": "Whether to include archived clients (default: false)",
+                        "default": False
+                    },
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results to return (default: 5)",
@@ -47,6 +52,48 @@ AVAILABLE_TOOLS = [
                     "client_id": {
                         "type": "string",
                         "description": "The UUID of the client"
+                    }
+                },
+                "required": ["client_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "archive_client",
+            "description": "Archive a client by ID. Use when user requests to hide or archive a client.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "The UUID of the client to archive"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Optional reason for archiving (defaults to manual)"
+                    }
+                },
+                "required": ["client_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "restore_client",
+            "description": "Restore an archived client by ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "The UUID of the client to restore"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Optional reason for restoring (defaults to manual)"
                     }
                 },
                 "required": ["client_id"]
@@ -219,6 +266,105 @@ AVAILABLE_TOOLS = [
                 "required": []
             }
         }
+    },
+    # ─── Contacts Tools (Phase 4I) ───
+    {
+        "type": "function",
+        "function": {
+            "name": "get_client_contacts",
+            "description": "Get all contacts for a specific client. Use when user asks about a client's contacts or contact information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "The UUID of the client"
+                    }
+                },
+                "required": ["client_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_contact",
+            "description": "Add a new contact to a client. Use when user asks to add contact information for a client.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "The UUID of the client"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Contact's full name"
+                    },
+                    "role": {
+                        "type": "string",
+                        "description": "Contact's role/title (optional)"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Contact's email address (optional)"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Contact's phone number (optional)"
+                    },
+                    "is_primary": {
+                        "type": "boolean",
+                        "description": "Whether this is the primary contact (default: false)"
+                    }
+                },
+                "required": ["client_id", "name"]
+            }
+        }
+    },
+    # ─── Document Generation Tools (Phase 4G) ───
+    {
+        "type": "function",
+        "function": {
+            "name": "list_templates",
+            "description": "List available document templates from SharePoint. Use when user asks about available templates or wants to generate a document.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "folder": {
+                        "type": "string",
+                        "description": "Filter by folder name (optional)"
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_document",
+            "description": "Generate documents from templates for a client. Use when user asks to create documents, contracts, or letters for a client.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_name": {
+                        "type": "string",
+                        "description": "Name of the client for document generation"
+                    },
+                    "template_paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of template paths to generate"
+                    },
+                    "extra_data": {
+                        "type": "object",
+                        "description": "Additional data to merge into templates (optional)"
+                    }
+                },
+                "required": ["client_name", "template_paths"]
+            }
+        }
     }
 ]
 
@@ -242,15 +388,32 @@ def get_data_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "data"
 
 
-def load_clients() -> List[Dict]:
-    """Load clients from JSON file."""
+def load_clients(include_archived: bool = False) -> List[Dict]:
+    """Load clients from API (preferred) or JSON fallback."""
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(
+                f"{API_BASE}/api/clients",
+                params={"archived": "all" if include_archived else "0"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, list):
+                    return data
+    except Exception:
+        pass
+
     clients_file = get_data_dir() / "clients.json"
     if not clients_file.exists():
         return []
     try:
-        return json.loads(clients_file.read_text("utf-8"))
+        clients = json.loads(clients_file.read_text("utf-8"))
     except Exception:
         return []
+
+    if not include_archived:
+        clients = [c for c in clients if not c.get("archived")]
+    return clients
 
 
 def load_tasks() -> Dict:
@@ -275,13 +438,15 @@ def save_tasks(tasks_data: Dict):
 # Tool Execution Functions
 # ─────────────────────────────────────────────────────────────
 
-def execute_search_clients(query: str, limit: int = 5) -> Dict[str, Any]:
+def execute_search_clients(query: str, limit: int = 5, include_archived: bool = False) -> Dict[str, Any]:
     """Search clients by name, email, or phone."""
-    clients = load_clients()
+    clients = load_clients(include_archived=include_archived)
     query_lower = query.lower()
 
     results = []
     for client in clients:
+        if not include_archived and client.get("archived"):
+            continue
         # Search in name, email, and phone
         name = (client.get("name") or "").lower()
         email = (client.get("email") or "").lower()
@@ -293,7 +458,8 @@ def execute_search_clients(query: str, limit: int = 5) -> Dict[str, Any]:
                 "name": client.get("name"),
                 "email": client.get("email"),
                 "phone": client.get("phone"),
-                "active": client.get("active", True)
+                "active": client.get("active", True),
+                "archived": client.get("archived", False),
             })
             if len(results) >= limit:
                 break
@@ -308,8 +474,36 @@ def execute_search_clients(query: str, limit: int = 5) -> Dict[str, Any]:
 
 def execute_get_client_details(client_id: str) -> Dict[str, Any]:
     """Get detailed information about a specific client."""
-    clients = load_clients()
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(f"{API_BASE}/api/clients/{client_id}")
+            if resp.status_code == 200:
+                c = resp.json()
+                return {
+                    "success": True,
+                    "client": {
+                        "id": c.get("id"),
+                        "name": c.get("name"),
+                        "email": c.get("email"),
+                        "phone": c.get("phone"),
+                        "type": c.get("type") or c.get("types", []),
+                        "stage": c.get("stage"),
+                        "notes": c.get("notes"),
+                        "folderPath": c.get("folderPath") or c.get("local_folder"),
+                        "contacts": c.get("contacts", []),
+                        "createdAt": c.get("createdAt") or c.get("created_at"),
+                        "active": c.get("active", True),
+                        "archived": c.get("archived", False),
+                        "archivedAt": c.get("archived_at") or c.get("archivedAt"),
+                        "archivedReason": c.get("archived_reason") or c.get("archivedReason"),
+                    }
+                }
+            if resp.status_code == 404:
+                return {"success": False, "error": f"Client with ID {client_id} not found"}
+    except Exception:
+        pass
 
+    clients = load_clients(include_archived=True)
     for client in clients:
         if client.get("id") == client_id:
             return {
@@ -325,14 +519,70 @@ def execute_get_client_details(client_id: str) -> Dict[str, Any]:
                     "folderPath": client.get("folderPath"),
                     "contacts": client.get("contacts", []),
                     "createdAt": client.get("createdAt"),
-                    "active": client.get("active", True)
+                    "active": client.get("active", True),
+                    "archived": client.get("archived", False),
+                    "archivedAt": client.get("archived_at") or client.get("archivedAt"),
+                    "archivedReason": client.get("archived_reason") or client.get("archivedReason"),
                 }
             }
 
-    return {
-        "success": False,
-        "error": f"Client with ID {client_id} not found"
-    }
+    return {"success": False, "error": f"Client with ID {client_id} not found"}
+
+
+def execute_archive_client(client_id: str, reason: str = "manual") -> Dict[str, Any]:
+    """Archive a client via API."""
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(f"{API_BASE}/api/clients/{client_id}/archive", json={"reason": reason})
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "success": True,
+                    "archived_at": data.get("archived_at"),
+                    "client": data.get("client"),
+                }
+            if resp.status_code == 404:
+                return {"success": False, "error": "Client not found"}
+            if resp.status_code == 409:
+                detail = {}
+                try:
+                    detail = resp.json()
+                except Exception:
+                    pass
+                return {
+                    "success": False,
+                    "error": detail.get("message") or "Client already archived",
+                    "reason": detail.get("reason") or "already_archived",
+                }
+            return {"success": False, "error": f"Archive failed: {resp.text}"}
+    except Exception as e:
+        return {"success": False, "error": f"Failed to archive client: {str(e)}"}
+
+
+def execute_restore_client(client_id: str, reason: str = "manual") -> Dict[str, Any]:
+    """Restore an archived client via API."""
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(f"{API_BASE}/api/clients/{client_id}/restore", json={"reason": reason})
+            if resp.status_code == 200:
+                data = resp.json()
+                return {"success": True, "client": data.get("client")}
+            if resp.status_code == 404:
+                return {"success": False, "error": "Client not found"}
+            if resp.status_code == 409:
+                detail = {}
+                try:
+                    detail = resp.json()
+                except Exception:
+                    pass
+                return {
+                    "success": False,
+                    "error": detail.get("message") or "Client already active",
+                    "reason": detail.get("reason") or "already_active",
+                }
+            return {"success": False, "error": f"Restore failed: {resp.text}"}
+    except Exception as e:
+        return {"success": False, "error": f"Failed to restore client: {str(e)}"}
 
 
 def execute_search_tasks(
@@ -484,12 +734,13 @@ def execute_update_task_status(task_id: str, status: str) -> Dict[str, Any]:
 
 def execute_get_system_summary() -> Dict[str, Any]:
     """Get a summary of the system status."""
-    clients = load_clients()
+    clients = load_clients(include_archived=True)
     tasks_data = load_tasks()
     tasks = tasks_data.get("tasks", [])
 
     # Count active clients
-    active_clients = sum(1 for c in clients if c.get("active", True))
+    active_clients = sum(1 for c in clients if c.get("active", True) and not c.get("archived"))
+    archived_clients = sum(1 for c in clients if c.get("archived"))
 
     # Count tasks by status
     task_counts = {"new": 0, "in_progress": 0, "done": 0, "blocked": 0}
@@ -515,6 +766,7 @@ def execute_get_system_summary() -> Dict[str, Any]:
         "summary": {
             "total_clients": len(clients),
             "active_clients": active_clients,
+            "archived_clients": archived_clients,
             "total_tasks": sum(task_counts.values()),
             "tasks_by_status": task_counts,
             "high_priority_tasks": high_priority,
@@ -667,6 +919,180 @@ def execute_search_privacy_submissions(query: str = None, limit: int = 10) -> Di
 
 
 # ─────────────────────────────────────────────────────────────
+# Contacts Tool Execution Functions (Phase 4I)
+# ─────────────────────────────────────────────────────────────
+
+def execute_get_client_contacts(client_id: str) -> Dict[str, Any]:
+    """Get all contacts for a specific client."""
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(f"{API_BASE}/contacts/{client_id}")
+            if resp.status_code == 200:
+                contacts = resp.json()
+                return {
+                    "success": True,
+                    "client_id": client_id,
+                    "count": len(contacts),
+                    "contacts": [
+                        {
+                            "id": c.get("id"),
+                            "name": c.get("name"),
+                            "role": c.get("role"),
+                            "email": c.get("email"),
+                            "phone": c.get("phone"),
+                            "is_primary": c.get("is_primary", False)
+                        }
+                        for c in contacts
+                    ]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to get contacts: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to get contacts: {str(e)}"
+        }
+
+
+def execute_add_contact(
+    client_id: str,
+    name: str,
+    role: str = None,
+    email: str = None,
+    phone: str = None,
+    is_primary: bool = False
+) -> Dict[str, Any]:
+    """Add a new contact to a client."""
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                f"{API_BASE}/contacts",
+                json={
+                    "client_id": client_id,
+                    "name": name,
+                    "role": role,
+                    "email": email,
+                    "phone": phone,
+                    "is_primary": is_primary
+                }
+            )
+            if resp.status_code in (200, 201):
+                contact = resp.json()
+                return {
+                    "success": True,
+                    "message": f"Contact '{name}' added successfully",
+                    "contact": {
+                        "id": contact.get("id"),
+                        "name": contact.get("name"),
+                        "role": contact.get("role"),
+                        "email": contact.get("email"),
+                        "phone": contact.get("phone"),
+                        "is_primary": contact.get("is_primary", False)
+                    }
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to add contact: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to add contact: {str(e)}"
+        }
+
+
+# ─────────────────────────────────────────────────────────────
+# Document Generation Tool Execution Functions (Phase 4G)
+# ─────────────────────────────────────────────────────────────
+
+def execute_list_templates(folder: str = None) -> Dict[str, Any]:
+    """List available document templates from SharePoint."""
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.get(f"{API_BASE}/word/templates")
+            if resp.status_code == 200:
+                data = resp.json()
+                templates = data.get("templates", [])
+
+                # Filter by folder if specified
+                if folder:
+                    folder_lower = folder.lower()
+                    templates = [
+                        t for t in templates
+                        if folder_lower in (t.get("folder") or "").lower()
+                    ]
+
+                return {
+                    "success": True,
+                    "count": len(templates),
+                    "templates": [
+                        {
+                            "name": t.get("name"),
+                            "display_name": t.get("display_name"),
+                            "path": t.get("path"),
+                            "folder": t.get("folder")
+                        }
+                        for t in templates
+                    ]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to list templates: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to list templates: {str(e)}"
+        }
+
+
+def execute_generate_document(
+    client_name: str,
+    template_paths: List[str],
+    extra_data: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """Generate documents from templates for a client."""
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            resp = client.post(
+                f"{API_BASE}/word/generate_multiple",
+                json={
+                    "client_name": client_name,
+                    "template_paths": template_paths,
+                    "extra_data": extra_data or {}
+                }
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                return {
+                    "success": True,
+                    "message": f"Generated {len(result.get('files_created', []))} document(s)",
+                    "files_created": [
+                        {
+                            "name": f.get("name"),
+                            "url": f.get("url")
+                        }
+                        for f in result.get("files_created", [])
+                    ]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to generate documents: {resp.text}"
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to generate documents: {str(e)}"
+        }
+
+
+# ─────────────────────────────────────────────────────────────
 # Main Tool Executor
 # ─────────────────────────────────────────────────────────────
 
@@ -679,12 +1105,25 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         if tool_name == "search_clients":
             return execute_search_clients(
                 query=arguments.get("query", ""),
-                limit=arguments.get("limit", 5)
+                limit=arguments.get("limit", 5),
+                include_archived=arguments.get("include_archived", False),
             )
 
         elif tool_name == "get_client_details":
             return execute_get_client_details(
                 client_id=arguments.get("client_id", "")
+            )
+
+        elif tool_name == "archive_client":
+            return execute_archive_client(
+                client_id=arguments.get("client_id", ""),
+                reason=arguments.get("reason") or "manual",
+            )
+
+        elif tool_name == "restore_client":
+            return execute_restore_client(
+                client_id=arguments.get("client_id", ""),
+                reason=arguments.get("reason") or "manual",
             )
 
         elif tool_name == "search_tasks":
@@ -731,6 +1170,35 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
             return execute_search_privacy_submissions(
                 query=arguments.get("query"),
                 limit=arguments.get("limit", 10)
+            )
+
+        # Contacts tools (Phase 4I)
+        elif tool_name == "get_client_contacts":
+            return execute_get_client_contacts(
+                client_id=arguments.get("client_id", "")
+            )
+
+        elif tool_name == "add_contact":
+            return execute_add_contact(
+                client_id=arguments.get("client_id", ""),
+                name=arguments.get("name", ""),
+                role=arguments.get("role"),
+                email=arguments.get("email"),
+                phone=arguments.get("phone"),
+                is_primary=arguments.get("is_primary", False)
+            )
+
+        # Document generation tools (Phase 4G)
+        elif tool_name == "list_templates":
+            return execute_list_templates(
+                folder=arguments.get("folder")
+            )
+
+        elif tool_name == "generate_document":
+            return execute_generate_document(
+                client_name=arguments.get("client_name", ""),
+                template_paths=arguments.get("template_paths", []),
+                extra_data=arguments.get("extra_data")
             )
 
         else:

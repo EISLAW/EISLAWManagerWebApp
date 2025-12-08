@@ -284,7 +284,6 @@ def find_transcript_by_id(item_id: str) -> Optional[Dict]:
         FROM transcripts t
         LEFT JOIN recordings r ON t.recording_id = r.id
         LEFT JOIN clients c ON t.client_id = c.id
-        LEFT JOIN clients c ON t.client_id = c.id
         WHERE t.id = ?
     """, (item_id,))
 

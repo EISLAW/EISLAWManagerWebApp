@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { X, Search, FileText, Loader2, Check, FolderOpen } from "lucide-react"
+import { X, Search, FileText, Loader2, Check, FolderOpen, Settings } from "lucide-react"
 
 // Mock data for testing until backend is ready
 const MOCK_TEMPLATES = [
@@ -25,6 +25,54 @@ export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [templatesFolder, setTemplatesFolder] = useState("")
+  const [newFolder, setNewFolder] = useState("")
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  // Load templates folder setting
+  const loadSettings = async () => {
+    try {
+      const res = await fetch(`${apiBase}/word/settings/templates_folder`)
+      if (res.ok) {
+        const data = await res.json()
+        setTemplatesFolder(data.templates_folder || "")
+        setNewFolder(data.templates_folder || "")
+      }
+    } catch (err) {
+      console.error("Error loading settings:", err)
+    }
+  }
+
+  // Save templates folder setting
+  const saveSettings = async () => {
+    if (!newFolder.trim()) return
+    setSavingSettings(true)
+    try {
+      const res = await fetch(`${apiBase}/word/settings/templates_folder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templates_folder: newFolder.trim() })
+      })
+      if (res.ok) {
+        setTemplatesFolder(newFolder.trim())
+        setShowSettings(false)
+        // Reload templates with new folder
+        setTemplates([])
+        setLoading(true)
+        const tRes = await fetch(`${apiBase}/word/templates`)
+        if (tRes.ok) {
+          const data = await tRes.json()
+          setTemplates(data.templates || [])
+        }
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err)
+    } finally {
+      setSavingSettings(false)
+    }
+  }
 
   // Load templates when modal opens
   useEffect(() => {
@@ -34,8 +82,11 @@ export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
       setSelected([])
       setError("")
       setSuccess(null)
+      setShowSettings(false)
       return
     }
+
+    loadSettings()
 
     const loadTemplates = async () => {
       setLoading(true)
@@ -135,13 +186,49 @@ export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800">בחר טמפלטים ליצירת מסמכים</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${showSettings ? 'bg-petrol/10 text-petrol' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'}`}
+              title="הגדרות תיקיית טמפלטים"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+            <div className="text-sm font-medium text-slate-700 mb-2">תיקיית טמפלטים בשרפוינט:</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newFolder}
+                onChange={e => setNewFolder(e.target.value)}
+                placeholder="לקוחות משרד/לקוחות משרד_טמפלייטים"
+                className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-petrol focus:ring-1 focus:ring-petrol outline-none transition-colors"
+                dir="ltr"
+              />
+              <button
+                onClick={saveSettings}
+                disabled={savingSettings || newFolder.trim() === templatesFolder}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px] ${savingSettings || newFolder.trim() === templatesFolder ? 'bg-slate-100 text-slate-400' : 'bg-petrol text-white hover:bg-petrolHover'}`}
+              >
+                {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-slate-500">
+              הנתיב יחסית לאתר SharePoint: {templatesFolder || "(ברירת מחדל)"}
+            </div>
+          </div>
+        )}
 
         {/* Success State */}
         {success ? (
@@ -216,7 +303,7 @@ export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
                       <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-slate-700 truncate">
-                          {template.display_name || template.name.replace(/^template_/, "").replace(/\.dotx$/, "")}
+                          {template.name}
                         </div>
                         {template.folder && (
                           <div className="text-xs text-slate-500">תיקייה: {template.folder}</div>
@@ -239,7 +326,7 @@ export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
                       className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white border border-slate-200 text-xs text-slate-600"
                     >
                       <FileText className="w-3 h-3" />
-                      {t.display_name || t.name.replace(/^template_/, "").replace(/\.dotx$/, "")}
+                      {t.name}
                       <button
                         onClick={() => toggleSelect(t)}
                         className="mr-1 hover:text-red-500"

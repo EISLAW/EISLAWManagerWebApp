@@ -675,3 +675,140 @@ How to Verify
   - `docker-compose.dev.yml` – hot-reload stack config
   - `backend/main.py` – CORS origins list
 - **Lesson:** When switching to dev mode, always verify CORS includes the VM's external IP + port, otherwise browser requests will fail silently.
+
+## 2025-12-06 – Data Bible was incomplete – Always verify against actual DB
+- **Symptom:** During docs audit review, discovered `DATA_STORES.md` (the "Data Bible") only documented 2 tables but production `eislaw.db` has **11 tables**.
+- **Root cause:** Tables were added over time without updating documentation. Data Bible was created but never maintained.
+- **Discovery method:** Queried actual database:
+  ```sql
+  SELECT name FROM sqlite_master WHERE type='table'
+  ```
+- **Missing tables (8 total):**
+  - `contacts` - Client contacts (12 rows)
+  - `quote_templates` - Quote templates (3 rows)
+  - `agent_approvals` - Agent approval workflow (2 rows)
+  - `agent_settings` - Agent configuration
+  - `agent_audit_log` - Agent activity history
+  - `agent_metrics` - Agent performance metrics
+  - `activity_log` - System activity log (3 rows)
+  - `sync_state` - Sync status tracking
+- **API endpoints also wrong:**
+  - Documented: `GET /api/email/{id}` (didn't exist)
+  - Actual: `GET /email/content?id=X`
+- **Fix applied:**
+  - Updated `DATA_STORES.md` with all 11 tables + actual schema from production
+  - Added correct API endpoints section
+  - Added changelog entry
+- **Lesson (MEMORIZE):**
+  1. **On project join:** Always query `sqlite_master` to verify Data Bible matches reality
+  2. **On table creation:** Update Data Bible BEFORE committing code
+  3. **On CTO review:** Verify docs against actual database, not just reading the docs
+  4. **Verification command:**
+     ```bash
+     docker exec <container> python3 -c "import sqlite3; conn = sqlite3.connect('/app/data/eislaw.db'); print([t[0] for t in conn.execute('SELECT name FROM sqlite_master WHERE type=\"table\"').fetchall()])"
+     ```
+- **Policy:** Data Bible (`DATA_STORES.md`) requires CTO approval for changes AND verification against production before approval.
+
+## 2025-12-06 – Forgot AI Agent tools when building new features (DUAL-USE lesson)
+- **Symptom:** Built email attachment feature for tasks UI (frontend button + backend API) but forgot to add corresponding tool definition in `ai_studio_tools.py`. AI agents can't use the new feature.
+- **Root cause:** No process reminder to check agent tools when building new APIs. Only thought about frontend UX.
+- **Discovery:** During post-implementation review, CTO asked "can agents do this?" and the answer was no.
+- **Missing tools identified:**
+  - `attach_email_to_task` - API exists (`POST /tasks/{id}/emails/attach`) but no tool
+  - `get_client_emails` - API exists (`GET /email/by_client`) but no tool
+  - `search_emails` - API exists (`GET /email/search`) but no tool
+- **Fix applied:**
+  1. Added DUAL-USE RULE to TEAM_INBOX.md under KEY PRINCIPLES
+  2. Added section 1H "Dual-Use Design Principle" to CLAUDE.md with:
+     - Step-by-step guide for adding new tools
+     - Current tools inventory
+     - Missing tools list
+     - Golden rule: "If a user can do it in the UI, an AI agent should be able to do it via API"
+- **Lesson (MEMORIZE):**
+  1. **When building any API:** Add tool definition to `ai_studio_tools.py` BEFORE marking task done
+  2. **Checklist:** For every new endpoint:
+     - [ ] REST endpoint exists
+     - [ ] Tool definition added to AVAILABLE_TOOLS
+     - [ ] execute_* function implemented
+     - [ ] DATA_STORES.md updated
+  3. **Verification:** Run `grep -c "function" backend/ai_studio_tools.py` and compare to API count
+- **Policy:** No API endpoint is complete without its corresponding agent tool definition.
+
+## 2025-12-08 – Email Preview Feature Parity Rule (MEMORIZE)
+- **Symptom:** "Save Attachments to SharePoint" button was only implemented in the Overview (Skira) tab email preview modal, NOT in the Emails tab email preview. CEO had to request the feature be added to the second location.
+- **Root cause:** Developer implemented feature in one email preview location without realizing there are TWO email preview UIs:
+  1. **Overview tab (`?tab=overview`):** EmailsWidget → click email → inline preview modal
+  2. **Emails tab (`?tab=emails`):** Emails list → click email → both inline preview AND email viewer modal
+- **Discovery:** CEO testing revealed the button was missing from Emails tab after CTO approved the feature as complete.
+- **Fix applied:**
+  - Added `savingAttachmentsId` state and `saveAttachmentsToSharePoint` function to `ClientOverview.jsx`
+  - Added Save Attachments button to Emails tab inline preview (next to "Create task" button)
+  - Added Save Attachments button to Email Viewer modal (modal header)
+- **Lesson (MEMORIZE - Email Preview Feature Parity):**
+  1. **There are 3 email preview locations in ClientOverview:**
+     - Overview tab: EmailsWidget preview modal
+     - Emails tab: Inline expanded preview
+     - Emails tab: Email Viewer modal
+  2. **ANY feature added to one preview MUST be added to ALL three:**
+     - Open in Outlook
+     - Create Task
+     - Save Attachments to SharePoint (when has_attachments + SharePoint linked)
+  3. **Verification checklist for email features:**
+     - [ ] Overview tab → click email → feature visible in preview
+     - [ ] Emails tab → click email row → feature visible in inline preview
+     - [ ] Emails tab → click "Open in Viewer" → feature visible in modal
+  4. **When building email-related features:**
+     - Search for ALL email preview render blocks in `ClientOverview.jsx`
+     - Add feature to each location with consistent behavior
+- **Policy:** No email preview feature is complete unless it appears in ALL email preview locations.
+- **Files affected:** `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
+
+## 2025-12-06 – Frontend-Backend Endpoint Gap (HANDSHAKE lesson)
+- **Symptom:** During API inventory audit, discovered 10+ frontend `fetch()` calls to endpoints that DON'T EXIST in `main.py`. Features either silently fail or work only due to fallback logic.
+- **Missing endpoints identified:**
+  ```
+  /registry/clients          - Frontend calls, backend missing
+  /airtable/clients_upsert   - Frontend calls, backend missing
+  /airtable/search           - Frontend calls, backend missing
+  /sp/folder_create          - Frontend calls, backend missing
+  /tasks/create_or_get_folder - Frontend calls, backend missing
+  /api/client/locations      - Frontend calls, backend missing
+  /api/client/summary_online - Frontend calls, backend missing
+  /api/outlook/latest_link   - Frontend calls, backend missing
+  /email/viewer              - Frontend calls, backend missing
+  /dev/*                     - 4 endpoints missing (local desktop only)
+  ```
+- **Root cause:** Features were built with frontend-first approach without verifying backend implementation. No automated check to verify endpoint existence.
+- **Discovery method:**
+  1. Grep frontend for `fetch()` calls: `grep -rn "fetch\(" frontend/src --include="*.jsx"`
+  2. Grep backend for `@app.route`: `grep -n "@app\." backend/main.py`
+  3. Compare lists → found gap
+- **Partial fix on VM only:** `/email/reply` and `/email/search` exist on VM but not in local repo (sync issue).
+- **Lesson (MEMORIZE - Frontend-Backend Handshake Rule):**
+  1. **Before marking any feature DONE:**
+     - [ ] Frontend `fetch()` call exists
+     - [ ] Backend `@app.route` exists for that endpoint
+     - [ ] Endpoint returns expected response (test with curl)
+     - [ ] Endpoint documented in `API_ENDPOINTS_INVENTORY.md`
+  2. **Verification command:**
+     ```bash
+     # Extract frontend endpoints
+     grep -roh "fetch.*\`\${API}[^'\"]*" frontend/src | sort -u
+
+     # Extract backend endpoints
+     grep -n "@app\." backend/main.py | grep -oP '"/[^"]+' | sort -u
+
+     # Compare for gaps
+     ```
+  3. **When building new feature:**
+     - Build order: `Database → Backend API → Frontend → Test E2E`
+     - Never build frontend feature without working backend endpoint
+  4. **API Inventory must include status column:**
+     - ✅ Implemented (exists in main.py)
+     - ❌ Missing (frontend calls but backend missing)
+     - 🔄 VM Only (exists on VM, needs sync to local)
+- **Policy:** No frontend feature is complete unless the backend endpoint exists AND is verified with curl/test.
+- **Action items:**
+  1. Update `API_ENDPOINTS_INVENTORY.md` with implementation status
+  2. Create task to build missing endpoints
+  3. Sync VM code back to local repo

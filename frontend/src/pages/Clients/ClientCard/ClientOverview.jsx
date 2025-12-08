@@ -10,11 +10,13 @@ import TasksWidget from '../../../components/TasksWidget.jsx'
 import EmailsWidget from '../../../components/EmailsWidget.jsx'
 import AddClientModal from '../../../components/AddClientModal.jsx'
 import LinkAirtableModal from '../../../components/LinkAirtableModal.jsx'
+import QuickActions from '../../../components/QuickActions.jsx'
+import TemplatePicker from '../../../components/TemplatePicker.jsx'
+import DeliveryEmailModal from '../../../components/DeliveryEmailModal.jsx'
 import { addClientTask, updateTaskFields } from '../../../features/tasksNew/TaskAdapter.js'
 import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight, Receipt } from 'lucide-react'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../../utils/apiBase.js'
 import QuoteGenerator from '../../../components/QuoteGenerator.jsx'
-import DocumentPicker from '../../../components/DocumentPicker.jsx'
 
 // Simple in-memory cache for client summaries during the session to avoid re-fetch on tab switches
 const summaryCache = new Map()
@@ -57,6 +59,7 @@ export default function ClientOverview(){
   const [syncingClientCard, setSyncingClientCard] = useState(false)
   const [airtableLinkModal, setAirtableLinkModal] = useState({ open: false, afterSync: false })
   const [creatingTaskId, setCreatingTaskId] = useState(null)
+  const [savingAttachmentsId, setSavingAttachmentsId] = useState(null)
   const pendingSyncAfterLinkRef = useRef(false)
   const sharepointLinked = Boolean(summary.client?.sharepoint_url || summary.client?.folder)
   const airtableLinked = Boolean(summary.client?.airtable_id)
@@ -65,7 +68,8 @@ export default function ClientOverview(){
   const autoSyncAttemptedRef = useRef(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showQuoteGenerator, setShowQuoteGenerator] = useState(false)
-  const [showDocPicker, setShowDocPicker] = useState(false)
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type })
@@ -792,13 +796,22 @@ export default function ClientOverview(){
       <div>
         <TabNav base={base} current={tab} tabs={[
           {key:'overview', label:'סקירה'},
-          {key:'files', label:'מסמכים'},
+          {key:'files', label:'קבצים'},
           {key:'emails', label:'אימיילים'},
           {key:'tasks', label:'משימות'},
           // {key:'rag', label:'RAG'}, // Hidden until implemented
           // {key:'privacy', label:'פרטיות (בקרוב)'} // Hidden until implemented
         ]}/>
       </div>
+
+      {/* Quick Actions - Phase 1: Three action buttons */}
+      {tab === 'overview' && (
+        <QuickActions
+          onQuote={() => setShowQuoteGenerator(true)}
+          onDocuments={() => setTemplatePickerOpen(true)}
+          onDelivery={() => setDeliveryModalOpen(true)}
+        />
+      )}
 
             {tab==='overview' && (
         <div className="space-y-6">
@@ -924,62 +937,22 @@ export default function ClientOverview(){
           </div>
         </div>
       )}\n{tab==='files' && (
-        <Card title="מסמכים">
-          <div className="flex flex-wrap gap-3 mb-4">
-            {/* SharePoint Folder Button */}
-            <button
-              onClick={async () => {
-                const API_URL = (apiBase || ENV_API || 'http://127.0.0.1:8788').replace(/\/$/,'')
-                try {
-                  const res = await fetch(`${API_URL}/word/client_folder_url/${encodeURIComponent(decodedName)}`)
-                  if (res.ok) {
-                    const data = await res.json()
-                    if (data.url) {
-                      window.open(data.url, '_blank', 'noopener,noreferrer')
-                    }
-                  }
-                } catch (e) {
-                  console.error('Failed to open SharePoint folder:', e)
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 min-h-[44px]"
-            >
-              <FolderOpen className="w-5 h-5 text-petrol" />
-              <span>תיקיית לקוח בשרפוינט</span>
-            </button>
-
-            {/* Create Documents Button */}
-            <button
-              onClick={() => setShowDocPicker(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover min-h-[44px]"
-            >
-              <FileText className="w-5 h-5" />
-              <span>צור מסמכים מטמפלייט</span>
-            </button>
-          </div>
-
-          {/* Legacy: Local files list (keep for backwards compatibility) */}
-          {(summary.files||[]).length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
+        <Card title="קבצים">
+          {(summary.files||[]).length === 0 ? (
+            <div className="text-sm text-slate-500 text-center py-4">
+              אין קבצים עדיין
+            </div>
+          ) : (
+            <>
               <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
-              <ul className="list-disc pr-6 text-sm">
+              <ul className="list-disc pl-6 text-sm">
                 {(summary.files||[]).map(f => (
                   <li key={f.path}>{f.name}</li>
                 ))}
               </ul>
-            </div>
+            </>
           )}
         </Card>
-      )}
-
-      {/* DocumentPicker Modal */}
-      {showDocPicker && (
-        <DocumentPicker
-          open={true}
-          clientName={decodedName}
-          apiBase={apiBase || ENV_API || 'http://127.0.0.1:8788'}
-          onClose={() => setShowDocPicker(false)}
-        />
       )}
       {tab==='emails' && (
         <Card title="אימיילים">
@@ -1172,6 +1145,15 @@ export default function ClientOverview(){
                           >
                             {creatingTaskId === it.id ? 'Creating…' : 'Create task'}
                           </button>
+                          {it.has_attachments && sharepointLinked && (
+                            <button
+                              className="text-petrol underline min-h-[44px]"
+                              onClick={() => saveAttachmentsToSharePoint(it)}
+                              disabled={savingAttachmentsId === it.id}
+                            >
+                              {savingAttachmentsId === it.id ? 'שומר...' : 'שמור קבצים ל-SharePoint'}
+                            </button>
+                          )}
                         </div>
                       </div>
                   )}
@@ -1237,6 +1219,18 @@ export default function ClientOverview(){
                 >
                   השב
                 </button>
+                {(() => {
+                  const match = viewer.meta.id ? idx.items.find(m => m.id === viewer.meta.id) : null
+                  return match?.has_attachments && sharepointLinked ? (
+                    <button
+                      className="text-sm text-petrol underline min-h-[44px]"
+                      onClick={() => saveAttachmentsToSharePoint(match)}
+                      disabled={savingAttachmentsId === match.id}
+                    >
+                      {savingAttachmentsId === match.id ? 'שומר...' : 'שמור קבצים ל-SharePoint'}
+                    </button>
+                  ) : null
+                })()}
                 <button className="rounded-full bg-slate-100 px-3 py-1 text-sm min-h-[44px]" onClick={closeViewer}>סגור</button>
               </div>
             </div>
@@ -1289,6 +1283,24 @@ export default function ClientOverview(){
             console.log('Quote generated:', quoteData)
             showToast('הצעת מחיר נוצרה בהצלחה', 'success')
           }}
+        />
+      )}
+
+      {templatePickerOpen && (
+        <TemplatePicker
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          clientName={decodedName}
+          apiBase={API}
+        />
+      )}
+      {deliveryModalOpen && (
+        <DeliveryEmailModal
+          open={deliveryModalOpen}
+          onClose={() => setDeliveryModalOpen(false)}
+          clientName={decodedName}
+          clientEmail={summary.client?.emails?.[0] || ''}
+          sharepointUrl={summary.client?.sharepoint_url}
         />
       )}
 
@@ -1488,6 +1500,39 @@ export default function ClientOverview(){
       alert('יצירת משימה מהאימייל נכשלה.')
     }finally{
       setCreatingTaskId(null)
+    }
+  }
+
+  // Save email attachments to client's SharePoint folder
+  async function saveAttachmentsToSharePoint(item) {
+    if (!item?.id) return
+    if (!sharepointLinked) {
+      alert('לא הוגדרה תיקיית SharePoint ללקוח זה.')
+      return
+    }
+    setSavingAttachmentsId(item.id)
+    try {
+      const res = await fetch(`${API}/api/email/attachments/save-to-sharepoint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_id: item.id, client_name: decodedName }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        const count = data.count || data.saved_files?.length || 0
+        if (count > 0) {
+          alert(`נשמרו ${count} קבצים ל-SharePoint בהצלחה.`)
+        } else {
+          alert('לאימייל זה אין קבצים מצורפים.')
+        }
+      } else {
+        alert(data.message || 'שמירת הקבצים נכשלה.')
+      }
+    } catch (err) {
+      console.error('saveAttachmentsToSharePoint', err)
+      alert('שמירת הקבצים נכשלה.')
+    } finally {
+      setSavingAttachmentsId(null)
     }
   }
 

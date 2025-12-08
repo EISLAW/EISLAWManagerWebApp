@@ -35,9 +35,41 @@ router = APIRouter(prefix="/word", tags=["word"])
 
 # SharePoint configuration - UPDATED for Phase 4G
 SHAREPOINT_SITE_NAME = "EISLAWTEAM"
-TEMPLATES_FOLDER = "לקוחות משרד/לקוחות משרד_טמפלייטים"  # Updated path
+DEFAULT_TEMPLATES_FOLDER = "לקוחות משרד/לקוחות משרד_טמפלייטים"  # Default path
 CLIENTS_FOLDER = "לקוחות משרד"  # Client folders root
 SHAREPOINT_BASE_URL = "https://eislaw.sharepoint.com/sites/EISLAWTEAM"
+
+# Settings file for configurable paths
+SETTINGS_FILE = os.path.expanduser("~/.eislaw/store/settings.json")
+
+def get_templates_folder() -> str:
+    """Get templates folder from settings, or use default."""
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                return settings.get("templates_folder", DEFAULT_TEMPLATES_FOLDER)
+    except Exception as e:
+        print(f"Error reading settings: {e}")
+    return DEFAULT_TEMPLATES_FOLDER
+
+def set_templates_folder(folder_path: str) -> bool:
+    """Save templates folder to settings."""
+    try:
+        settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+        settings["templates_folder"] = folder_path
+        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving settings: {e}")
+        return False
+
+# Dynamic templates folder - use getter
 
 # Cache for site/drive IDs and MSAL app
 _cache: Dict[str, Any] = {
@@ -199,8 +231,10 @@ def extract_display_name(filename: str) -> str:
     """Extract display name from template filename.
     e.g., 'template_פרטיות_הצהרה.dotx' -> 'פרטיות - הצהרה'
     """
-    # Remove extension
-    name = filename.replace(".dotx", "").replace(".docx", "")
+    # Remove extension (.dotx, .docx, .xlsx)
+    name = filename
+    for ext in [".dotx", ".docx", ".xlsx", ".xls"]:
+        name = name.replace(ext, "")
     # Remove 'template_' prefix (Hebrew or English)
     name = re.sub(r'^(template_|טמפלייט_)', '', name, flags=re.IGNORECASE)
     # Replace underscores with spaces/dashes
@@ -224,7 +258,7 @@ def generate_output_filename(template_name: str, client_name: str) -> str:
 
 
 async def list_sharepoint_templates() -> List[Dict]:
-    """List .dotx templates from SharePoint Templates folder (including subfolders)"""
+    """List document templates from SharePoint Templates folder (including subfolders). Returns .dotx, .docx, and .xlsx files."""
     token = await get_graph_token()
     if not token:
         return []
@@ -238,7 +272,7 @@ async def list_sharepoint_templates() -> List[Dict]:
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         # List items in Templates folder
-        encoded_path = urllib.parse.quote(TEMPLATES_FOLDER)
+        encoded_path = urllib.parse.quote(get_templates_folder())
         folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/children"
         resp = await client.get(folder_url, headers=headers)
 
@@ -251,17 +285,20 @@ async def list_sharepoint_templates() -> List[Dict]:
         for item in items:
             name = item.get("name", "")
 
-            # Check for .dotx files (templates)
-            if name.lower().endswith(".dotx"):
+            # Check for document files (.dotx, .docx, .xlsx)
+            name_lower = name.lower()
+            if name_lower.endswith(".dotx") or name_lower.endswith(".docx") or name_lower.endswith(".xlsx"):
+                file_type = "dotx" if name_lower.endswith(".dotx") else ("docx" if name_lower.endswith(".docx") else "xlsx")
                 templates.append({
                     "name": name,
                     "display_name": extract_display_name(name),
-                    "path": f"{TEMPLATES_FOLDER}/{name}",
+                    "path": f"{get_templates_folder()}/{name}",
                     "item_id": item.get("id"),
                     "folder": "",  # Root templates folder
                     "webUrl": item.get("webUrl", ""),
                     "size": item.get("size", 0),
-                    "modified": item.get("lastModifiedDateTime", "")
+                    "modified": item.get("lastModifiedDateTime", ""),
+                    "type": file_type
                 })
             elif item.get("folder"):
                 # It's a subfolder - list its contents too
@@ -273,16 +310,19 @@ async def list_sharepoint_templates() -> List[Dict]:
                     sub_items = sub_resp.json().get("value", [])
                     for sub_item in sub_items:
                         sub_name = sub_item.get("name", "")
-                        if sub_name.lower().endswith(".dotx"):
+                        sub_name_lower = sub_name.lower()
+                        if sub_name_lower.endswith(".dotx") or sub_name_lower.endswith(".docx") or sub_name_lower.endswith(".xlsx"):
+                            file_type = "dotx" if sub_name_lower.endswith(".dotx") else ("docx" if sub_name_lower.endswith(".docx") else "xlsx")
                             templates.append({
                                 "name": sub_name,
                                 "display_name": extract_display_name(sub_name),
-                                "path": f"{TEMPLATES_FOLDER}/{subfolder_name}/{sub_name}",
+                                "path": f"{get_templates_folder()}/{subfolder_name}/{sub_name}",
                                 "item_id": sub_item.get("id"),
                                 "folder": subfolder_name,
                                 "webUrl": sub_item.get("webUrl", ""),
                                 "size": sub_item.get("size", 0),
-                                "modified": sub_item.get("lastModifiedDateTime", "")
+                                "modified": sub_item.get("lastModifiedDateTime", ""),
+                                "type": file_type
                             })
 
     return templates
@@ -504,9 +544,9 @@ async def list_templates():
 @router.get("/templates_root")
 async def get_templates_root():
     """Get the templates folder path/URL for the 'Open Folder' button"""
-    encoded_path = urllib.parse.quote(TEMPLATES_FOLDER)
+    encoded_path = urllib.parse.quote(get_templates_folder())
     return {
-        "path": TEMPLATES_FOLDER,
+        "path": get_templates_folder(),
         "url": f"{SHAREPOINT_BASE_URL}/{encoded_path}"
     }
 
@@ -730,6 +770,33 @@ async def generate_multiple_documents(req: GenerateMultipleRequest):
     }
 
 
+@router.get("/settings/templates_folder")
+async def get_templates_folder_setting():
+    """Get the current templates folder path."""
+    return {
+        "templates_folder": get_templates_folder(),
+        "default": DEFAULT_TEMPLATES_FOLDER
+    }
+
+
+@router.post("/settings/templates_folder")
+async def set_templates_folder_setting(payload: dict):
+    """Set the templates folder path."""
+    folder = (payload.get("templates_folder") or "").strip()
+    if not folder:
+        raise HTTPException(status_code=400, detail="templates_folder is required")
+
+    success = set_templates_folder(folder)
+    if success:
+        return {
+            "success": True,
+            "templates_folder": folder,
+            "message": "Templates folder updated"
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+
 @router.get("/health")
 async def word_api_health():
     """Health check for Word API"""
@@ -742,7 +809,7 @@ async def word_api_health():
         "graph_connected": token is not None,
         "sharepoint_connected": drive_id is not None,
         "docx_available": DOCX_AVAILABLE,
-        "templates_folder": TEMPLATES_FOLDER,
+        "templates_folder": get_templates_folder(),
         "clients_folder": CLIENTS_FOLDER,
         "site_id": site_id[:20] + "..." if site_id else None,
         "drive_id": drive_id[:20] + "..." if drive_id else None,

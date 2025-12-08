@@ -1,17 +1,18 @@
 # Clients Features Specification
 
 **Author:** David (Product Senior)
-**Date:** 2025-12-05
+**Date:** 2025-12-05 (Updated: 2025-12-08)
 **Purpose:** Document all features that SHOULD work in the Clients area
-**Context:** CORE 4 POLISH - Clients Phase
+**Context:** CORE 4 POLISH - Clients Phase + Airtable Integration
 
 ---
 
 ## Overview
 
-The Clients module consists of two main pages:
-1. **ClientsList** (`/clients`) - List all clients with search and quick actions
-2. **ClientOverview** (`/clients/:name`) - Detailed client view with tabs
+The Clients module consists of three main pages/tabs:
+1. **ClientsList** (`/clients` → "לקוחות" tab) - List all active clients with search and quick actions
+2. **ContactsListTab** (`/clients` → "רשימת קשר" tab) - **NEW (2025-12-08)** - Airtable contacts with sync and activation
+3. **ClientOverview** (`/clients/:name`) - Detailed client view with tabs
 
 ---
 
@@ -42,6 +43,59 @@ The Clients module consists of two main pages:
 | `GET /api/clients` | List all clients | Array of client objects |
 | `GET /api/client/summary` | Get client details | Client summary object |
 | `GET /api/client/locations` | Get folder paths | `{ localFolder, sharepointUrl }` |
+
+---
+
+## Tab: רשימת קשר (Contact List) - NEW 2025-12-08
+
+**Components:** `ContactsListTab.jsx`, `ContactRow.jsx`, `SyncButton.jsx`, `ActivateContactModal.jsx`
+**Status:** ✅ CTO APPROVED (2025-12-08)
+
+### Features
+
+| ID | Feature | Description | Test Action |
+|----|---------|-------------|-------------|
+| CL-020 | Tab navigation | Two tabs: "👥 לקוחות" and "📋 רשימת קשר" | Click tabs → content switches |
+| CL-021 | Sync button | Pull contacts from Airtable | Click "סנכרן מ-Airtable" → spinner → contacts refresh |
+| CL-022 | Last sync time | Show when last synced | Time displayed near sync button |
+| CL-023 | Search contacts | Filter by name, email, phone | Type in search → results filter |
+| CL-024 | Contact table | Display name, phone, status, actions | Table with 4 columns |
+| CL-025 | Status badges | "ליד" for leads, "מופעל" for activated | Badges show correct state |
+| CL-026 | Activate button | "פתח תיקייה" for non-activated contacts | Click → activation modal opens |
+| CL-027 | View button | "צפה בלקוח" for activated contacts | Click → navigate to client |
+| CL-028 | Contact count | Show "הוצגו X אנשי קשר" | Count updates with filters |
+
+### Activation Modal (ActivateContactModal)
+
+| ID | Feature | Description | Test Action |
+|----|---------|-------------|-------------|
+| AM-001 | Modal header | Shows "הפעלת איש קשר" with contact name | Header displays correctly |
+| AM-002 | Create folder option | Radio: "צור תיקייה חדשה" (default selected) | Creates SharePoint folder automatically |
+| AM-003 | Link folder option | Radio: "קשר תיקייה קיימת" | Shows URL input when selected |
+| AM-004 | Create button | "צור כלקוח" with FolderPlus icon | Creates client + SharePoint folder |
+| AM-005 | Cancel button | "ביטול" | Closes modal without action |
+| AM-006 | Loading state | Spinner + "יוצר לקוח..." during creation | Feedback during API calls |
+
+### API Dependencies (Airtable Integration)
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `/api/airtable-contacts` | GET | List all synced contacts from SQLite | ✅ |
+| `/api/sync/pull-airtable` | POST | Pull contacts from Airtable → SQLite | ✅ |
+| `/api/sync/push-airtable` | POST | Push changes from SQLite → Airtable | ✅ |
+| `/api/contacts/activate` | POST | Create client from contact | ✅ |
+| `/sp/folder_create` | POST | **Create SharePoint folder** | ✅ NEW |
+
+### Activation Flow
+
+When user clicks "פתח תיקייה" and confirms with "Create folder" option:
+
+1. **Frontend** calls `POST /sp/folder_create` with contact name
+2. **Backend** creates folder in SharePoint under "לקוחות משרד/{name}"
+3. **Backend** returns `{ webUrl, id, name, path }`
+4. **Frontend** calls `POST /api/contacts/activate` with SharePoint URL
+5. **Backend** creates client in registry, marks contact as activated
+6. **Frontend** updates UI, shows success toast
 
 ---
 
@@ -89,25 +143,30 @@ The Clients module consists of two main pages:
 | AC-014 | Smart search (add mode) | Search existing clients/Airtable | Type name → shows matches |
 | AC-015 | Create from Airtable | Import from Airtable match | Click match → fills form |
 
-#### Folder Linking Flow (AC-009)
+#### Folder Linking Flow (AC-009) - ✅ UPDATED 2025-12-07
 
 The "עיין" button follows this logic:
-1. First checks `/api/client/summary` for existing SharePoint/local folder
-2. Tries `/dev/open_folder` for local folder picker (desktop only)
-3. Falls back to `/api/client/sharepoint_link` for SharePoint lookup
-4. If none found, tries `/sp/folder_create` to create new SharePoint folder
+1. First checks `/api/client/summary` for existing SharePoint URL
+2. Tries `/api/sharepoint/link_client` to search and link existing folder
+3. If not found, **automatically creates** folder via `/api/sharepoint/create_folder`
+4. Opens the SharePoint folder in new browser tab
+5. Updates client registry with SharePoint URL
 
 **Backend dependencies:**
 | Endpoint | Purpose | Status |
 |----------|---------|--------|
 | `/api/client/summary` | Get existing folder | ✅ |
-| `/dev/open_folder` | Local folder picker | ❌ Missing |
-| `/api/client/sharepoint_link` | Get SharePoint URL | ❌ Missing |
-| `/sp/folder_create` | Create SharePoint folder | ❌ Missing |
-| `/registry/clients` | Save client | ✅ Working (expects `display_name` by design) |
-| `/registry/clients/{id}` | Update client | ✅ (2025-12-06) |
-| `/airtable/clients_upsert` | Sync to Airtable | ⚠️ Airtable config issue (not code bug) |
-| `/airtable/search` | Smart search | ✅ (2025-12-06) |
+| `/api/sharepoint/link_client` | Search & link SharePoint folder | ✅ (2025-12-07) |
+| `/api/sharepoint/create_folder` | **NEW** Create SharePoint folder | ✅ (2025-12-07) |
+| `/registry/clients` | Save client | ✅ |
+| `/registry/clients/{id}` | Update client | ✅ |
+| `/airtable/clients_upsert` | Sync to Airtable | ✅ |
+| `/airtable/search` | Smart search | ✅ |
+
+**UX Improvements (2025-12-07):**
+- Loading spinner on submit button while saving
+- New clients appear at top of list (sorted by `created_at DESC`)
+- SharePoint folder auto-creates if not found
 
 ### Contacts Section (NEW - Phase 4I)
 
@@ -154,6 +213,35 @@ The "עיין" button follows this logic:
 | OV-007 | Integration badges | Show Airtable/SharePoint status | Badges visible |
 | OV-008 | Link Airtable button | Open link modal if not linked | Click red badge → modal opens |
 
+### ⚠️ Email Preview Feature Parity Rule (CRITICAL)
+
+> **Added:** 2025-12-08 | **Source:** Episodic Memory lesson from CLI-004 Save Attachments task
+
+**There are 3 email preview locations in ClientOverview. ANY feature added to one MUST be added to ALL three:**
+
+| Location | Component | Where |
+|----------|-----------|-------|
+| Overview tab preview | EmailsWidget modal | `?tab=overview` → click email |
+| Emails tab inline | Expanded row | `?tab=emails` → click email row |
+| Emails tab modal | Email Viewer modal | `?tab=emails` → click "Open in Viewer" |
+
+**Current shared features (must exist in all 3 locations):**
+
+| Feature | Overview Preview | Emails Inline | Emails Modal |
+|---------|-----------------|---------------|--------------|
+| Open in Outlook | ✅ | ✅ | ✅ |
+| Create Task | ✅ | ✅ | ✅ |
+| Save Attachments to SharePoint | ✅ | ✅ | ✅ |
+
+**Verification Checklist (for any new email feature):**
+- [ ] Feature works in Overview tab email preview
+- [ ] Feature works in Emails tab inline preview
+- [ ] Feature works in Emails tab Email Viewer modal
+
+**Policy:** No email preview feature is complete unless it appears in ALL email preview locations.
+
+---
+
 ### Tab: Emails (`?tab=emails`)
 
 | ID | Feature | Description | Test Action |
@@ -197,6 +285,38 @@ The "עיין" button follows this logic:
 
 ---
 
+## Archive Feature (CEO APPROVED - CLI-P02)
+
+> **Status:** ✅ CEO APPROVED (2025-12-08) - Implementation in progress - see `PRD_CLIENT_ARCHIVE.md`
+> **Owner:** David (Product Senior)
+
+Archive clients to hide them from the main list while preserving all data.
+
+| ID | Feature | Description | Status |
+|----|---------|-------------|--------|
+| AR-001 | Archive from list | Archive client from row action button | 📄 PRD-ready |
+| AR-002 | Archive from detail | Archive from ClientOverview More menu | 📄 PRD-ready |
+| AR-003 | Restore from list | Restore archived client from archived view | 📄 PRD-ready |
+| AR-004 | Restore from detail | Restore from archived client banner | 📄 PRD-ready |
+| AR-005 | Filter toggle | Switch between Active/Archived/All views | 📄 PRD-ready |
+| AR-006 | Default to active | New clients are not archived | 📄 PRD-ready |
+| AR-007 | Search scope | Search defaults to active clients only | 📄 PRD-ready |
+| AR-008 | Auto-archive | Clients inactive for 6 months auto-archived (6 months inactivity) | 📄 PRD-ready |
+| AR-009 | Confirmation dialog | Archive action requires confirmation | 📄 PRD-ready |
+| AR-010 | Archived indicator | Badge/banner shows archived status + 44px controls | 📄 PRD-ready |
+| AR-011 | Audit + telemetry | Log archive/restore and emit analytics events | 📄 PRD-ready |
+| AR-012 | Performance guard | Filters return in <300ms on 5k clients (SQLite) | 📄 PRD-ready |
+
+### API Endpoints (Archive) - PRD READY
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `GET /api/clients?archived=` | GET | Filter by archived status | 📄 PRD-ready |
+| `POST /api/clients/{id}/archive` | POST | Archive client | 📄 PRD-ready |
+| `POST /api/clients/{id}/restore` | POST | Restore client | 📄 PRD-ready |
+
+---
+
 ## Known Broken Features
 
 ### Fixed (Round 4 - 2025-12-06)
@@ -213,13 +333,23 @@ The "עיין" button follows this logic:
 | C-008 | EmailsWidget in Overview tab shows only 5 emails, no scroll, no click-to-view | ✅ FIXED - Simplified always-scrollable design: fixed height `max-h-[400px]` with `overflow-y-auto`, fetches up to 100 emails, click-to-view with inline modal | ✅ VERIFIED (Eli) |
 | C-009 | TasksWidget had no scroll | ✅ FIXED - Added `max-h-[400px] overflow-y-auto`, shows all tasks with scroll | ✅ VERIFIED (Eli) |
 
-### Current Bugs (2025-12-06)
+### Current Bugs (2025-12-07 Update)
 
 | ID | Issue | Owner | Status |
 |----|-------|-------|--------|
-| C-010 | `POST /registry/clients` expects `display_name` not `name` | Alex | ⚠️ Needs fix |
-| C-011 | `POST /airtable/clients_upsert` email format error | Alex | ⚠️ Needs fix |
+| C-010 | `POST /registry/clients` expects `display_name` not `name` | Alex | ✅ Working as designed |
+| C-011 | `POST /airtable/clients_upsert` email format error | Alex | ✅ Fixed |
 | C-012 | 5 AI agent tools not implemented | Alex | ❌ Not started |
+
+### Fixed (2025-12-07)
+
+| ID | Issue | Resolution |
+|----|-------|------------|
+| BUG-004 | Airtable link shows "Client ID not found" after adding from Airtable | ✅ `find_local_client_by_name()` now checks SQLite as fallback |
+| BUG-005 | SharePoint folder browse shows error | ✅ Updated to use `/api/sharepoint/link_client` + auto-create |
+| UX-001 | No feedback when adding client | ✅ Added loading spinner to submit button |
+| UX-002 | New clients hidden in middle of list | ✅ Clients now sorted by `created_at DESC` |
+| SP-001 | SharePoint URL not in `/api/clients` response | ✅ Added `sharepointUrl` and `airtableUrl` fields |
 
 ---
 
@@ -229,14 +359,43 @@ The "עיין" button follows this logic:
 
 | Endpoint | Method | Purpose | Status |
 |----------|--------|---------|--------|
-| `/api/clients` | GET | List all clients | ✅ |
+| `/api/clients` | GET | List all clients (includes `sharepointUrl`, `airtableUrl`) | ✅ |
 | `/api/client/summary` | GET | Get client details + emails + files | ✅ |
 | `/api/client/locations` | GET | Get folder paths | ❌ |
-| `/registry/clients` | POST | Create new client | ⚠️ Bug |
+| `/registry/clients` | POST | Create new client | ✅ |
 | `/registry/clients/{id}` | GET | Get client with contacts | ✅ |
 | `/registry/clients/{id}` | PATCH | Update client | ✅ |
-| `/airtable/clients_upsert` | POST | Sync to Airtable | ⚠️ Bug |
+| `/airtable/clients_upsert` | POST | Sync to Airtable | ✅ |
 | `/airtable/search` | GET | Search Airtable | ✅ |
+
+### SharePoint Operations (Updated 2025-12-08)
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `/api/sharepoint/search` | GET | Search for client folder | ✅ |
+| `/api/sharepoint/link_client` | POST | Search & link folder to client | ✅ |
+| `/api/sharepoint/sites` | GET | List available SharePoint sites | ✅ |
+| `/sp/folder_create` | POST | **Create new folder in SharePoint** (used by activation modal) | ✅ NEW 2025-12-08 |
+
+**`/sp/folder_create` Details:**
+- **Request:** `{ "name": "Client Name" }`
+- **Response:** `{ "created": true, "webUrl": "https://...", "id": "...", "name": "...", "path": "/לקוחות משרד/Client Name" }`
+- **Behavior:** First checks if folder exists (returns existing), otherwise creates in "לקוחות משרד" parent folder
+- **Auto-links:** Updates client registry with SharePoint URL after creation
+
+### Airtable Integration (NEW 2025-12-08)
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `/api/airtable-contacts` | GET | List all contacts synced from Airtable (SQLite cache) | ✅ |
+| `/api/sync/pull-airtable` | POST | Pull contacts from Airtable → SQLite (batch upsert) | ✅ |
+| `/api/sync/push-airtable` | POST | Push changes from SQLite → Airtable (skips unchanged) | ✅ |
+| `/api/contacts/activate` | POST | Create client from Airtable contact | ✅ |
+
+**Database Table:** `airtable_contacts` (SQLite)
+- 18 columns including: `id`, `airtable_id`, `name`, `email`, `phone`, `types`, `stage`, `activated`, `client_id`, `sync_hash`
+- Indexes on: `airtable_id`, `name`, `activated`, `client_id`
+- See `DATA_STORES.md` for full schema
 
 ### Contacts Data (NEW - Phase 4I)
 
@@ -279,6 +438,10 @@ The "עיין" button follows this logic:
 | LinkAirtableModal | `components/LinkAirtableModal.jsx` | Link to Airtable |
 | QuoteGenerator | `components/QuoteGenerator.jsx` | Create quote |
 | TabNav | `components/TabNav.jsx` | Tab navigation |
+| **ContactsListTab** | `components/clients/ContactsListTab.jsx` | **NEW** Airtable contacts tab |
+| **ContactRow** | `components/clients/ContactRow.jsx` | **NEW** Contact table row |
+| **SyncButton** | `components/clients/SyncButton.jsx` | **NEW** Airtable sync button |
+| **ActivateContactModal** | `components/clients/ActivateContactModal.jsx` | **NEW** Contact activation with SharePoint folder |
 
 ---
 

@@ -273,33 +273,89 @@ def graph_delta_messages(creds: dict, mailbox: str, select_fields: str, delta_li
     return changes, new_delta
 
 
+def _parse_email_field(email_val: str | None) -> list[str]:
+    """Parse email field that might be a plain string or JSON array string."""
+    if not email_val:
+        return []
+    email_val = email_val.strip()
+    # Check if it looks like a JSON array
+    if email_val.startswith("[") and email_val.endswith("]"):
+        try:
+            parsed = json.loads(email_val)
+            if isinstance(parsed, list):
+                return [e.strip() for e in parsed if isinstance(e, str) and "@" in e and not e.startswith("no-email+")]
+        except json.JSONDecodeError:
+            pass
+    # Plain string email
+    if "@" in email_val and not email_val.startswith("no-email+"):
+        return [email_val]
+    return []
+
+
 def load_registry_map() -> dict[str, str]:
-    # Map email → client name from clients.json under store_base
-    # Discover via AudoProcessor settings.json
-    ap = Path('C:/Coding Projects/AudoProcessor Iterations/settings.json')
-    if not ap.exists():
-        return {}
-    st = json.loads(ap.read_text(encoding='utf-8'))
-    sb = (st.get('by_os', {}).get('windows', {}) or {}).get('store_base') or st.get('store_base')
-    if not sb:
-        return {}
-    regp = Path(sb) / 'clients.json'
-    if not regp.exists():
-        return {}
-    reg = json.loads(regp.read_text(encoding='utf-8'))
+    """
+    Map email -> client name from SQLite database.
+    Reads from data/eislaw.db (clients table and contacts table).
+    """
     mapping: dict[str, str] = {}
-    for c in reg.get('clients', []):
-        nm = c.get('display_name') or c.get('name') or ''
-        emails = c.get('email')
-        if isinstance(emails, str):
-            emails = [emails]
-        for e in (emails or []):
-            if isinstance(e, str) and e:
-                mapping[e.lower()] = nm
-        for ct in c.get('contacts', []) or []:
-            e = (ct or {}).get('email')
-            if isinstance(e, str) and e:
-                mapping[e.lower()] = nm
+
+    # Try multiple possible database paths
+    possible_paths = [
+        REPO_ROOT / "data" / "eislaw.db",  # VM/Docker path
+        Path("/app/data/eislaw.db"),  # Docker container path
+    ]
+
+    db_path = None
+    for p in possible_paths:
+        if p.exists():
+            db_path = p
+            break
+
+    if not db_path:
+        logger.warning("No SQLite database found for email registry")
+        return {}
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Get all clients with their emails
+        cursor.execute("SELECT name, email FROM clients WHERE email IS NOT NULL AND active = 1")
+        for row in cursor.fetchall():
+            client_name = row[0]
+            if not client_name:
+                continue
+            emails = _parse_email_field(row[1])
+            for e in emails:
+                mapping[e.lower()] = client_name
+
+        # Also get contact emails
+        try:
+            cursor.execute("""
+                SELECT c.name, ct.email
+                FROM contacts ct
+                JOIN clients c ON ct.client_id = c.id
+                WHERE ct.email IS NOT NULL AND c.active = 1
+            """)
+            for row in cursor.fetchall():
+                client_name = row[0]
+                if not client_name:
+                    continue
+                emails = _parse_email_field(row[1])
+                for e in emails:
+                    if e.lower() not in mapping:  # Don't override primary email
+                        mapping[e.lower()] = client_name
+        except sqlite3.OperationalError:
+            # contacts table might not exist
+            pass
+
+        conn.close()
+        logger.info("Loaded email registry from SQLite", client_emails=len(mapping))
+
+    except Exception as e:
+        logger.error("Failed to load email registry from SQLite", error=str(e))
+        return {}
+
     return mapping
 
 

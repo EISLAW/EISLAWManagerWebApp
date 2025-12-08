@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-# Database path - eislaw.db
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "eislaw.db"
+# Database path - privacy.db
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "privacy.db"
 
 # Add tools directory to path for importing evaluator
 TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"

@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     source_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    attachments TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_client ON tasks(client_id);
@@ -213,9 +214,9 @@ class ClientsDB:
     def list(self, active_only: bool = True, limit: int = 100, offset: int = 0) -> List[Dict]:
         """List clients with optional filter."""
         if active_only:
-            sql = "SELECT * FROM clients WHERE active = 1 ORDER BY name LIMIT ? OFFSET ?"
+            sql = "SELECT * FROM clients WHERE active = 1 ORDER BY created_at DESC, name LIMIT ? OFFSET ?"
         else:
-            sql = "SELECT * FROM clients ORDER BY name LIMIT ? OFFSET ?"
+            sql = "SELECT * FROM clients ORDER BY created_at DESC, name LIMIT ? OFFSET ?"
         return self.db.execute(sql, (limit, offset))
 
     def search(self, query: str, limit: int = 20) -> List[Dict]:
@@ -224,7 +225,7 @@ class ClientsDB:
         return self.db.execute(
             """SELECT * FROM clients
                WHERE name LIKE ? OR email LIKE ?
-               ORDER BY name LIMIT ?""",
+               ORDER BY created_at DESC, name LIMIT ?""",
             (pattern, pattern, limit)
         )
 

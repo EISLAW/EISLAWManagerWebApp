@@ -3,7 +3,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import RoutesRoot from './routes.jsx'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from './utils/apiBase.js'
-import { Menu, X } from 'lucide-react'
+import PublicReport from './pages/PublicReport/index.jsx'
 
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard' },
@@ -13,11 +13,22 @@ const NAV_LINKS = [
   { to: '/prompts', label: 'Prompts' },
   { to: '/ai-studio', label: 'AI Studio' },
   { to: '/privacy', label: 'Privacy' },
+  { to: '/reports', label: 'דוחות' },
   { to: '/settings', label: 'Settings' },
   { to: '/settings/quotes', label: 'תבניות הצעות' },
 ]
 
 export default function App(){
+  // Check window.location for public pages (works with any router type)
+  // This allows /report/:token to work as a direct URL (not hash-based)
+  const windowPath = typeof window !== 'undefined' ? window.location.pathname : ''
+
+  // Public report page - render standalone without sidebar/layout
+  if (windowPath.startsWith('/report/')) {
+    const token = windowPath.replace('/report/', '')
+    return <PublicReport tokenProp={token} />
+  }
+
   const initialBase = React.useMemo(() => {
     const envBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/,'')
     return getStoredApiBase() || envBase
@@ -26,7 +37,6 @@ export default function App(){
   const [health, setHealth] = React.useState(null)
   const [healthBase, setHealthBase] = React.useState(initialBase)
   const [showAbout, setShowAbout] = React.useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const FE_VER = import.meta.env.VITE_APP_VERSION || 'dev'
   const FE_SHA = (import.meta.env.VITE_COMMIT_SHA || '').slice(0,7)
   React.useEffect(() => {
@@ -73,16 +83,9 @@ export default function App(){
     if (apiHost.includes('azurewebsites.net')) return 'PRODUCTION'
     return apiBase ? 'STAGING' : 'UNKNOWN'
   })()
-
-  // Close mobile menu when route changes
-  React.useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [])
-
   return (
     <div className="min-h-screen bg-bg text-slate-900 flex">
-      {/* Desktop Sidebar - hidden on mobile */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col p-4 space-y-6">
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col p-4 space-y-6">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-petrol/10 flex items-center justify-center text-petrol font-bold">EI</div>
           <div className="space-y-1">
@@ -107,79 +110,17 @@ export default function App(){
           {apiBase && <div>API: <a className="underline" href={apiBase} target="_blank" rel="noreferrer">{apiBase}</a></div>}
           <div>FE v{FE_VER}{FE_SHA? ` (${FE_SHA})`:''}</div>
           {health && <div>BE {health.version || ''}{health.commit? ` (${health.commit})`:''}</div>}
-          <button className="text-sm underline min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={()=>setShowAbout(v=>!v)}>About</button>
+          <button className="text-sm underline" onClick={()=>setShowAbout(v=>!v)}>About</button>
         </div>
       </aside>
-
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          {/* Menu Panel */}
-          <aside className="fixed inset-y-0 right-0 w-64 bg-white shadow-xl flex flex-col p-4 space-y-6 overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-petrol/10 flex items-center justify-center text-petrol font-bold">EI</div>
-                <div className="space-y-1">
-                  <div className="text-sm font-semibold text-slate-800">EISLAW</div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${envName==='LOCAL' ? 'bg-success/20 text-success' : 'bg-copper/20 text-copper'}`}>{envName}</span>
-                </div>
-              </div>
-              <button
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <X className="h-6 w-6 text-slate-600" />
-              </button>
-            </div>
-            <nav className="space-y-1 text-sm">
-              {NAV_LINKS.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `block rounded-lg px-3 py-2 min-h-[44px] flex items-center ${isActive ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-700 hover:bg-slate-100'}`
-                  }
-                >
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
-            <div className="mt-auto space-y-2 text-xs text-slate-600">
-              {apiBase && <div>API: <a className="underline" href={apiBase} target="_blank" rel="noreferrer">{apiBase}</a></div>}
-              <div>FE v{FE_VER}{FE_SHA? ` (${FE_SHA})`:''}</div>
-              {health && <div>BE {health.version || ''}{health.commit? ` (${health.commit})`:''}</div>}
-              <button className="text-sm underline min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={()=>setShowAbout(v=>!v)}>About</button>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      <div className="flex-1 flex flex-col overflow-x-hidden">
-        <header className="bg-white shadow-sm w-full">
-          <div className="max-w-7xl mx-auto px-3 md:px-4 py-3 flex items-center gap-2 md:gap-3">
-            {/* Mobile hamburger menu button */}
-            <button
-              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100"
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <Menu className="h-6 w-6 text-slate-600" />
-            </button>
-            {/* Mobile logo */}
-            <div className="md:hidden flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-petrol/10 flex items-center justify-center text-petrol font-bold text-sm">EI</div>
-              <span className="font-semibold text-slate-800">EISLAW</span>
-            </div>
-            <div className="hidden md:block text-sm text-slate-600">API Host: {apiHost || 'n/a'}</div>
+      <div className="flex-1 flex flex-col">
+        <header className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="text-sm text-slate-600">API Host: {apiHost || 'n/a'}</div>
             {health && <span className="text-xs rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5">Health OK</span>}
           </div>
         </header>
-        <main className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 flex-1 w-full overflow-x-hidden">
+        <main className="max-w-7xl mx-auto px-4 py-6 flex-1">
           <Routes>
             {RoutesRoot}
           </Routes>

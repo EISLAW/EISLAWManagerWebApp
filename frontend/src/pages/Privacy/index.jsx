@@ -550,7 +550,7 @@ export default function Privacy() {
                 <div className="mt-4 pt-4 border-t">
                   <div className="text-sm font-semibold text-slate-700 mb-2">למה רמה זו?</div>
                   <ul className="list-disc list-inside space-y-1 text-sm text-slate-600">
-                    {LEVEL_EXPLANATIONS[detail.score?.level]?.reasons?.map((r, i) => (
+                    {(detail.score?.level_reasons || []).map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
                   </ul>

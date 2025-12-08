@@ -472,53 +472,54 @@ export default function AddClientModal({
         }
       }
 
-      // Try dev/open_folder (for local folder picker)
-      const res = await fetch(`${API}/dev/open_folder?name=${encodeURIComponent(clientName)}`, { method: 'POST' })
-      const payload = await res.json().catch(() => null)
-
-      if (res.ok) {
-        const localPath = payload?.path?.trim() || ''
-        const sharePointUrl = payload?.webUrl?.trim() || ''
-
-        if (localPath) {
-          setFolder({ path: localPath, status: 'linked', message: '' })
-          return
-        } else if (sharePointUrl) {
-          window.open(sharePointUrl, '_blank', 'noopener,noreferrer')
-          setFolder({ path: sharePointUrl, status: 'linked', message: '' })
-          return
-        }
-      }
-
-      // Try SharePoint link endpoint
-      const spRes = await fetch(`${API}/api/client/sharepoint_link?name=${encodeURIComponent(clientName)}`)
-      if (spRes.ok) {
-        const spData = await spRes.json()
-        if (spData?.webUrl) {
-          window.open(spData.webUrl, '_blank', 'noopener,noreferrer')
-          setFolder({ path: spData.webUrl, status: 'linked', message: '' })
-          return
-        }
-      }
-
-      // Try to create SharePoint folder
-      const createRes = await fetch(`${API}/sp/folder_create`, {
+      // Try to search and link existing SharePoint folder
+      const linkRes = await fetch(`${API}/api/sharepoint/link_client`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: clientName }),
       })
-      if (createRes.ok) {
-        const createData = await createRes.json()
-        if (createData?.webUrl) {
-          window.open(createData.webUrl, '_blank', 'noopener,noreferrer')
-          setFolder({ path: createData.webUrl, status: 'linked', message: '' })
+      if (linkRes.ok) {
+        const linkData = await linkRes.json()
+        if (linkData?.linked && linkData?.sharepoint_url) {
+          window.open(linkData.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({ path: linkData.sharepoint_url, status: 'linked', message: '' })
           return
         }
       }
 
-      throw new Error('No folder found or created')
+      // No folder found - CREATE a new one
+      setFolder(s => ({ ...s, status: 'linking', message: 'יוצר תיקייה חדשה...' }))
+      const createRes = await fetch(`${API}/api/sharepoint/create_folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clientName }),
+      })
+
+      if (createRes.ok) {
+        const createData = await createRes.json()
+        if (createData?.sharepoint_url) {
+          window.open(createData.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({
+            path: createData.sharepoint_url,
+            status: 'linked',
+            message: createData.created ? 'תיקייה נוצרה!' : 'תיקייה קיימת'
+          })
+          return
+        }
+      } else {
+        const errData = await createRes.json().catch(() => ({}))
+        console.error('Create folder error:', errData)
+      }
+
+      // If creation also failed, show error
+      setFolder({
+        path: '',
+        status: 'error',
+        message: 'לא ניתן ליצור תיקייה. בדוק הרשאות SharePoint.'
+      })
     } catch (err) {
-      setFolder({ path: '', status: 'error', message: 'לא ניתן לקשר תיקייה' })
+      console.error('handleBrowseFolder error:', err)
+      setFolder({ path: '', status: 'error', message: 'שגיאה בחיפוש/יצירת תיקייה' })
     }
   }
 
@@ -1128,14 +1129,17 @@ export default function AddClientModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold text-white transition ${
-              canSubmit
+            disabled={!canSubmit || submitStatus === 'submitting'}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold text-white transition flex items-center justify-center gap-2 min-w-[120px] ${
+              canSubmit && submitStatus !== 'submitting'
                 ? 'bg-petrol hover:bg-petrolHover active:bg-petrolActive'
                 : 'bg-slate-300 cursor-not-allowed'
             }`}
             data-testid="client-modal-submit"
           >
+            {submitStatus === 'submitting' && (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
             {submitStatus === 'submitting'
               ? LABELS.submitting
               : isEditMode

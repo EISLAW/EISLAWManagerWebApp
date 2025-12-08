@@ -1,6 +1,6 @@
 """
 Privacy Fillout Sync Module - Phase 5B
-Syncs Fillout form submissions to eislaw.db privacy_submissions table
+Syncs Fillout form submissions to privacy.db privacy_submissions table
 Uses Joseph's schema from Phase 5A
 """
 import json
@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-# Database path - eislaw.db (not privacy.db)
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "eislaw.db"
+# Database path - privacy.db (not privacy.db)
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "privacy.db"
 
 # Fillout form ID for privacy assessment
 PRIVACY_FORM_ID = "t9nJNoMdBgus"  # פרטיות_שאלון אבחון (עדכני)
@@ -174,7 +174,7 @@ def sync_from_fillout(form_id: str = None, limit: int = 100) -> dict:
     existing_count = 0
     errors = []
 
-    # Connect to eislaw.db
+    # Connect to privacy.db
     conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
@@ -184,7 +184,7 @@ def sync_from_fillout(form_id: str = None, limit: int = 100) -> dict:
             submission_id = mapped["id"]
 
             # Check if exists
-            cursor.execute("SELECT id FROM privacy_submissions WHERE id = ?", (submission_id,))
+            cursor.execute("SELECT id FROM privacy_submissions WHERE id = ?", (submission_id, submission_id))
             if cursor.fetchone():
                 existing_count += 1
                 continue
@@ -231,7 +231,7 @@ def sync_from_fillout(form_id: str = None, limit: int = 100) -> dict:
 
 
 def get_submissions_from_sqlite(limit: int = 50, offset: int = 0) -> List[dict]:
-    """Get submissions from eislaw.db privacy_submissions table"""
+    """Get submissions from privacy.db privacy_submissions table"""
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -287,13 +287,14 @@ def get_submission_by_id(submission_id: str) -> Optional[dict]:
     cursor.execute("""
         SELECT
             ps.*,
-            pr.level, pr.dpo, pr.reg, pr.report, pr.requirements,
-            pr.status as review_status, pr.reviewed_by, pr.notes,
+            pr.level as review_level, pr.dpo as review_dpo, pr.reg as review_reg, 
+            pr.report as review_report, pr.requirements as review_requirements,
+            pr.status as pr_status, pr.reviewed_by, pr.notes,
             pr.email_sent_at, pr.report_token
         FROM privacy_submissions ps
-        LEFT JOIN privacy_reviews pr ON ps.id = pr.submission_id
-        WHERE ps.id = ?
-    """, (submission_id,))
+        LEFT JOIN privacy_reviews pr ON CAST(ps.id AS TEXT) = pr.submission_id
+        WHERE ps.id = ? OR ps.submission_id = ?
+    """, (submission_id, submission_id))
 
     row = cursor.fetchone()
     conn.close()
@@ -301,77 +302,185 @@ def get_submission_by_id(submission_id: str) -> Optional[dict]:
     if not row:
         return None
 
-    # Parse sensitive_types from JSON
-    sensitive_types = []
-    if row["sensitive_types"]:
+    row_dict = dict(row)
+    
+    # Parse requirements from JSON
+    requirements = []
+    req_str = row_dict.get("review_requirements") or row_dict.get("score_requirements")
+    if req_str:
         try:
-            sensitive_types = json.loads(row["sensitive_types"])
+            requirements = json.loads(req_str)
         except:
             pass
 
-    # Parse requirements from JSON
-    requirements = []
-    if row["requirements"]:
+    # Parse answers_json for detailed fields
+    answers = {}
+    if row_dict.get("answers_json"):
         try:
-            requirements = json.loads(row["requirements"])
+            answers = json.loads(row_dict["answers_json"])
         except:
             pass
 
     return {
-        "id": row["id"],
-        "submission_id": row["id"],
-        "form_id": row["form_id"],
-        "submitted_at": row["submitted_at"],
-        "imported_at": row["imported_at"],
-
-        # Contact info
-        "contact_name": row["contact_name"],
-        "contact_email": row["contact_email"],
-        "contact_phone": row["contact_phone"],
-        "business_name": row["business_name"],
-
-        # Form answers
-        "answers": {
-            "owners": row["owners"],
-            "access": row["access"],
-            "ethics": bool(row["ethics"]),
-            "ppl": row["ppl"],
-            "sensitive_types": sensitive_types,
-            "sensitive_people": row["sensitive_people"],
-            "biometric_100k": bool(row["biometric_100k"]),
-            "transfer": bool(row["transfer"]),
-            "directmail_biz": bool(row["directmail_biz"]),
-            "directmail_self": bool(row["directmail_self"]),
-            "monitor_1000": bool(row["monitor_1000"]),
-            "processor": bool(row["processor"]),
-            "processor_large_org": bool(row["processor_large_org"]),
-            "employees_exposed": bool(row["employees_exposed"]),
-            "cameras": bool(row["cameras"]),
-        },
-
-        # Score (from review if exists)
+        "id": row_dict.get("id"),
+        "submission_id": row_dict.get("submission_id"),
+        "form_id": row_dict.get("form_id"),
+        "submitted_at": row_dict.get("submitted_at"),
+        "imported_at": row_dict.get("received_at"),
+        "received_at": row_dict.get("received_at"),
+        "contact_name": row_dict.get("contact_name"),
+        "contact_email": row_dict.get("contact_email"),
+        "contact_phone": row_dict.get("contact_phone"),
+        "business_name": row_dict.get("business_name"),
+        "answers": compute_derived_fields(map_answers_to_fields(answers)),
+        "answers_json": row_dict.get("answers_json"),
         "score": {
-            "level": row["level"],
-            "dpo": bool(row["dpo"]) if row["dpo"] is not None else None,
-            "reg": bool(row["reg"]) if row["reg"] is not None else None,
-            "report": bool(row["report"]) if row["report"] is not None else None,
+            "level": row_dict.get("review_level") or row_dict.get("score_level"),
+            "color": row_dict.get("score_color"),
+            "dpo": bool(row_dict.get("review_dpo") or row_dict.get("score_dpo")),
+            "reg": bool(row_dict.get("review_reg") or row_dict.get("score_reg")),
+            "report": bool(row_dict.get("review_report") or row_dict.get("score_report")),
             "requirements": requirements,
+            "level_reasons": compute_level_reasons(compute_derived_fields(map_answers_to_fields(answers)), row_dict.get("review_level") or row_dict.get("score_level")),
         },
-
-        # Review status
-        "status": row["review_status"] or "pending",
-        "reviewed_by": row["reviewed_by"],
-        "notes": row["notes"],
-        "email_sent_at": row["email_sent_at"],
-        "report_token": row["report_token"],
+        "review": {
+            "status": row_dict.get("pr_status") or row_dict.get("review_status") or "pending",
+            "reviewed_by": row_dict.get("reviewed_by"),
+            "notes": row_dict.get("notes"),
+            "email_sent_at": row_dict.get("email_sent_at"),
+            "report_token": row_dict.get("report_token"),
+        },
+        "override": {
+            "level": row_dict.get("override_level"),
+            "reason": row_dict.get("override_reason"),
+        },
     }
 
 
-def get_submissions_count() -> int:
-    """Get total count of submissions"""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM privacy_submissions")
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+# Question keyword to field name mapping for answer display
+QUESTION_TO_FIELD = [
+    ("על כמה אנשים שמור", "ppl"),
+    ("כמה בעלים יש", "owners"),
+    ("בעלי ההרשאה לגשת", "access"),
+    ("תפקידים הכפופים לחובת סודיות", "ethics"),
+    ("מסוגי המידע האלה", "sensitive_types"),
+    ("אנשים אתם שומרים מידע בעל רגישות", "sensitive_people"),
+    ("ביומטרי על 100,000", "biometric_100k"),
+    ("שומרים מידע ביומטרי מעל", "biometric_100k"),
+    ("לאסוף נתונים על אנשים כדי להעבירם", "transfer"),
+    ("בפילוח לפי מאפיין אישי, כשירות בשביל גורם אחר", "directmail_biz"),
+    ("בפילוח לפי מאפיין אישי, עבור העסק", "directmail_self"),
+    ("מנטר לפחות 1,000", "monitor_1000"),
+    ("מטפלים במידע אישי במיקור חוץ למען אחרים", "processor"),
+    ("מעבדים מידע במיקור חוץ בעבור", "processor_large_org"),
+    ("עובדים או פרילנסרים החשופים", "employees_exposed"),
+    ("שימוש במצלמות מעקב", "cameras"),
+]
+
+def map_answers_to_fields(answers_dict: dict) -> dict:
+    """Map Hebrew question text keys to normalized field names"""
+    mapped = {}
+    for question, value in answers_dict.items():
+        for keyword, field in QUESTION_TO_FIELD:
+            if keyword in question:
+                mapped[field] = value
+                break
+    return mapped
+
+def compute_derived_fields(answers: dict) -> dict:
+    """Compute derived fields like sensitive based on other answers.
+    
+    ALG-001 FIX: When biometric_100k=Yes, enforce minimum floors:
+    - sensitive_people >= 100,000
+    - ppl >= 100,000
+    Because biometric data IS sensitive data.
+    """
+    # Compute sensitive field - true if any sensitive data indicators present
+    has_sensitive = False
+    
+    # Check if sensitive_types has values
+    st = answers.get("sensitive_types")
+    if st and (isinstance(st, list) and len(st) > 0):
+        has_sensitive = True
+    elif st and isinstance(st, str) and st.strip():
+        has_sensitive = True
+    
+    # Check if sensitive_people > 0
+    sp = answers.get("sensitive_people")
+    if sp and (isinstance(sp, (int, float)) and sp > 0):
+        has_sensitive = True
+    
+    # Check if biometric_100k is yes (biometric is sensitive data)
+    bio = answers.get("biometric_100k")
+    if bio and str(bio).strip() in ["כן", "yes", "true", "1", True]:
+        has_sensitive = True
+        
+        # ALG-001: Biometric implies minimum floors for counts
+        # If someone has biometric data on 100K+ people, they automatically
+        # have sensitive data on at least 100K people
+        BIOMETRIC_MIN = 100000
+        
+        # Enforce minimum for sensitive_people
+        try:
+            sp_val = int(answers.get("sensitive_people") or 0)
+        except (ValueError, TypeError):
+            sp_val = 0
+        if sp_val < BIOMETRIC_MIN:
+            answers["sensitive_people"] = BIOMETRIC_MIN
+        
+        # Enforce minimum for ppl (total people)
+        try:
+            ppl_val = int(answers.get("ppl") or 0)
+        except (ValueError, TypeError):
+            ppl_val = 0
+        if ppl_val < BIOMETRIC_MIN:
+            answers["ppl"] = BIOMETRIC_MIN
+    
+    # Set the derived field
+    if has_sensitive:
+        answers["sensitive"] = "כן"
+    
+    return answers
+def compute_level_reasons(answers: dict, level: str) -> list:
+    """Compute the specific reasons why this submission has this level"""
+    reasons = []
+    
+    # Get values with defaults
+    ppl = int(answers.get("ppl") or 0)
+    sensitive_people = int(answers.get("sensitive_people") or 0)
+    access = int(answers.get("access") or 0)
+    sensitive = answers.get("sensitive") in [True, "כן", "yes", 1]
+    biometric_100k = answers.get("biometric_100k") in [True, "כן", "yes", 1]
+    
+    if level == "high":
+        # Check which high-level rules triggered
+        if biometric_100k:
+            reasons.append("ביומטרי מעל 100,000 איש")
+        if sensitive_people >= 100000:
+            reasons.append("מעל 100,000 אנשים עם מידע רגיש")
+        if ppl >= 100000:
+            reasons.append("מעל 100,000 אנשים במאגר")
+        if sensitive and access >= 101:
+            reasons.append("מידע רגיש עם יותר מ-100 מורשי גישה")
+        if answers.get("processor_large_org") in [True, "כן", "yes", 1]:
+            reasons.append("מעבד מידע לגוף גדול")
+        if answers.get("processor_sensitive_org") in [True, "כן", "yes", 1]:
+            reasons.append("מעבד מידע לגוף רגיש/ציבורי")
+    
+    elif level == "mid":
+        if answers.get("processor") in [True, "כן", "yes", 1]:
+            reasons.append("מעבד מידע במיקור חוץ")
+        if answers.get("transfer") in [True, "כן", "yes", 1]:
+            reasons.append("העברת מידע לאחר כנגד תמורה")
+        if answers.get("directmail_biz") in [True, "כן", "yes", 1]:
+            reasons.append("דיוור ישיר למען אחר")
+        if sensitive and access > 10:
+            reasons.append("מידע רגיש עם יותר מ-10 מורשי גישה")
+    
+    elif level == "basic":
+        reasons.append("לא עומד בתנאי יחיד, אין דיוור/העברה למען אחר")
+    
+    elif level == "lone":
+        reasons.append("עד 2 בעלים, עד 2 מורשי גישה, פחות מ-10,000 אנשים")
+    
+    return reasons

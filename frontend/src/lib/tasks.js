@@ -261,6 +261,45 @@ export function createTask(input) {
   return t
 }
 
+export async function createTaskAsync(input) {
+  const t = {
+    id: generateUUID(),
+    title: input.title?.trim() || "New Task",
+    desc: input.desc || "",
+    status: "new",
+    dueAt: input.dueAt || null,
+    priority: input.priority || null,
+    clientName: input.clientName || null,
+    clientFolderPath: input.clientFolderPath || null,
+    ownerId: input.ownerId || null,
+    parentId: input.parentId || null,
+    comments: input.comments || [],
+    attachments: input.attachments || [],
+    templateRef: input.templateRef || null,
+    source: input.source || "manual",
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    doneAt: null,
+    deletedAt: null,
+  }
+
+  // Update local cache immediately for responsiveness
+  const items = allTasks()
+  items.push(t)
+  saveAll(items)
+
+  // Sync to backend and WAIT for completion
+  try {
+    await apiCall("POST", "/api/tasks", t)
+    invalidateCache()
+  } catch (err) {
+    console.warn("createTaskAsync API sync failed:", err)
+  }
+
+  return t
+}
+
+
 export function updateTask(id, patch) {
   const items = allTasks()
   const idx = items.findIndex(t => t.id === id)

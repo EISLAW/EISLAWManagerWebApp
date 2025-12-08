@@ -1,19 +1,23 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict
 import uuid
 try:
     from backend import rag_sqlite
 except ImportError:
     import rag_sqlite
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 import fcntl
 import json
 import shutil
-from typing import Optional, List
+import sqlite3
+from typing import Optional, List, Dict, Any
 import os
 import base64
+import hashlib
+import time
 try:
     from backend import fixtures
     from backend import fillout_integration
@@ -88,6 +92,158 @@ def get_airtable_config():
 
 
 # ─────────────────────────────────────────────────────────────
+
+PUBLIC_REPORT_ALLOWED_ORIGINS = {
+    "https://eislaw.co.il",
+    "https://eislaw.org",
+}
+PUBLIC_REPORT_MAX_REQUESTS = 20
+PUBLIC_REPORT_WINDOW_SECONDS = 300
+_public_report_rate_limits = defaultdict(list)
+
+
+def get_public_report_origin(request: Request) -> str:
+    """Return the CORS origin for public report endpoint."""
+    origin = request.headers.get("origin") or request.headers.get("Origin")
+    if origin and origin in PUBLIC_REPORT_ALLOWED_ORIGINS:
+        return origin
+    # Default to primary domain
+    return "https://eislaw.co.il"
+
+
+def compute_contact_hash(contact: Dict[str, Any]) -> str:
+    """Stable hash to detect changes."""
+    tracked = {
+        "airtable_id": contact.get("airtable_id"),
+        "name": contact.get("name"),
+        "email": contact.get("email"),
+        "phone": contact.get("phone"),
+        "types": contact.get("types") or [],
+        "stage": contact.get("stage"),
+        "notes": contact.get("notes"),
+        "whatsapp_url": contact.get("whatsapp_url"),
+        "meeting_email_url": contact.get("meeting_email_url"),
+        "airtable_created_at": contact.get("airtable_created_at"),
+        "airtable_modified_at": contact.get("airtable_modified_at"),
+    }
+    serialized = json.dumps(tracked, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha1(serialized.encode("utf-8")).hexdigest()
+
+
+def normalize_airtable_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Map Airtable record to airtable_contacts schema."""
+    fields = record.get("fields", {}) or {}
+    email_value = ""
+    email_field = fields.get("אימייל") or fields.get("Email")
+    if isinstance(email_field, list):
+        email_value = email_field[0] if email_field else ""
+    elif isinstance(email_field, str):
+        email_value = email_field
+    contact = {
+        "airtable_id": record.get("id"),
+        "name": fields.get("לקוחות") or fields.get("Name") or fields.get("שם") or "",
+        "email": email_value,
+        "phone": fields.get("מספר טלפון") or fields.get("Phone") or "",
+        "types": fields.get("סוג לקוח") or fields.get("Type") or [],
+        "stage": fields.get("בטיפול") or fields.get("Stage") or "",
+        "notes": fields.get("הערות") or fields.get("Notes") or "",
+        "whatsapp_url": (fields.get("ווצאפ") or {}).get("url") if isinstance(fields.get("ווצאפ"), dict) else fields.get("ווצאפ") or "",
+        "meeting_email_url": (fields.get("מייל תיאום פגישה") or {}).get("url") if isinstance(fields.get("מייל תיאום פגישה"), dict) else fields.get("מייל תיאום פגישה") or "",
+        "airtable_created_at": fields.get("Created") or record.get("createdTime"),
+        "airtable_modified_at": fields.get("Last Modified"),
+    }
+    contact["sync_hash"] = compute_contact_hash(contact)
+    return contact
+
+
+def serialize_airtable_contact_for_api(contact: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert DB contact to API response shape."""
+    types = contact.get("types") or []
+    if isinstance(types, str):
+        try:
+            types = json.loads(types)
+        except Exception:
+            types = []
+    return {
+        "id": contact.get("id"),
+        "airtable_id": contact.get("airtable_id"),
+        "name": contact.get("name"),
+        "email": contact.get("email"),
+        "phone": contact.get("phone"),
+        "types": types,
+        "stage": contact.get("stage"),
+        "notes": contact.get("notes"),
+        "whatsapp_url": contact.get("whatsapp_url"),
+        "meeting_email_url": contact.get("meeting_email_url"),
+        "airtable_created_at": contact.get("airtable_created_at"),
+        "airtable_modified_at": contact.get("airtable_modified_at"),
+        "activated": bool(contact.get("activated", 0)),
+        "activated_at": contact.get("activated_at"),
+        "client_id": contact.get("client_id"),
+        "first_synced_at": contact.get("first_synced_at"),
+        "last_synced_at": contact.get("last_synced_at"),
+    }
+
+
+def fetch_airtable_contacts_api(cfg: Dict[str, str]) -> List[Dict[str, Any]]:
+    """Fetch all contacts from Airtable with pagination."""
+    if not all([cfg.get("token"), cfg.get("base_id"), cfg.get("clients_table")]):
+        raise HTTPException(status_code=500, detail="Airtable configuration missing")
+
+    headers = {"Authorization": f"Bearer {cfg['token']}"}
+    params = {}
+    if cfg.get("view_clients"):
+        params["view"] = cfg["view_clients"]
+    contacts: List[Dict[str, Any]] = []
+    offset = None
+    with httpx.Client(timeout=30.0) as client:
+        while True:
+            req_params = params.copy()
+            if offset:
+                req_params["offset"] = offset
+            resp = client.get(
+                f"https://api.airtable.com/v0/{cfg['base_id']}/{cfg['clients_table']}",
+                headers=headers,
+                params=req_params,
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail=f"Airtable fetch failed: {resp.text}")
+            data = resp.json()
+            for rec in data.get("records", []):
+                contacts.append(normalize_airtable_record(rec))
+            offset = data.get("offset")
+            if not offset:
+                break
+            time.sleep(0.2)  # stay within Airtable rate limits
+    return contacts
+
+
+def push_contact_to_airtable(cfg: Dict[str, str], contact: Dict[str, Any]) -> Dict[str, Any]:
+    """Create or update a contact in Airtable and return API response."""
+    headers = {
+        "Authorization": f"Bearer {cfg['token']}",
+        "Content-Type": "application/json",
+    }
+    fields = {
+        "לקוחות": contact.get("name"),
+        "אימייל": [contact.get("email")] if contact.get("email") else [],
+        "מספר טלפון": contact.get("phone"),
+        "סוג לקוח": contact.get("types") or [],
+        "בטיפול": contact.get("stage"),
+        "הערות": contact.get("notes"),
+        "ווצאפ": contact.get("whatsapp_url"),
+        "מייל תיאום פגישה": contact.get("meeting_email_url"),
+    }
+    payload = {"fields": {k: v for k, v in fields.items() if v not in (None, "", [])}}
+    url = f"https://api.airtable.com/v0/{cfg['base_id']}/{cfg['clients_table']}"
+    with httpx.Client(timeout=30.0) as client:
+        if contact.get("airtable_id"):
+            resp = client.patch(f"{url}/{contact['airtable_id']}", headers=headers, json=payload)
+        else:
+            resp = client.post(url, headers=headers, json=payload)
+        if resp.status_code not in (200, 201):
+            raise HTTPException(status_code=resp.status_code, detail=f"Airtable push failed: {resp.text}")
+        return resp.json()
 
 
 def get_graph_access_token():
@@ -182,6 +338,50 @@ def find_local_client(client_id: str):
 
 def find_local_client_by_name(name: str):
     """Find a single client by name from local registry (returns with frontend-compatible field names)."""
+    # Try SQLite first (primary data source for clients created from Airtable)
+    try:
+        import sqlite3
+        possible_paths = [
+            Path("/app/data/eislaw.db"),  # Docker container path
+            Path(__file__).parent / "data" / "eislaw.db",  # Local path
+        ]
+        for db_path in possible_paths:
+            if db_path.exists():
+                conn = sqlite3.connect(str(db_path))
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM clients WHERE name = ?", (name,))
+                row = cursor.fetchone()
+                conn.close()
+                if row:
+                    email = row["email"] or ""
+                    emails = [email] if email and "@" in email else []
+                    types = json.loads(row["types"]) if row["types"] else []
+                    return {
+                        "id": row["id"],
+                        "name": row["name"],
+                        "emails": emails,
+                        "phone": row["phone"] or "",
+                        "client_type": types,
+                        "stage": row["stage"] or "",
+                        "notes": row["notes"] or "",
+                        "folder": row["local_folder"] or "",
+                        "airtable_id": row["airtable_id"] or "",
+                        "airtable_url": row["airtable_url"] or "",
+                        "sharepoint_url": row["sharepoint_url"] or "",
+                        "sharepoint_id": row["sharepoint_id"] or "",
+                        "contacts": [],  # Contacts are in separate table
+                        "created_at": row["created_at"],
+                        "active": bool(row["active"]) if row["active"] is not None else True,
+                        "archived": bool(row["archived"]) if row["archived"] is not None else False,
+                        "archived_at": row["archived_at"],
+                        "archived_reason": row["archived_reason"],
+                    }
+                break
+    except Exception as e:
+        print(f"SQLite client lookup failed: {e}")
+
+    # Fallback to JSON registry
     clients_path = get_clients_store_path()
     if not clients_path.exists():
         return None
@@ -210,6 +410,7 @@ def find_local_client_by_name(name: str):
                     "contacts": c.get("contacts", []),
                     "created_at": c.get("created_at"),
                     "active": c.get("active", True),
+                    "archived": c.get("archived", not c.get("active", True)),
                     "archived_at": c.get("archived_at"),
                 }
     except Exception as e:
@@ -223,6 +424,140 @@ def fetch_airtable_clients():
     if not all([cfg.get("token"), cfg.get("base_id"), cfg.get("clients_table")]):
         # Fall back to fixtures if Airtable not configured
         return fixtures.clients()
+
+
+# ─────────────────────────────────────────────────────────────
+# Airtable Contacts Sync Endpoints
+# ─────────────────────────────────────────────────────────────
+
+
+@app.get("/api/airtable-contacts")
+def list_airtable_contacts_api(activated: Optional[bool] = None, search: Optional[str] = None):
+    contacts = db_api_helpers.list_airtable_contacts(activated=activated, search=search)
+    state = db_api_helpers.get_sync_state("airtable", "contacts") or {}
+    return {
+        "contacts": [serialize_airtable_contact_for_api(c) for c in contacts],
+        "total": len(contacts),
+        "last_sync": state.get("last_sync_at"),
+    }
+
+
+@app.post("/api/sync/pull-airtable")
+def pull_airtable_contacts():
+    cfg = get_airtable_config()
+    contacts = fetch_airtable_contacts_api(cfg)
+    stats = {
+        "total_fetched": len(contacts),
+        "new_contacts": 0,
+        "updated_contacts": 0,
+        "unchanged": 0,
+        "errors": 0,
+    }
+    for contact in contacts:
+        try:
+            existing = db_api_helpers.get_airtable_contact_by_airtable_id(contact["airtable_id"])
+            changed = not existing or existing.get("sync_hash") != contact.get("sync_hash")
+            db_api_helpers.upsert_airtable_contact(contact)
+            if not existing:
+                stats["new_contacts"] += 1
+            elif changed:
+                stats["updated_contacts"] += 1
+            else:
+                stats["unchanged"] += 1
+        except Exception:
+            stats["errors"] += 1
+            continue
+    synced_at = datetime.utcnow().isoformat() + "Z"
+    db_api_helpers.set_sync_state("airtable", "contacts", synced_at, None, "idle", len(contacts))
+    return {"success": True, "stats": stats, "synced_at": synced_at}
+
+
+@app.post("/api/sync/push-airtable")
+def push_airtable_contacts():
+    cfg = get_airtable_config()
+    if not all([cfg.get("token"), cfg.get("base_id"), cfg.get("clients_table")]):
+        raise HTTPException(status_code=500, detail="Airtable configuration missing")
+    contacts = db_api_helpers.list_airtable_contacts()
+    stats = {"pushed": 0, "created_in_airtable": 0, "updated_in_airtable": 0, "errors": 0, "skipped_unchanged": 0}
+    now = datetime.utcnow().isoformat() + "Z"
+    for contact in contacts:
+        try:
+            # Skip unchanged records that already exist in Airtable
+            types = contact.get("types")
+            if isinstance(types, str):
+                try:
+                    types = json.loads(types)
+                except Exception:
+                    types = []
+            contact["types"] = types or []
+            contact_hash = compute_contact_hash(contact)
+            if contact.get("airtable_id") and contact.get("sync_hash") == contact_hash:
+                stats["skipped_unchanged"] += 1
+                continue
+
+            resp = push_contact_to_airtable(cfg, contact)
+            airtable_id = resp.get("id") or contact.get("airtable_id")
+            updated = contact.copy()
+            updated["airtable_id"] = airtable_id
+            updated["last_synced_at"] = now
+            updated["sync_hash"] = compute_contact_hash(updated)
+            db_api_helpers.upsert_airtable_contact(updated)
+            stats["pushed"] += 1
+            if contact.get("airtable_id"):
+                stats["updated_in_airtable"] += 1
+            else:
+                stats["created_in_airtable"] += 1
+        except Exception:
+            stats["errors"] += 1
+            continue
+    db_api_helpers.set_sync_state("airtable", "contacts", now, None, "idle", stats["pushed"])
+    return {"success": True, "stats": stats}
+
+
+@app.post("/api/contacts/activate")
+def activate_contact(payload: Dict = Body(...)):
+    contact_id = payload.get("airtable_contact_id")
+    sharepoint_folder = payload.get("sharepoint_folder")
+    local_folder = payload.get("local_folder")
+    if not contact_id:
+        raise HTTPException(status_code=400, detail="airtable_contact_id is required")
+    contact = db_api_helpers.get_airtable_contact_by_id(contact_id)
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    cfg = get_airtable_config()
+    airtable_url = None
+    if cfg.get("base_id") and cfg.get("clients_table") and contact.get("airtable_id"):
+        airtable_url = f"https://airtable.com/{cfg['base_id']}/{cfg['clients_table']}/{contact['airtable_id']}"
+
+    new_client = {
+        "id": str(uuid.uuid4()),
+        "name": contact.get("name"),
+        "email": contact.get("email"),
+        "phone": contact.get("phone"),
+        "types": contact.get("types") or [],
+        "stage": "active",  # clients table uses English stage values
+        "notes": contact.get("notes"),
+        "airtable_id": contact.get("airtable_id"),
+        "airtable_url": airtable_url,
+        "sharepoint_url": sharepoint_folder,
+        "local_folder": local_folder,
+        "active": 1,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+    }
+    client = db_api_helpers.create_client(new_client)
+    db_api_helpers.mark_contact_activated(contact_id, client["id"])
+
+    return {
+        "success": True,
+        "client": {
+            "id": client["id"],
+            "name": client.get("name"),
+            "sharepoint_url": client.get("sharepoint_url"),
+            "local_folder": client.get("local_folder"),
+        },
+    }
 
     import urllib.parse
     import urllib.request
@@ -312,6 +647,7 @@ origins = [
     "http://127.0.0.1:5184",
     "http://localhost:5185",
     "http://127.0.0.1:5185",
+    *list(PUBLIC_REPORT_ALLOWED_ORIGINS),
 ]
 
 app.add_middleware(
@@ -554,26 +890,52 @@ def auth_me():
 
 
 @app.get("/api/clients")
-def get_clients(status: str = "active"):
+def get_clients(
+    status: Optional[str] = Query(
+        None, description="Deprecated: use archived=0|1|all"
+    ),
+    archived: Optional[str] = Query(
+        None, description="Filter: 0 (active, default), 1 (archived), all"
+    ),
+):
     """
-    Return local client registry from ~/.eislaw/store/clients.json.
+    Return client registry from SQLite with archive filter.
 
     Query params:
-        status: "active" | "archived" | "all"
-               Default: "active" (backward compatible)
+        archived: "0" (default), "1", or "all"
+        status: legacy param ("active" | "archived" | "all") - maps to archived filter
     """
-    clients = load_local_clients()
+
+    def normalize_archived_param(archived_value: Optional[str], status_value: Optional[str]) -> str:
+        if archived_value is None or archived_value == "":
+            mapped = (status_value or "").lower() if status_value else None
+            if mapped in {"active", "0", "false"}:
+                archived_value = "0"
+            elif mapped in {"archived", "1", "true"}:
+                archived_value = "1"
+            elif mapped == "all":
+                archived_value = "all"
+        value = str(archived_value).lower() if archived_value is not None else "0"
+        if value in {"true", "1"}:
+            value = "1"
+        elif value in {"false", "0", ""}:
+            value = "0"
+        if value not in {"0", "1", "all"}:
+            raise HTTPException(status_code=400, detail="archived must be 0, 1, or all")
+        return value
+
+    archived_filter = normalize_archived_param(archived, status)
+    clients = db_api_helpers.list_clients(archived_filter=archived_filter)
     if not clients:
-        # Fall back to fixtures if no local registry
+        # Fall back to fixtures if no registry
         clients = fixtures.clients()
-
-    # Filter by status
-    if status == "active":
-        clients = [c for c in clients if c.get("active", True)]
-    elif status == "archived":
-        clients = [c for c in clients if not c.get("active", True)]
-    # else: "all" - return all clients
-
+        if archived_filter == "0":
+            clients = [c for c in clients if c.get("active", True)]
+        elif archived_filter == "1":
+            clients = [c for c in clients if not c.get("active", True)]
+        for c in clients:
+            if "archived" not in c:
+                c["archived"] = not c.get("active", True)
     return clients
 
 
@@ -590,16 +952,50 @@ def get_client(cid: str):
     raise HTTPException(status_code=404, detail="Client not found")
 
 
+@app.post("/api/clients/{client_id}/archive")
+def archive_client_by_id(client_id: str, payload: dict = Body(default={})):
+    """
+    Archive a client (set archived=1, archived_at timestamp, archived_reason).
+    Returns 404 if not found, 409 if already archived.
+    """
+    reason = (payload or {}).get("reason") or "manual"
+    client, changed, conflict = db_api_helpers.update_client_archive_state(
+        client_id, archive=True, reason=reason
+    )
+    if client is None:
+        raise HTTPException(status_code=404, detail={"reason": "not_found", "message": "Client not found"})
+    if not changed:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": conflict or "already_archived", "message": "Client already archived"},
+        )
+    return {"success": True, "archived_at": client.get("archived_at") or client.get("archivedAt"), "client": client}
+
+
+@app.post("/api/clients/{client_id}/restore")
+def restore_client_by_id(client_id: str, payload: dict = Body(default={})):
+    """
+    Restore an archived client (set archived=0).
+    Returns 404 if not found, 409 if already active.
+    """
+    reason = (payload or {}).get("reason")
+    client, changed, conflict = db_api_helpers.update_client_archive_state(
+        client_id, archive=False, reason=reason or "manual"
+    )
+    if client is None:
+        raise HTTPException(status_code=404, detail={"reason": "not_found", "message": "Client not found"})
+    if not changed:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": conflict or "already_active", "message": "Client already active"},
+        )
+    return {"success": True, "client": client}
+
+
 @app.patch("/api/clients/{client_name}/archive")
 def archive_client(client_name: str):
     """
-    Archive a client (set active=False).
-
-    Returns:
-        {"success": true} on success
-
-    Errors:
-        404 if client not found
+    Archive a client by name (legacy endpoint).
     """
     import urllib.parse
     decoded_name = urllib.parse.unquote(client_name)
@@ -609,6 +1005,8 @@ def archive_client(client_name: str):
 
     if result is None:
         raise HTTPException(status_code=404, detail="Client not found")
+    if result.get("archived"):
+        return {"success": True, "archived_at": archived_at}
 
     return {"success": True, "archived_at": archived_at}
 
@@ -616,13 +1014,7 @@ def archive_client(client_name: str):
 @app.patch("/api/clients/{client_name}/restore")
 def restore_client(client_name: str):
     """
-    Restore an archived client (set active=True).
-
-    Returns:
-        {"success": true} on success
-
-    Errors:
-        404 if client not found
+    Restore an archived client by name (legacy endpoint).
     """
     import urllib.parse
     decoded_name = urllib.parse.unquote(client_name)
@@ -1466,9 +1858,35 @@ def search_emails_by_client(client_name: str, since_days: int = 45, top: int = 5
     # Calculate date filter
     from_date = (datetime.utcnow() - timedelta(days=since_days)).strftime("%Y-%m-%dT00:00:00Z")
 
-    # Try to get client's email addresses from local registry
+    # Try to get client's email addresses from local registry (JSON) or SQLite
     client_emails = []
     client_data = find_local_client_by_name(client_name)
+
+    # Fallback to SQLite if JSON lookup failed
+    if not client_data:
+        try:
+            import sqlite3
+            # Try multiple possible paths for Docker and local environments
+            possible_paths = [
+                Path("/app/data/eislaw.db"),  # Docker container path
+                Path(__file__).parent / "data" / "eislaw.db",  # Local path
+            ]
+            for db_path in possible_paths:
+                if db_path.exists():
+                    conn = sqlite3.connect(str(db_path))
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT email FROM clients WHERE name = ?", (client_name,))
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        email = row[0]
+                        if "@" in email and not email.startswith("no-email+"):
+                            client_emails.append(email)
+                            print(f"[EMAIL SYNC] Found email {email} for client {client_name} via SQLite")
+                    conn.close()
+                    break
+        except Exception as e:
+            print(f"SQLite email lookup failed: {e}")
+
     if client_data:
         # Get primary emails
         emails_list = client_data.get("emails", [])
@@ -1809,6 +2227,182 @@ def email_by_client(name: str, limit: int = 25, offset: int = 0):
         return {"items": [], "total": 0}
 
 
+@app.post("/api/email/attachments/save-to-sharepoint")
+def save_email_attachments_to_sharepoint(payload: dict = Body(...)):
+    """
+    Save all attachments from an email to the client's SharePoint folder root.
+    """
+    import urllib.parse
+
+    email_id = payload.get("email_id") or payload.get("id")
+    client_name = (payload.get("client_name") or "").strip()
+
+    if not email_id:
+        raise HTTPException(status_code=400, detail="email_id is required")
+    if not client_name:
+        raise HTTPException(status_code=400, detail="client_name is required")
+
+    client = find_local_client_by_name(client_name)
+    sharepoint_url = client.get("sharepoint_url") if client else ""
+    sharepoint_id = client.get("sharepoint_id") if client else ""
+
+    if not sharepoint_url and not sharepoint_id:
+        return {
+            "success": False,
+            "error": "no_sharepoint_folder",
+            "message": "Client has no SharePoint folder configured",
+        }
+
+    token = get_graph_access_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    site_id = get_sharepoint_site_id()
+    if not site_id:
+        raise HTTPException(status_code=500, detail="Could not locate SharePoint site")
+
+    saved_files = []
+    attachments = []
+    email_user_id = None
+
+    with httpx.Client(timeout=60.0) as client_http:
+        # Resolve SharePoint folder path from ID (preferred) or URL (fallback)
+        folder_path = ""
+        try:
+            if sharepoint_id:
+                item_resp = client_http.get(
+                    f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive/items/{sharepoint_id}",
+                    headers=headers,
+                )
+                if item_resp.status_code == 200:
+                    item = item_resp.json()
+                    parent_path = item.get("parentReference", {}).get("path", "")
+                    folder_name = item.get("name") or client_name
+                    if parent_path.startswith("/drive/root:"):
+                        parent_clean = parent_path.replace("/drive/root:", "").strip("/")
+                        folder_path = f"{parent_clean}/{folder_name}".strip("/")
+                    sharepoint_url = item.get("webUrl") or sharepoint_url
+        except Exception:
+            folder_path = ""
+
+        if not folder_path and sharepoint_url:
+            parsed = urllib.parse.urlparse(sharepoint_url)
+            parts = [p for p in parsed.path.split("/") if p]
+            folder_path = ""
+            if "sites" in parts and len(parts) >= 3:
+                idx = parts.index("sites")
+                folder_path = "/".join(parts[idx + 2 :])
+            else:
+                folder_path = "/".join(parts)
+            folder_path = urllib.parse.unquote(folder_path).strip("/")
+
+        if not folder_path:
+            return {
+                "success": False,
+                "error": "invalid_sharepoint_folder",
+                "message": "Could not resolve SharePoint folder path",
+            }
+
+        # Locate the email's mailbox and fetch attachments
+        # Search up to 20 users to ensure we find the right mailbox
+        users_resp = client_http.get(
+            "https://graph.microsoft.com/v1.0/users?$select=id,mail&$top=20",
+            headers=headers,
+        )
+        users = users_resp.json().get("value", []) if users_resp.status_code == 200 else []
+
+        for user in users:
+            user_id = user.get("id")
+            if not user_id:
+                continue
+
+            # Fetch attachments - don't use $select with contentBytes (causes 400 errors)
+            attachments_url = (
+                f"https://graph.microsoft.com/v1.0/users/{user_id}/messages/{email_id}/attachments"
+            )
+            try:
+                att_resp = client_http.get(attachments_url, headers=headers)
+                if att_resp.status_code == 200:
+                    attachments = att_resp.json().get("value", [])
+                    email_user_id = user_id
+                    break
+                elif att_resp.status_code == 404:
+                    continue
+            except Exception:
+                continue
+
+        if email_user_id is None:
+            raise HTTPException(status_code=404, detail="Email not found in mailboxes")
+
+        if not attachments:
+            return {
+                "success": True,
+                "saved_files": [],
+                "count": 0,
+                "message": "Email has no attachments",
+            }
+
+        for att in attachments:
+            # Only process file attachments
+            if att.get("@odata.type") and "fileAttachment" not in att.get("@odata.type", ""):
+                continue
+
+            filename = att.get("name") or f"attachment_{len(saved_files) + 1}"
+            content_bytes = att.get("contentBytes")
+            file_bytes = None
+
+            if content_bytes:
+                try:
+                    file_bytes = base64.b64decode(content_bytes)
+                except Exception:
+                    file_bytes = None
+
+            if file_bytes is None:
+                value_url = (
+                    f"https://graph.microsoft.com/v1.0/users/{email_user_id}"
+                    f"/messages/{email_id}/attachments/{att.get('id')}/$value"
+                )
+                value_resp = client_http.get(value_url, headers=headers)
+                if value_resp.status_code == 200:
+                    file_bytes = value_resp.content
+
+            if not file_bytes:
+                continue
+
+            encoded_path = urllib.parse.quote(f"{folder_path}/{filename}".strip("/"), safe="/")
+            upload_url = (
+                f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+                f"/drive/root:/{encoded_path}:/content?@microsoft.graph.conflictBehavior=rename"
+            )
+            upload_headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": att.get("contentType") or "application/octet-stream",
+            }
+            upload_resp = client_http.put(upload_url, headers=upload_headers, content=file_bytes)
+
+            if upload_resp.status_code in (200, 201):
+                uploaded = upload_resp.json()
+                saved_files.append({
+                    "name": filename,
+                    "size": len(file_bytes) if file_bytes else att.get("size", 0),
+                    "sharepoint_url": uploaded.get("webUrl") or sharepoint_url,
+                })
+
+    if len(saved_files) == 0:
+        return {
+            "success": False,
+            "saved_files": [],
+            "count": 0,
+            "error": "upload_failed",
+            "message": "No attachments were saved",
+        }
+
+    return {
+        "success": True,
+        "saved_files": saved_files,
+        "count": len(saved_files),
+    }
+
+
 @app.get("/api/integrations/health")
 def integrations_health():
     # simple summary reusing local knowledge
@@ -1932,61 +2526,200 @@ def search_sharepoint_folder(client_name: str):
     return None
 
 
+def create_sharepoint_folder(client_name: str):
+    """
+    Create a new folder for a client in SharePoint under 'לקוחות משרד'.
+    Returns folder info including webUrl if created successfully.
+    """
+    token = get_graph_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    site_id = get_sharepoint_site_id()
+    if not site_id:
+        return {"error": "Could not find SharePoint site"}
+
+    with httpx.Client(timeout=30.0) as client:
+        # Get the default drive (Documents library)
+        drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
+        drive_resp = client.get(drive_url, headers=headers)
+
+        if drive_resp.status_code != 200:
+            return {"error": f"Could not access drive: {drive_resp.text}"}
+
+        drive_id = drive_resp.json().get("id")
+        if not drive_id:
+            return {"error": "No drive ID found"}
+
+        # Try to create folder in "לקוחות משרד" parent folder
+        parent_folder = "לקוחות משרד"
+        create_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{parent_folder}:/children"
+
+        folder_data = {
+            "name": client_name,
+            "folder": {},
+            "@microsoft.graph.conflictBehavior": "rename"
+        }
+
+        create_resp = client.post(create_url, headers=headers, json=folder_data)
+
+        if create_resp.status_code in (200, 201):
+            created = create_resp.json()
+            return {
+                "id": created.get("id"),
+                "name": created.get("name"),
+                "webUrl": created.get("webUrl"),
+                "path": f"/{parent_folder}/{created.get('name')}",
+                "createdDateTime": created.get("createdDateTime"),
+            }
+        elif create_resp.status_code == 404:
+            # Parent folder might not exist, try creating at root
+            root_create_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root/children"
+            root_resp = client.post(root_create_url, headers=headers, json=folder_data)
+
+            if root_resp.status_code in (200, 201):
+                created = root_resp.json()
+                return {
+                    "id": created.get("id"),
+                    "name": created.get("name"),
+                    "webUrl": created.get("webUrl"),
+                    "path": f"/{created.get('name')}",
+                    "createdDateTime": created.get("createdDateTime"),
+                }
+            return {"error": f"Could not create folder: {root_resp.text}"}
+        else:
+            return {"error": f"Could not create folder: {create_resp.text}"}
+
+
 def update_client_sharepoint_url(client_name: str, sharepoint_url: str, sharepoint_id: str = None):
     """Update client registry with SharePoint folder URL."""
-    clients_path = get_clients_store_path()
-    if not clients_path.exists():
-        return False
+    updated = False
 
+    # Try SQLite first (primary data source)
     try:
-        data = json.loads(clients_path.read_text("utf-8"))
-        clients = data.get("clients", [])
-
-        updated = False
-        for c in clients:
-            if c.get("display_name", "").lower() == client_name.lower():
-                c["sharepoint_url"] = sharepoint_url
+        import sqlite3
+        possible_paths = [
+            Path("/app/data/eislaw.db"),  # Docker container path
+            Path(__file__).parent / "data" / "eislaw.db",  # Local path
+        ]
+        for db_path in possible_paths:
+            if db_path.exists():
+                conn = sqlite3.connect(str(db_path))
+                cursor = conn.cursor()
                 if sharepoint_id:
-                    c["sharepoint_id"] = sharepoint_id
-                updated = True
+                    cursor.execute(
+                        "UPDATE clients SET sharepoint_url = ?, sharepoint_id = ? WHERE name = ?",
+                        (sharepoint_url, sharepoint_id, client_name)
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE clients SET sharepoint_url = ? WHERE name = ?",
+                        (sharepoint_url, client_name)
+                    )
+                if cursor.rowcount > 0:
+                    updated = True
+                    print(f"[UPDATE] Updated SharePoint URL for {client_name} in SQLite")
+                conn.commit()
+                conn.close()
                 break
-
-        if updated:
-            data["clients"] = clients
-            clients_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        return updated
     except Exception as e:
-        print(f"Error updating client SharePoint URL: {e}")
-        return False
+        print(f"SQLite SharePoint update failed: {e}")
+
+    # Also try JSON registry for backward compatibility
+    clients_path = get_clients_store_path()
+    if clients_path.exists():
+        try:
+            data = json.loads(clients_path.read_text("utf-8"))
+            clients = data.get("clients", [])
+
+            for c in clients:
+                if c.get("display_name", "").lower() == client_name.lower():
+                    c["sharepoint_url"] = sharepoint_url
+                    if sharepoint_id:
+                        c["sharepoint_id"] = sharepoint_id
+                    updated = True
+                    break
+
+            if updated:
+                data["clients"] = clients
+                clients_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"Error updating client SharePoint URL in JSON: {e}")
+
+    return updated
 
 
 def update_client_active_status(client_name: str, active: bool, archived_at: str = None):
-    """Update client active status for archive/restore functionality."""
-    clients_path = get_clients_store_path()
-    if not clients_path.exists():
-        return None
+    """Update client active status for archive/restore functionality (legacy name-based)."""
+    updated_client = None
+    archived_value = 0 if active else 1
+    archived_reason = None if active else "manual"
+    now = datetime.utcnow().isoformat() + "Z"
 
+    # Try SQLite first (primary data source)
     try:
-        data = json.loads(clients_path.read_text("utf-8"))
-        clients = data.get("clients", [])
-
-        updated_client = None
-        for c in clients:
-            if c.get("display_name", "").lower() == client_name.lower():
-                c["active"] = active
-                c["archived_at"] = archived_at
-                updated_client = c
+        import sqlite3
+        possible_paths = [
+            Path("/app/data/eislaw.db"),  # Docker container path
+            Path(__file__).parent / "data" / "eislaw.db",  # Local path
+        ]
+        for db_path in possible_paths:
+            if db_path.exists():
+                conn = sqlite3.connect(str(db_path))
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE clients
+                    SET active = ?, archived = ?, archived_at = ?, archived_reason = ?, updated_at = ?
+                    WHERE name = ?
+                    """,
+                    (1 if active else 0, archived_value, archived_at if not active else None, archived_reason, now, client_name)
+                )
+                if cursor.rowcount > 0:
+                    # Fetch the updated client
+                    cursor.execute("SELECT * FROM clients WHERE name = ?", (client_name,))
+                    row = cursor.fetchone()
+                    if row:
+                        updated_client = {
+                            "id": row["id"],
+                            "name": row["name"],
+                            "active": bool(row["active"]),
+                            "archived": bool(row["archived"]) if row["archived"] is not None else False,
+                            "archived_at": row["archived_at"],
+                            "archived_reason": row["archived_reason"],
+                        }
+                        print(f"[UPDATE] Updated active status for {client_name} in SQLite")
+                conn.commit()
+                conn.close()
                 break
+    except Exception as e:
+        print(f"SQLite active status update failed: {e}")
 
-        if updated_client:
+    # Also try JSON registry for backward compatibility
+    clients_path = get_clients_store_path()
+    if clients_path.exists():
+        try:
+            data = json.loads(clients_path.read_text("utf-8"))
+            clients = data.get("clients", [])
+
+            for c in clients:
+                if c.get("display_name", "").lower() == client_name.lower():
+                    c["active"] = active
+                    c["archived"] = not active
+                    c["archived_at"] = archived_at
+                    if not updated_client:
+                        updated_client = c
+                    break
+
             data["clients"] = clients
             clients_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"Error updating client active status in JSON: {e}")
 
-        return updated_client
-    except Exception as e:
-        print(f"Error updating client active status: {e}")
-        return None
+    return updated_client
 
 
 @app.get("/api/sharepoint/search")
@@ -2101,11 +2834,365 @@ def list_sharepoint_sites():
         raise HTTPException(status_code=500, detail=f"Failed to list sites: {str(e)}")
 
 
+@app.post("/sp/folder_create")
+def sp_folder_create(payload: dict = Body(...)):
+    """
+    Create a new SharePoint folder for a client.
+
+    Request body:
+    - name: Client name (folder will be created under 'לקוחות משרד')
+
+    Returns:
+    - webUrl: The SharePoint URL of the created folder
+    - id: The folder ID
+    - name: The folder name
+    """
+    client_name = (payload.get("name") or "").strip()
+
+    if not client_name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    try:
+        # First check if folder already exists
+        existing = search_sharepoint_folder(client_name)
+        if existing and existing.get("webUrl"):
+            # Update client registry with existing folder
+            update_client_sharepoint_url(
+                client_name,
+                existing["webUrl"],
+                existing.get("id")
+            )
+            return {
+                "created": False,
+                "existed": True,
+                "webUrl": existing["webUrl"],
+                "id": existing.get("id"),
+                "name": existing.get("name"),
+                "client": client_name,
+            }
+
+        # Create new folder
+        result = create_sharepoint_folder(client_name)
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        # Update client registry with new folder URL
+        if result.get("webUrl"):
+            update_client_sharepoint_url(
+                client_name,
+                result["webUrl"],
+                result.get("id")
+            )
+
+        return {
+            "created": True,
+            "existed": False,
+            "webUrl": result.get("webUrl"),
+            "id": result.get("id"),
+            "name": result.get("name"),
+            "path": result.get("path"),
+            "client": client_name,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SharePoint folder creation failed: {str(e)}")
+
+
 # ─────────────────────────────────────────────────────────────
 # Privacy MVP Endpoints (SQLite-based)
 # ─────────────────────────────────────────────────────────────
 import time
 from fastapi import Request
+
+
+def get_privacy_db_path() -> Path:
+    """Resolve privacy database path with fallback to legacy eislaw.db."""
+    env_path = os.environ.get("PRIVACY_DB_PATH")
+    if env_path:
+        return Path(env_path)
+    base_dir = Path(__file__).resolve().parent.parent
+    privacy_path = base_dir / "data" / "privacy.db"
+    if privacy_path.exists():
+        return privacy_path
+    return base_dir / "data" / "eislaw.db"
+
+
+def check_public_report_rate_limit(ip: str) -> bool:
+    """Simple in-memory rate limiter per IP."""
+    now = time.time()
+    bucket = _public_report_rate_limits[ip]
+    _public_report_rate_limits[ip] = [t for t in bucket if now - t < PUBLIC_REPORT_WINDOW_SECONDS]
+    if len(_public_report_rate_limits[ip]) >= PUBLIC_REPORT_MAX_REQUESTS:
+        return False
+    _public_report_rate_limits[ip].append(now)
+    return True
+
+
+def log_public_report_event(ip: str, token: str, status: str):
+    """Log minimal info (token prefix + IP + status) for monitoring."""
+    prefix = token[:8] if token else ""
+    print(f"[public_report] ip={ip} token_prefix={prefix} status={status}")
+
+
+def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    """Parse ISO datetime, handling trailing Z."""
+    if not value:
+        return None
+    try:
+        text = value
+        if isinstance(text, str) and text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        return datetime.fromisoformat(text)
+    except Exception:
+        return None
+
+
+def isoformat_utc(dt: Optional[datetime]) -> Optional[str]:
+    """Format datetime as UTC ISO string with Z suffix."""
+    if not dt:
+        return None
+    try:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.isoformat().replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
+def normalize_answers(raw: Any) -> Dict[str, Any]:
+    """Load answers dict from JSON/text/raw Fillout response."""
+    if not raw:
+        return {}
+    data = raw
+    if isinstance(raw, str):
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return {}
+    if isinstance(data, dict):
+        if isinstance(data.get("answers"), dict):
+            return data.get("answers", {})
+        if isinstance(data.get("questions"), list):
+            answers: Dict[str, Any] = {}
+            for q in data["questions"]:
+                key = q.get("name") or q.get("id")
+                if not key:
+                    continue
+                answers[key] = q.get("value")
+            return answers
+        return data
+    return {}
+
+
+def lookup_answer(answers: Dict[str, Any], keys: List[str]) -> Any:
+    """Find a value in answers by trying multiple key variants."""
+    for key in keys:
+        if key in answers:
+            return answers[key]
+    lower_map = {str(k).lower(): v for k, v in answers.items()}
+    for key in keys:
+        lowered = str(key).lower()
+        if lowered in lower_map:
+            return lower_map[lowered]
+    return None
+
+
+def _coerce_list(value: Any) -> List[str]:
+    """Convert common value types into a list of strings."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v) for v in value if v not in (None, "")]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(v) for v in parsed if v not in (None, "")]
+        except Exception:
+            pass
+        return [value]
+    return [str(value)]
+
+
+def extract_storage_locations(answers: Dict[str, Any]) -> List[str]:
+    """Extract storage locations from answers (best-effort)."""
+    locations: List[str] = []
+    for key, val in answers.items():
+        key_lower = str(key).lower()
+        if "storage" in key_lower or "אחס" in key_lower:
+            locations.extend(_coerce_list(val))
+    seen = set()
+    deduped = []
+    for loc in locations:
+        if loc in seen:
+            continue
+        seen.add(loc)
+        deduped.append(loc)
+    return deduped
+
+
+def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
+    """Fetch submission + scoring data for public report."""
+    db_path = get_privacy_db_path()
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+    except Exception:
+        return None
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='privacy_submissions'")
+        if not cursor.fetchone():
+            return None
+
+        cursor.execute("PRAGMA table_info(privacy_submissions)")
+        columns = {row[1] for row in cursor.fetchall()}
+        submission_col = "submission_id" if "submission_id" in columns else "id"
+
+        cursor.execute(f"SELECT * FROM privacy_submissions WHERE {submission_col} = ?", (token,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        row_dict = {k: row[k] for k in row.keys()}
+
+        embedded_score = {"score_level", "score_dpo", "score_reg", "score_report"}.issubset(columns)
+        level = row_dict.get("score_level") if embedded_score else None
+        dpo = bool(row_dict.get("score_dpo")) if embedded_score else None
+        reg = bool(row_dict.get("score_reg")) if embedded_score else None
+        report = bool(row_dict.get("score_report")) if embedded_score else None
+        requirements_raw = row_dict.get("score_requirements") if embedded_score else None
+
+        if not embedded_score:
+            try:
+                cursor.execute(
+                    """
+                    SELECT level, dpo, reg, report, requirements
+                    FROM privacy_reviews
+                    WHERE submission_id = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (row_dict.get(submission_col),),
+                )
+                review_row = cursor.fetchone()
+                if review_row:
+                    level = review_row["level"]
+                    dpo = bool(review_row["dpo"]) if review_row["dpo"] is not None else False
+                    reg = bool(review_row["reg"]) if review_row["reg"] is not None else False
+                    report = bool(review_row["report"]) if review_row["report"] is not None else False
+                    requirements_raw = review_row["requirements"]
+            except Exception:
+                pass
+
+        requirements: List[str] = []
+        if requirements_raw:
+            try:
+                requirements = json.loads(requirements_raw)
+            except Exception:
+                requirements = []
+
+        answers = normalize_answers(row_dict.get("answers_json") or row_dict.get("raw_response"))
+        sensitive_people_val = lookup_answer(answers, ["sensitive_people", "1ZwV"]) or row_dict.get("sensitive_people") or 0
+        try:
+            sensitive_people_val = int(sensitive_people_val)
+        except Exception:
+            sensitive_people_val = 0
+
+        data_map_flag = False
+        for candidate in ["data_map", "data map", "data-map", "מפת מאגרים"]:
+            val = lookup_answer(answers, [candidate])
+            if isinstance(val, bool):
+                data_map_flag = val
+                break
+            if isinstance(val, str) and val.strip():
+                lowered = val.strip().lower()
+                if lowered in {"כן", "yes", "true", "1"}:
+                    data_map_flag = True
+                    break
+        if not data_map_flag and "data_map" in requirements:
+            data_map_flag = True
+
+        submitted_at_raw = row_dict.get("submitted_at") or row_dict.get("received_at")
+        submitted_at_dt = parse_iso_datetime(submitted_at_raw)
+        if not submitted_at_dt:
+            return None
+        if submitted_at_dt.tzinfo is None:
+            submitted_at_dt = submitted_at_dt.replace(tzinfo=timezone.utc)
+        else:
+            submitted_at_dt = submitted_at_dt.astimezone(timezone.utc)
+
+        expires_at_dt = submitted_at_dt + timedelta(days=90)
+
+        level_hebrew_map = {
+            "lone": "יחיד",
+            "basic": "בסיסית",
+            "mid": "בינונית",
+            "high": "גבוהה",
+        }
+
+        level_value = level or row_dict.get("level") or "unknown"
+        requirements_payload = {
+            "dpo": bool(dpo),
+            "registration": bool(reg),
+            "report": bool(report),
+            "data_map": bool(data_map_flag),
+            "sensitive_people": sensitive_people_val,
+            "storage_locations": extract_storage_locations(answers),
+        }
+
+        return {
+            "valid": True,
+            "token": row_dict.get(submission_col),
+            "level": level_value,
+            "level_hebrew": level_hebrew_map.get(level_value, level_value),
+            "business_name": row_dict.get("business_name"),
+            "requirements": requirements_payload,
+            "submitted_at": isoformat_utc(submitted_at_dt),
+            "expires_at": isoformat_utc(expires_at_dt),
+            "expires_at_dt": expires_at_dt,
+        }
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.get("/api/public/report/{token}")
+def get_public_report(token: str, request: Request, response: Response):
+    """Public endpoint for WordPress dynamic report page."""
+    client_ip = request.client.host if request.client else "unknown"
+    cors_origin = get_public_report_origin(request)
+
+    if not check_public_report_rate_limit(client_ip):
+        response.status_code = 429
+        response.headers["Access-Control-Allow-Origin"] = cors_origin
+        log_public_report_event(client_ip, token, "rate_limited")
+        return {"error": "rate_limited"}
+
+    record = get_public_report_record(token)
+    response.headers["Access-Control-Allow-Origin"] = cors_origin
+
+    if not record:
+        response.status_code = 404
+        log_public_report_event(client_ip, token, "invalid_token")
+        return {"valid": False, "reason": "invalid_token"}
+
+    expires_at_dt = record.pop("expires_at_dt", None)
+    if expires_at_dt and datetime.utcnow().replace(tzinfo=timezone.utc) > expires_at_dt.astimezone(timezone.utc):
+        response.status_code = 410
+        log_public_report_event(client_ip, token, "expired")
+        return {"valid": False, "reason": "expired"}
+
+    log_public_report_event(client_ip, token, "ok")
+    return record
+
 
 @app.post("/api/privacy/webhook")
 async def privacy_webhook(request: Request):
@@ -3507,7 +4594,6 @@ async def add_link_to_task(task_id: str, link: LinkAdd):
         if isinstance(attachments, str):
             attachments = json.loads(attachments) if attachments else []
         attachments.append({"kind": "link", "web_url": link.url, "user_title": link.user_title})
-        task["attachments"] = attachments
         save_task_json(task_id, task)
         return {"status": "added", "attachment_count": len(attachments)}
     except HTTPException:
@@ -3527,7 +4613,6 @@ async def add_folder_link_to_task(task_id: str, folder: FolderLinkAdd):
         if isinstance(attachments, str):
             attachments = json.loads(attachments) if attachments else []
         attachments.append({"kind": "folder", "local_path": folder.local_path})
-        task["attachments"] = attachments
         save_task_json(task_id, task)
         return {"status": "added", "attachment_count": len(attachments)}
     except HTTPException:
