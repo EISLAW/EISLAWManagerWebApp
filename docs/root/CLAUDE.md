@@ -1,3 +1,6 @@
+# Mirrored Copy of CLAUDE.md (canonical: /CLAUDE.md)
+# Last sync commit: 10535cd2
+
 # 1. Identity & Mission
 
 > **FIRST RULE (before doing anything):** All code lives on the Azure VM at `20.217.86.4`. Do NOT edit local files. SSH to VM first. See Section 1D.
@@ -66,7 +69,6 @@ Working copy (important)
 | Frontend (prod) | 8080 | `http://20.217.86.4:8080` |
 | Frontend (dev) | 5173 | `http://20.217.86.4:5173` |
 | API | 8799 | `http://20.217.86.4:8799` |
-| Orchestrator (agents) | 8801 | `http://20.217.86.4:8801` (uvicorn --reload) |
 | Meilisearch | 7700 | `http://20.217.86.4:7700` |
 | Grafana | 3000 | Via SSH tunnel only (see 1F) |
 | Prometheus | 9090 | Via SSH tunnel only (see 1F) |

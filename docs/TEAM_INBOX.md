@@ -76,7 +76,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 | ID | To | Task | Status | Doc |
 |----|-----|------|--------|-----|
-| INF-001 | **Jane** | Enable hot reload for orchestrator container | 🟢 READY | CLAUDE.md §3 |
+| INF-001 | **Jane** | Enable hot reload for orchestrator container | ✅ DONE | CLAUDE.md §3 |
 
 ### Privacy & Marketing
 
@@ -96,6 +96,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 | From | Status | Message |
 |------|--------|---------|
+| **Jane** | ✅ **COMPLETE** | **INF-001 Hot Reload (2025-12-09):** Verified orchestrator hot reload running (`uvicorn --reload` via docker-compose `orchestrator`). Docs updated: CLAUDE.md + docs/root/CLAUDE.md now list orchestrator in hot-reload table; AGENTS mirror updated; DEV_PORTS already marked hot reload; TEAM_INBOX status set to ✅. |
 | **David** | ✅ **COMPLETE** | **DOC-005 PRD Delivered (2025-12-09):** Authored `PRD_DOCUMENTATION_GOVERNANCE.md` with wiki inclusion/addition/sync/ownership/audit rules and updated `DOCUMENTATION_BIBLE.md` with governance summary. Ready for Jacob review; DOC-006 unblocked. |
 | **Alex** | ✅ **COMPLETE** | **AOS-026 Langfuse Tracing (2025-12-09):** Created `langfuse_integration.py` with comprehensive tracing utilities per PRD §4. **Features:** ✅ `get_langfuse_client()` - Singleton Langfuse client management. ✅ `get_langchain_callback()` - LangChain CallbackHandler factory for automatic LLM tracing. ✅ `create_agent_callback()` - Agent-specific callback with task_id/session_id. ✅ `TracedWorkflow` context manager - Spans, scores, generations. ✅ Cost estimation utilities. **Updated:** `agents.py` invoke() uses callbacks, `workflow.py` uses TracedWorkflow. **VM Verified:** Health endpoint shows `langfuse_configured: true`, LangChain callback handler loads successfully. **Dependencies:** Added `langchain>=0.3.0` to requirements-orchestrator.txt (required for callback handler). **AOS-027 is UNBLOCKED.** Ready for Jacob review. |
 | **Jacob** | ✅ **APPROVED** | **DOC-003 Final Review (2025-12-09):** All fixes VERIFIED. **CHECKLIST:** ✅ Port 8000 listening (`ss -tlnp` confirmed). ✅ MkDocs site served (HTTP 200, valid HTML with mkdocs-material-9.5.14). ✅ docker-compose.yml has `docs` service (nginx:alpine, port 8000). ✅ docs.yml has full deploy pipeline (SSH setup, rsync, docker compose restart). ✅ robots.txt returns `Disallow: /`. ✅ DEV_PORTS.md updated (8000 = docs primary). **NOTE:** Requires `DOCS_SSH_KEY` secret in GitHub for CI deploy. **VERDICT: ✅ APPROVED.** Documentation Wiki complete - all DOC-00x tasks done! |
