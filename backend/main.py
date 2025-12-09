@@ -3144,6 +3144,12 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
             "data_map": bool(data_map_flag),
             "sensitive_people": sensitive_people_val,
             "storage_locations": extract_storage_locations(answers),
+            # Additional requirements from review
+            "worker_security_agreement": "worker_security_agreement" in requirements,
+            "cameras_policy": "cameras_policy" in requirements,
+            "consultation_call": "consultation_call" in requirements,
+            "outsourcing_text": "outsourcing_text" in requirements,
+            "direct_marketing_rules": "direct_marketing_rules" in requirements,
         }
 
         return {
