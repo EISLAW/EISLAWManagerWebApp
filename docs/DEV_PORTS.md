@@ -1,24 +1,89 @@
-Dev Port Map (frontend/api/dev tools)
-=====================================
+# Port Bible
 
-Purpose: fixed, predictable ports to avoid conflicts and accidental drift between dev and prod.
+**Owner:** Jane (DevOps)
+**Last Updated:** 2025-12-09
+**VM IP:** `20.217.86.4`
 
-Defaults
-- Frontend (Vite/React): 3000
-- Backend API: 8080
-- Dev tools (storybook/admin/etc.): 9001, 9002, … (keep within 9000–9099)
-- DB/queues: keep vendor defaults (e.g., Postgres 5432, Redis 6379) and don’t expose externally unless required.
+> **Single source of truth for all service ports on the Azure VM.**
 
-Rules
-- Do not auto-bump ports. Fail fast if the port is busy; resolve the conflict explicitly.
-- Frontend dev script: `npm run dev -- --host --port 3000`.
-- Backend: run uvicorn/API on 8080. If behind Docker compose, map `8080:8080`.
-- Only override via env (e.g., FRONTEND_PORT, API_PORT) if absolutely necessary; otherwise keep the fixed ports.
-- For Docker networking, services talk on the container port (8080, 3000). Host mappings remain consistent (8080→8080, 3000→3000, 9001→9001).
+---
 
-Checks
-- Before starting, `lsof -i :3000` or `lsof -i :8080` to confirm free ports.
-- If a conflict is unavoidable, bump within the same family (frontend 300x, API 808x, tools 900x) and update the env accordingly—but prefer to free the fixed port.
+## Active Services
 
-Prod alignment
-- Keep the API bound to 8080 (or behind a reverse proxy) and serve the frontend as static over 80/443 via the proxy. Don’t change app ports between environments; change only the public exposure.
+| Port | Service | Container | URL | Hot Reload | NSG Open | Notes |
+|------|---------|-----------|-----|------------|----------|-------|
+| **5173** | Frontend (dev) | `web-dev` | http://20.217.86.4:5173 | ✅ Vite HMR | ✅ | Dev server |
+| **8080** | Frontend (prod) | `web-prod` | http://20.217.86.4:8080 | ❌ N/A | ✅ | Static build |
+| **8799** | API (FastAPI) | `api` | http://20.217.86.4:8799 | ✅ uvicorn | ✅ | Main backend |
+| **8000** | MkDocs Wiki | `docs` | http://20.217.86.4:8000 | ❌ N/A | ✅ | nginx serving site/ · **Auto-rebuilds** on push to main/feature/** |
+| **8801** | Orchestrator | `orchestrator` | http://20.217.86.4:8801 | ❌ **INF-001** | ✅ | Agent framework POC |
+| **7700** | Meilisearch | `meili` | http://20.217.86.4:7700 | ❌ N/A | ✅ | Search engine |
+| **3001** | Langfuse | `langfuse` | http://20.217.86.4:3001 | ❌ N/A | ✅ | LLM observability |
+| **3000** | Grafana | `grafana` | SSH tunnel only | ❌ N/A | ❌ | Metrics (internal) |
+
+---
+
+## Reserved Ports (Future)
+
+| Port | Service | Status |
+|------|---------|--------|
+| **8800** | VM Host Exec | Planned (AOS-012) |
+| **9090** | Prometheus | Reserved |
+| **9190** | Minio (Langfuse) | Internal |
+
+---
+
+## Port Families
+
+| Range | Purpose |
+|-------|---------|
+| 3000-3999 | Dashboards & observability (Grafana, Langfuse) |
+| 5000-5999 | Development servers (Vite) |
+| 7000-7999 | Search & indexing (Meilisearch) |
+| 8000-8099 | Documentation & static sites |
+| 8700-8899 | Application services (API, orchestrator) |
+| 9000-9199 | Infrastructure (Prometheus, Minio) |
+
+---
+
+## Quick Access
+
+```bash
+# SSH to VM
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+
+# Check what's running
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+# Check specific port
+lsof -i :8799
+
+# Grafana tunnel (local access)
+ssh -i ~/.ssh/eislaw-dev-vm.pem -L 3000:localhost:3000 -N azureuser@20.217.86.4
+```
+
+---
+
+## Docker Compose Services
+
+| Service Name | Internal Port | External Port | Health Check |
+|--------------|---------------|---------------|--------------|
+| `api` | 8799 | 8799 | `/api/health` |
+| `web-dev` | 5173 | 5173 | HTTP 200 |
+| `web-prod` | 8080 | 8080 | HTTP 200 |
+| `docs` | 80 | 8000 | HTTP 200 |
+| `orchestrator` | 8801 | 8801 | `/health` |
+| `meili` | 7700 | 7700 | `/health` |
+
+---
+
+## Rules
+
+1. **No port conflicts** - Check before adding new service
+2. **Fixed ports** - Don't auto-bump; resolve conflicts explicitly
+3. **Document new ports** - Update this file when adding services
+4. **Internal vs External** - Some services (Grafana) are SSH tunnel only for security
+
+---
+
+*Update this file when adding/changing ports. See CLAUDE.md §8 for doc update rules.*

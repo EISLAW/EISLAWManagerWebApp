@@ -1,0 +1,60 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'  # Auto-rebuild on feature branches for real-time updates
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'requirements-docs.txt'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-docs.txt
+
+      - name: Build MkDocs site
+        env:
+          PATH: "$HOME/.local/bin:${{ env.PATH }}"
+        run: |
+          python -m mkdocs build --clean
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkdocs-site
+          path: site
+          retention-days: 7
+
+      - name: Setup SSH for deploy
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DOCS_SSH_KEY }}
+
+      - name: Add VM to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 20.217.86.4 >> ~/.ssh/known_hosts
+
+      - name: Deploy site to VM and restart docs service
+        env:
+          DOCS_PORT: 8000
+        run: |
+          rsync -az --delete site/ azureuser@20.217.86.4:/home/azureuser/EISLAWManagerWebApp/site/
+          ssh azureuser@20.217.86.4 "cd ~/EISLAWManagerWebApp && DOCS_PORT=$DOCS_PORT docker compose up -d docs"
