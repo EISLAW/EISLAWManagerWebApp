@@ -38,7 +38,8 @@ This document lists ALL available API endpoints in the EISLAW system. Each endpo
 | System | 4 | 4 | 0 | 0 | 0 | 0 |
 | Dev | 4 | 0 | 0 | 4 | 0 | 0 |
 | AI Studio | 6 | 6 | 0 | 0 | 0 | 0 |
-| **TOTAL** | **83** | **65** | **1** | **18** | **2** | **0** |
+| Orchestrator | 6 | 6 | 0 | 0 | 0 | 0 |
+| **TOTAL** | **89** | **71** | **1** | **18** | **2** | **0** |
 
 **AI Agent Tools:** 16 implemented in `ai_studio_tools.py`:
 - Clients: 4 (search_clients, get_client_details, archive_client, restore_client)
@@ -475,6 +476,76 @@ curl "http://20.217.86.4:8799/api/privacy/submissions?limit=10"
 
 ---
 
+## Orchestrator Endpoints (NEW - 2025-12-09)
+
+> **Service:** Orchestrator container on port 8801
+> **Purpose:** Microsoft Agent Framework POC - Alex→Jacob workflow with Langfuse tracing
+> **Status:** AOS-025 implementation
+
+| Endpoint | Method | Purpose | Status | Backend |
+|----------|--------|---------|--------|---------|
+| `/health` | GET | Orchestrator health check | System | ✅ |
+| `/agents` | GET | List available agent definitions | UI, Agent | ✅ |
+| `/agents/{name}` | GET | Get agent details by name | UI, Agent | ✅ |
+| `/workflow/poc` | POST | Run Alex→Jacob POC workflow (sync) | UI, Agent | ✅ |
+| `/workflow/poc/async` | POST | Run POC workflow async | UI, Agent | ✅ |
+| `/workflow/{task_id}` | GET | Get workflow execution status | UI, Agent | ✅ |
+| `/workflows` | GET | List all workflow executions | UI, Agent | ✅ |
+
+### Agent Definitions (AOS-024)
+
+| Agent | Model | Tools | Temperature |
+|-------|-------|-------|-------------|
+| Alex | claude-sonnet-4-5-20250929 | read_file, edit_file | 0.2 |
+| Jacob | claude-opus-4-5-20251101 | read_file, curl_api, grep_codebase | 0.1 |
+
+### POC Workflow Request Schema
+```json
+{
+  "task_id": "AOS-025-POC-001",
+  "task_description": "Add health check endpoint to main.py"
+}
+```
+
+### POC Workflow Response Schema
+```json
+{
+  "workflow_name": "POC-AlexJacob",
+  "task_id": "AOS-025-POC-001",
+  "status": "completed",  // completed, needs_fixes, blocked, error, max_iterations
+  "verdict": "APPROVED",  // APPROVED, NEEDS_FIXES, BLOCKED
+  "iterations": 1,
+  "total_duration_ms": 45000,
+  "steps": [
+    {
+      "agent": "Alex",
+      "task": "...",
+      "output": "...",
+      "timestamp": "2025-12-09T10:00:00Z",
+      "duration_ms": 30000
+    }
+  ]
+}
+```
+
+### Conditional Routing (per PRD §3.4)
+
+| Verdict | Next Step | Description |
+|---------|-----------|-------------|
+| APPROVED | done | Workflow completes successfully |
+| NEEDS_FIXES | fix | Loop back to Alex (max 3 iterations) |
+| BLOCKED | escalate | Escalate to CEO |
+
+### Service URLs
+
+| Environment | URL |
+|-------------|-----|
+| VM | http://20.217.86.4:8801 |
+| Health | http://20.217.86.4:8801/health |
+| Langfuse | http://20.217.86.4:3001 |
+
+---
+
 ## Agent Tools Roadmap (Priority)
 
 ### P1 - High Priority (Core Operations)
@@ -531,4 +602,5 @@ When adding a new API endpoint:
 
 *Document created by Alex - 2025-12-06*
 *Updated 2025-12-07 - Phase 4G Document Generation endpoints added*
+*Updated 2025-12-09 - AOS-025 Orchestrator endpoints added (6 endpoints)*
 *Update this document when adding new endpoints or agent tools*
