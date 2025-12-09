@@ -5,7 +5,7 @@ try:
     from backend import rag_sqlite
 except ImportError:
     import rag_sqlite
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks, Response, Request
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, BackgroundTasks, Response, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -18,6 +18,8 @@ import os
 import base64
 import hashlib
 import time
+import subprocess
+import logging
 try:
     from backend import fixtures
     from backend import fillout_integration
@@ -4718,3 +4720,135 @@ def save_task_json(task_id: str, task_data: dict):
             save_tasks(tasks)
             return True
     return False
+
+# ─────────────────────────────────────────────────────────────
+# DEV EXEC ENDPOINT (DEV ONLY - SECURITY WARNING)
+# ─────────────────────────────────────────────────────────────
+# This endpoint allows CLI agents to execute shell commands on the VM via HTTP
+# ⚠️ WARNING: This is for DEVELOPMENT ONLY. Do NOT expose in production.
+# ⚠️ Commands are restricted to a whitelist for security.
+
+logger = logging.getLogger(__name__)
+
+# Whitelist of allowed command prefixes
+ALLOWED_DEV_EXEC_COMMANDS = [
+    "docker-compose",
+    "/usr/local/bin/docker-compose-v2",
+    "git",
+    "cat",
+    "ls",
+    "tail",
+    "head",
+    "grep",
+    "pwd",
+    "whoami",
+]
+
+class DevExecRequest(BaseModel):
+    cmd: str
+    timeout: Optional[int] = 30  # Default 30 seconds
+
+class DevExecResponse(BaseModel):
+    stdout: str
+    stderr: str
+    exit_code: int
+    cmd: str
+
+def is_dev_exec_command_allowed(cmd: str) -> bool:
+    """Check if command starts with an allowed prefix."""
+    cmd_stripped = cmd.strip()
+    for allowed in ALLOWED_DEV_EXEC_COMMANDS:
+        if cmd_stripped.startswith(allowed):
+            return True
+    return False
+
+@app.post("/api/v1/dev/exec", response_model=DevExecResponse)
+async def dev_exec_command(
+    request: DevExecRequest,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Execute a shell command on the VM (DEV ONLY).
+
+    ⚠️ SECURITY WARNING: This endpoint is for development use only.
+    It allows executing shell commands remotely via HTTP.
+
+    Authentication: Requires Bearer token matching DEV_EXEC_TOKEN env var.
+    Authorization: Only whitelisted commands are allowed.
+
+    Example:
+        curl -X POST http://20.217.86.4:8799/api/v1/dev/exec \
+             -H "Authorization: Bearer YOUR_TOKEN" \
+             -H "Content-Type: application/json" \
+             -d '{"cmd":"/usr/local/bin/docker-compose-v2 logs api --tail=5","timeout":30}'
+    """
+    # Authentication check
+    expected_token = os.environ.get("DEV_EXEC_TOKEN")
+    if not expected_token:
+        raise HTTPException(
+            status_code=503,
+            detail="DEV_EXEC_TOKEN not configured on server"
+        )
+
+    # Parse Bearer token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header. Use: Bearer TOKEN"
+        )
+
+    provided_token = authorization.replace("Bearer ", "").strip()
+    if provided_token != expected_token:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid DEV_EXEC_TOKEN"
+        )
+
+    # Command whitelist check
+    if not is_dev_exec_command_allowed(request.cmd):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Command not allowed. Whitelist: {ALLOWED_DEV_EXEC_COMMANDS}"
+        )
+
+    # Audit log
+    logger.info(f"[DEV_EXEC] Executing command: {request.cmd} (timeout={request.timeout}s)")
+
+    # Execute command
+    try:
+        result = subprocess.run(
+            request.cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=request.timeout,
+            cwd="/app"
+        )
+
+        response = DevExecResponse(
+            stdout=result.stdout,
+            stderr=result.stderr,
+            exit_code=result.returncode,
+            cmd=request.cmd
+        )
+
+        # Log result
+        logger.info(
+            f"[DEV_EXEC] Command completed: exit_code={result.returncode}, "
+            f"stdout_len={len(result.stdout)}, stderr_len={len(result.stderr)}"
+        )
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"[DEV_EXEC] Command timed out after {request.timeout}s: {request.cmd}")
+        raise HTTPException(
+            status_code=408,
+            detail=f"Command timed out after {request.timeout} seconds"
+        )
+    except Exception as e:
+        logger.error(f"[DEV_EXEC] Command failed: {request.cmd}, error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Command execution failed: {str(e)}"
+        )

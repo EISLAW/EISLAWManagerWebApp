@@ -406,7 +406,7 @@ curl "http://20.217.86.4:8799/api/privacy/submissions?limit=10"
 
 ## Dev Endpoints (Local Development Only)
 
-> **Note:** These endpoints only work when running locally with desktop access. Not available on VM.
+> **Note:** Desktop-only endpoints (first 4) require local Windows. /api/v1/dev/exec works on VM.
 
 | Endpoint | Method | Purpose | Backend |
 |----------|--------|---------|---------|
@@ -414,6 +414,39 @@ curl "http://20.217.86.4:8799/api/privacy/submissions?limit=10"
 | `/dev/open_outlook_app` | POST | Open Outlook desktop app | ❌ |
 | `/dev/desktop/open_path` | POST | Open any path in Explorer | ❌ |
 | `/dev/desktop/pick_folder` | POST | Show folder picker dialog | ❌ |
+| `/api/v1/dev/exec` | POST | Execute whitelisted shell commands via HTTP (DEV ONLY) | ✅ |
+
+**⚠️ SECURITY WARNING:** This endpoint allows remote command execution and should ONLY be used in development environments.
+
+**Authentication:** Requires `Authorization: Bearer TOKEN` header where TOKEN matches the `DEV_EXEC_TOKEN` environment variable.
+
+**Request Body:**
+```json
+{
+  "cmd": "ls -la",
+  "timeout": 30
+}
+```
+
+**Response:**
+```json
+{
+  "stdout": "...",
+  "stderr": "...",
+  "exit_code": 0,
+  "cmd": "ls -la"
+}
+```
+
+**Whitelisted Commands:**
+- `ls`, `cat`, `tail`, `head`, `grep`, `pwd`, `whoami`
+- Note: `docker-compose` and `git` are in the whitelist but not available inside the API container
+
+**Example:**
+```bash
+curl -X POST http://20.217.86.4:8799/api/v1/dev/exec   -H "Authorization: Bearer dev-secret-token-2025"   -H "Content-Type: application/json"   -d '{"cmd":"ls -la","timeout":30}'
+```
+
 
 ---
 
