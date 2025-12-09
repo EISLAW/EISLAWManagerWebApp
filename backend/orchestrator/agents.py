@@ -216,7 +216,20 @@ class AgentDefinition:
         ]
 
         response = llm.invoke(messages)
-        return response.content
+        # Handle list responses when tools are bound
+        content = response.content
+        if isinstance(content, list):
+            # Extract text from content blocks
+            text_parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    text_parts.append(block.get("text", ""))
+                elif hasattr(block, "text"):
+                    text_parts.append(block.text)
+                else:
+                    text_parts.append(str(block))
+            content = "".join(text_parts)
+        return content
 
 
 # =============================================================================
