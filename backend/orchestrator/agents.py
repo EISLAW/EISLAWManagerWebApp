@@ -1,17 +1,19 @@
 """
 EISLAW Agent Orchestrator - Agent Definitions
 Created by Alex (AOS-024)
-Modified by Alex (AOS-029) - Added tool execution loop
+Updated by Alex (AOS-026) - Langfuse tracing integration
+Updated by Alex (AOS-029) - Tool execution loop
 
 Implements Alex and Jacob agents per PRD §2.2:
 - Alex: Senior Backend Engineer (Sonnet for implementation)
 - Jacob: Skeptical CTO / Quality Gate (Opus for critical reviews)
 
-Uses LangChain ChatAnthropic for LLM calls.
+Uses LangChain ChatAnthropic for LLM calls with Langfuse tracing.
 """
 import os
 import httpx
 import subprocess
+import logging
 from dataclasses import dataclass, field
 from typing import Optional, Callable, Any
 from pathlib import Path
@@ -21,6 +23,13 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, Tool
 from langchain_core.tools import tool
 
 from .config import config
+from .langfuse_integration import (
+    create_agent_callback,
+    get_langchain_callback,
+    LANGFUSE_AVAILABLE,
+)
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -202,12 +211,19 @@ class AgentDefinition:
                 return tool
         return None
 
-    def invoke(self, task_description: str) -> str:
+    def invoke(
+        self,
+        task_description: str,
+        task_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> str:
         """
-        Execute a task using this agent with tool execution loop.
+        Execute a task using this agent with tool execution loop and Langfuse tracing.
 
         Args:
             task_description: The task to perform.
+            task_id: Optional task ID for tracing (e.g., "CLI-009").
+            session_id: Optional session ID for grouping related traces.
 
         Returns:
             Agent's response as string.
@@ -223,12 +239,35 @@ class AgentDefinition:
             HumanMessage(content=task_description),
         ]
 
+        # Create Langfuse callback for automatic tracing
+        callbacks = []
+        config_metadata = {}
+        if LANGFUSE_AVAILABLE and task_id:
+            handler, metadata = create_agent_callback(
+                agent_name=self.name,
+                task_id=task_id,
+                session_id=session_id,
+            )
+            if handler:
+                callbacks.append(handler)
+                config_metadata = metadata
+                logger.debug(f"Langfuse tracing enabled for {self.name}:{task_id}")
+
+        # Prepare config dict for LLM invocations
+        config_dict = {}
+        if callbacks:
+            config_dict["callbacks"] = callbacks
+        if config_metadata:
+            config_dict["metadata"] = config_metadata
+
         MAX_ITERATIONS = 10
         iteration = 0
 
         while iteration < MAX_ITERATIONS:
             iteration += 1
-            response = llm.invoke(messages)
+
+            # Invoke with callbacks and metadata for tracing
+            response = llm.invoke(messages, config=config_dict)
 
             # Check if LLM wants to use tools
             if hasattr(response, 'tool_calls') and response.tool_calls:
