@@ -1,6 +1,7 @@
 """
 EISLAW Agent Orchestrator - Agent Definitions
 Created by Alex (AOS-024)
+Modified by Alex (AOS-029) - Added tool execution loop
 
 Implements Alex and Jacob agents per PRD §2.2:
 - Alex: Senior Backend Engineer (Sonnet for implementation)
@@ -16,7 +17,7 @@ from typing import Optional, Callable, Any
 from pathlib import Path
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langchain_core.tools import tool
 
 from .config import config
@@ -194,9 +195,16 @@ class AgentDefinition:
             api_key=config.llm.anthropic_api_key,
         )
 
+    def _get_tool_by_name(self, name: str):
+        """Find a tool by name from the tools list."""
+        for tool in self.tools:
+            if tool.name == name:
+                return tool
+        return None
+
     def invoke(self, task_description: str) -> str:
         """
-        Execute a task using this agent.
+        Execute a task using this agent with tool execution loop.
 
         Args:
             task_description: The task to perform.
@@ -215,21 +223,60 @@ class AgentDefinition:
             HumanMessage(content=task_description),
         ]
 
-        response = llm.invoke(messages)
-        # Handle list responses when tools are bound
-        content = response.content
-        if isinstance(content, list):
-            # Extract text from content blocks
-            text_parts = []
-            for block in content:
-                if isinstance(block, dict):
-                    text_parts.append(block.get("text", ""))
-                elif hasattr(block, "text"):
-                    text_parts.append(block.text)
-                else:
-                    text_parts.append(str(block))
-            content = "".join(text_parts)
-        return content
+        MAX_ITERATIONS = 10
+        iteration = 0
+
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+            response = llm.invoke(messages)
+
+            # Check if LLM wants to use tools
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                # Add AI message with tool calls to conversation
+                messages.append(AIMessage(
+                    content=response.content if response.content else "",
+                    tool_calls=response.tool_calls
+                ))
+
+                # Execute each tool call
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call["name"]
+                    tool_args = tool_call.get("args", {})
+                    tool_call_id = tool_call.get("id", "")
+
+                    # Find and execute the tool
+                    tool_fn = self._get_tool_by_name(tool_name)
+                    if tool_fn:
+                        try:
+                            result = tool_fn.invoke(tool_args)
+                        except Exception as e:
+                            result = f"ERROR: Tool execution failed: {e}"
+                    else:
+                        result = f"ERROR: Tool '{tool_name}' not found"
+
+                    # Add tool result to messages
+                    messages.append(ToolMessage(
+                        content=str(result),
+                        tool_call_id=tool_call_id
+                    ))
+            else:
+                # No tool calls - this is the final answer
+                content = response.content
+                if isinstance(content, list):
+                    # Extract text from content blocks
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict):
+                            text_parts.append(block.get("text", ""))
+                        elif hasattr(block, "text"):
+                            text_parts.append(block.text)
+                        else:
+                            text_parts.append(str(block))
+                    content = "".join(text_parts)
+                return content
+
+        # Max iterations reached
+        return f"ERROR: Max iterations ({MAX_ITERATIONS}) reached without final answer"
 
 
 # =============================================================================
