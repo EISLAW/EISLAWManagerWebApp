@@ -22,3 +22,6 @@ Checks
 
 Prod alignment
 - Keep the API bound to 8080 (or behind a reverse proxy) and serve the frontend as static over 80/443 via the proxy. Don’t change app ports between environments; change only the public exposure.
+- Docs (MkDocs static server): 9003 (VM-hosted), served via tools/docs_serve.sh
+- Docs (nginx via docker-compose): 8000 (primary)
+- Orchestrator service: 8801 (uvicorn --reload, hot-reload enabled; docker-compose `orchestrator` service mounts ./backend/orchestrator)
