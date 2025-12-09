@@ -233,18 +233,24 @@ class AgentDefinition:
 
         # Create Langfuse callback for automatic tracing
         callbacks = []
+        config_metadata = {}
         if LANGFUSE_AVAILABLE and task_id:
-            callback = create_agent_callback(
+            handler, metadata = create_agent_callback(
                 agent_name=self.name,
                 task_id=task_id,
                 session_id=session_id,
             )
-            if callback:
-                callbacks.append(callback)
+            if handler:
+                callbacks.append(handler)
+                config_metadata = metadata
                 logger.debug(f"Langfuse tracing enabled for {self.name}:{task_id}")
 
-        # Invoke with callbacks for tracing
-        config_dict = {"callbacks": callbacks} if callbacks else {}
+        # Invoke with callbacks and metadata for tracing
+        config_dict = {}
+        if callbacks:
+            config_dict["callbacks"] = callbacks
+        if config_metadata:
+            config_dict["metadata"] = config_metadata
         response = llm.invoke(messages, config=config_dict)
 
         # Handle list response (when tools are bound, content may be a list)
