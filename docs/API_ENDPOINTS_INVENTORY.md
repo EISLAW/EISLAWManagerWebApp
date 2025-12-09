@@ -350,6 +350,71 @@ Reply:       https://outlook.office365.com/owa/?ItemID={encoded_id}&action=Reply
 | `/api/privacy/report/{token}/html` | GET | Public report (HTML) |
 | `/api/privacy/public-results/{id}` | GET | Public-safe results |
 
+### Public/External Endpoints (WordPress Integration)
+
+> **New:** PRI-006 - WordPress dynamic report page integration
+
+| Endpoint | Method | Purpose | Auth | Status |
+|----------|--------|---------|------|--------|
+| `/api/public/report/{token}` | GET | WordPress privacy report page | Token (UUID) | ✅ LIVE |
+
+**Purpose:** Public-facing endpoint for WordPress dynamic report page at `https://eislaw.org/privacy-report/?token={submission_id}`
+
+**Authentication:** Token-based (submission_id UUID), no API key required
+
+**Rate Limiting:** 429 response if rate limit exceeded (client IP tracking)
+
+**Token Validation:**
+- UUID format required
+- 90-day expiry from `submitted_at`
+- Returns `410 Gone` if expired
+- Returns `404 Not Found` if invalid/not found
+
+**Response Schema (200 OK):**
+```json
+{
+  "valid": true,
+  "token": "b61a2179-47ac-421b-96a9-4b4f3e82c487",
+  "level": "lone|basic|mid|high",
+  "level_hebrew": "יחיד|בסיסית|בינונית|גבוהה",
+  "business_name": "שם העסק",
+  "requirements": {
+    "dpo": false,
+    "registration": false,
+    "report": false,
+    "data_map": false,
+    "sensitive_people": 0,
+    "storage_locations": [],
+    "worker_security_agreement": false,
+    "cameras_policy": false,
+    "consultation_call": false,
+    "outsourcing_text": false,
+    "direct_marketing_rules": false
+  },
+  "submitted_at": "2025-12-07T10:46:04.883000Z",
+  "expires_at": "2026-03-07T10:46:04.883000Z"
+}
+```
+
+**Error Responses:**
+- `404`: `{"valid": false, "reason": "invalid_token"}`
+- `410`: `{"valid": false, "reason": "expired"}`
+- `429`: `{"error": "rate_limited"}`
+
+**Implementation:**
+- Backend: `backend/main.py` → `get_public_report()` (~line 3165)
+- Frontend: `wordpress/eislaw-privacy-report-snippet.php`
+- Database: `data/privacy.db` → `privacy_submissions` table
+- PRD: `docs/PRD_WORDPRESS_DYNAMIC_REPORT.md`
+
+**Security:**
+- Server-side WordPress fetch (no CORS issues)
+- Token expiry enforced (90 days)
+- Rate limiting per client IP
+- XSS prevention via `esc_html()`, `esc_attr()` in PHP
+
+**Test URL:** https://eislaw.org/privacy-report/?token=b61a2179-47ac-421b-96a9-4b4f3e82c487
+
 ### Webhook & Sync
 
 | Endpoint | Method | Purpose |
