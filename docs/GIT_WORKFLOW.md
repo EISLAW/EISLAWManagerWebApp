@@ -22,6 +22,7 @@
 3. **ONE task = ONE branch** - branch name = `feature/{TASK-ID}`
 4. **Merge only after CTO approval** - no exceptions
 5. **Delete branch after merge** - keep repo clean
+6. **Check branch dependencies before branching** - run the pre-branch checklist in `PRD_GIT_BRANCH_DEPENDENCY.md` and branch from the dependency branch (or merge it) if your task requires files not yet in `main`.
 
 ---
 
