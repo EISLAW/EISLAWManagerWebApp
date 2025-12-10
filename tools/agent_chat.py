@@ -17,7 +17,7 @@ Usage:
     # Completion
     post_completion("Alex", "CLI-009", "1.5 hours", "a3b2c1d", "Jacob review")
 
-    # Review verdict
+    # Review verdict (produces: "**CLI-009:** Reviewed by Jacob: ✅ APPROVED")
     post_review("Jacob", "CLI-009", "APPROVED", "All checks passed")
 
 CLI Usage:
@@ -164,6 +164,7 @@ def post_review(
 
     Example:
         post_review("Jacob", "CLI-009", "APPROVED", "All checks passed")
+        # Produces: "**CLI-009:** Reviewed by Jacob: ✅ APPROVED"
     """
     emoji_map = {
         "APPROVED": "✅",
@@ -179,8 +180,10 @@ def post_review(
     emoji = emoji_map.get(verdict, "🔍")
     icon = emoji_icon_map.get(verdict, ":mag:")
 
+    # Format: "**TASK-ID:** Reviewed by Jacob: ✅ APPROVED"
+    # This makes it immediately clear which task is being reviewed
     message = (
-        f"{emoji} **{verdict}:** {task_id}\n"
+        f"Reviewed by **{agent_name}**: {emoji} **{verdict}**\n"
         f"**Details:** {details}"
     )
     return post_message(agent_name, task_id, message, channel="reviews", emoji=icon)

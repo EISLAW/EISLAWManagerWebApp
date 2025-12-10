@@ -98,6 +98,12 @@ post_review(
 
 **Posts to:** `#reviews`
 
+**Example output:**
+```
+**CLI-009:** Reviewed by Jacob: ✅ APPROVED
+**Details:** All checks passed
+```
+
 #### CEO Alert
 
 ```python
