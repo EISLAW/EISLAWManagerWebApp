@@ -1,8 +1,8 @@
 <!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
-# Privacy Security Scoring – Working Spec (v1.0)
+# Privacy Security Scoring – Working Spec (v1.2)
 
 **Last Updated:** 2025-12-10
-**Status:** Legal definitions clarified and validated against current Israeli Privacy Protection Law
+**Status:** Processor paradigm shift from Amendment 13 incorporated
 
 ## Purpose
 - Define clear, machine-readable rules to classify a client's security level under the Israeli Privacy Protection framework and derive obligations (DPO, Registration, Reporting) from questionnaire answers.
@@ -103,6 +103,7 @@ The system evaluates in this order:
   - `transfer == false` (not transferring data as business)
   - `directmail_biz == false` (not direct marketing services)
   - `ethics == false` (no professional confidentiality duty)
+  - `processor == false` (not a data processor for others)
 - **If all true → LONE**
 
 **Step 2: Check HIGH eligibility**
@@ -110,6 +111,7 @@ The system evaluates in this order:
   1. **Biometric standalone:** `biometric_100k == true` (100,000+ biometric identifiers)
   2. **Transfer/DM + scale:** `(transfer == true OR directmail_biz == true)` **AND** `(total_users > 100 OR ppl >= 100,000)`
   3. **Sensitive + scale:** `sensitive == true` **AND** `(total_users > 100 OR ppl >= 100,000)`
+  4. **Processor for large organizations:** `processor_large_org == true` (processes data for banks, insurance, medical institutions, public bodies)
 - **If any true → HIGH**
 - Where `total_users = owners + access`
 
@@ -117,6 +119,7 @@ The system evaluates in this order:
 - Criteria (ALL must be true):
   - Main purpose is NOT transfer/direct marketing (`transfer == false AND directmail_biz == false`)
   - Controller is NOT public body (not tracked - questionnaire for private businesses only)
+  - NOT a data processor (`processor == false`)
   - **IF has sensitive data:** `total_users <= 10` OR employee-only exception applies
   - **IF no sensitive data:** automatically qualifies
 - **If all true → BASIC**
@@ -127,6 +130,14 @@ The system evaluates in this order:
   - Transfer/direct marketing databases (that don't reach HIGH thresholds)
   - Public bodies
   - Databases with sensitive data and 11-100 authorized users
+  - **Data processors (minimum level):** Any `processor == true` that doesn't trigger HIGH
+
+**Processor Paradigm Shift (Amendment 13):**
+- Processors (מחזיקים) now have SAME data security responsibilities as controllers (בעלי שליטה)
+- Rationale: Uncertainty about what personal data actually flows through processor systems
+- Approach: Consultative flag - "You're a processor, you need to talk to us to determine exact obligations"
+- **Regular processor:** Minimum MID level (excluded from LONE/BASIC)
+- **Large org processor:** Automatic HIGH + DPO (same obligations as their clients)
 
 ### Thresholds
 
@@ -168,6 +179,16 @@ The system evaluates in this order:
 - `owners = 2`, `access = 10`, `total_users = 12`, `ppl = 120000`, `biometric_100k = true`
 - **Result: HIGH** (biometric 100k+ standalone trigger)
 
+### Example 7: SaaS HR Platform (MID - Processor)
+- `owners = 2`, `access = 8`, `total_users = 10`, `ppl = 5000`, `processor = true`, `processor_large_org = false`
+- **Result: MID** (processor minimum level - excluded from LONE/BASIC)
+- **DPO: Consultative** (flag for discussion about actual data exposure)
+
+### Example 8: Payroll Service for Bank (HIGH - Large Org Processor)
+- `owners = 1`, `access = 15`, `total_users = 16`, `ppl = 3000`, `processor_large_org = true`
+- **Result: HIGH** (processor for large organization)
+- **DPO: Required** (same obligations as bank client)
+
 ---
 
 ## Obligations (DPO, Registration, Report)
@@ -194,6 +215,11 @@ Based on Israeli Privacy Protection Law (Amendment 13) and Security Regulations 
    - Examples: Banks, insurance companies, hospitals, HMOs
    - "Large organization" indicators: `processor_large_org == true` or high employee count
 
+5. **Processor for Large Organizations:**
+   - `processor_large_org == true` (processes data for banks, insurance, medical, public bodies)
+   - Same DPO obligations as the large organization client
+   - Applies even if processor has small staff or limited data volume
+
 **Implementation Logic:**
 ```python
 dpo_required = (
@@ -202,7 +228,9 @@ dpo_required = (
     # Systematic monitoring
     monitor_1000 or
     # Sensitive data at scale
-    (sensitive and (ppl >= 10000 or processor_large_org))
+    (sensitive and (ppl >= 10000 or processor_large_org)) or
+    # Processor for large organizations (standalone trigger)
+    processor_large_org
 )
 ```
 
@@ -310,6 +338,17 @@ data_map_required = True  # Universal requirement
 ---
 
 ## Change Log
+
+### v1.2 (2025-12-10) - Processor Paradigm Shift from Amendment 13
+- **MAJOR UPDATE:** Incorporated processor (מחזיק) = controller (בעל שליטה) paradigm from Amendment 13
+- **ADDED:** Processor exclusion from LONE level (`processor == false` required)
+- **ADDED:** Processor exclusion from BASIC level (minimum MID for all processors)
+- **ADDED:** `processor_large_org == true` as standalone HIGH trigger
+- **ADDED:** `processor_large_org == true` as standalone DPO trigger
+- **ADDED:** Processor Paradigm Shift explanation section
+- **ADDED:** Two processor examples (SaaS HR platform, Payroll service for bank)
+- **RATIONALE:** Uncertainty about what personal data flows through processor systems → consultative approach
+- **IMPLEMENTATION:** Regular processor → MID minimum, Large org processor → HIGH + DPO automatic
 
 ### v1.1 (2025-12-10) - Obligations Section Completed
 - **COMPLETED:** All three obligations (DPO, Registration, Report) fully defined
