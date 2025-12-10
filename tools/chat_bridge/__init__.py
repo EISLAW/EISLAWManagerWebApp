@@ -65,6 +65,23 @@ from .models import (
     RegexPatterns,
 )
 
+from .config import (
+    get_config,
+    load_config,
+    reload_config,
+    Config,
+    MattermostConfig,
+    BridgeConfig,
+    PathConfig,
+)
+
+from .mattermost import (
+    MattermostClient,
+    get_client,
+    async_get_post,
+    async_post_reply,
+)
+
 __all__ = [
     # Version info
     "__version__",
@@ -93,4 +110,17 @@ __all__ = [
     "StatusResponse",
     # Patterns
     "RegexPatterns",
+    # Config
+    "get_config",
+    "load_config",
+    "reload_config",
+    "Config",
+    "MattermostConfig",
+    "BridgeConfig",
+    "PathConfig",
+    # Mattermost client
+    "MattermostClient",
+    "get_client",
+    "async_get_post",
+    "async_post_reply",
 ]
