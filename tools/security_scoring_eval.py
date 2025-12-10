@@ -211,6 +211,11 @@ def evaluate(rules: dict, answers: dict) -> dict:
     if bool(derived.get("monitor_1000")):
         dpo = True
 
+    # BUG-PRI-001 FIX: Enforce mutual exclusivity - registration supersedes report
+    # Per PRIVACY_SCORING_RULES.md: If registration is required, report is NEVER required
+    if bool(reg):
+        report = False
+
     # ensure single level and return
     return {
         "level": level,

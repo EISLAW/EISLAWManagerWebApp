@@ -3104,19 +3104,9 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
         except Exception:
             sensitive_people_val = 0
 
-        data_map_flag = False
-        for candidate in ["data_map", "data map", "data-map", "מפת מאגרים"]:
-            val = lookup_answer(answers, [candidate])
-            if isinstance(val, bool):
-                data_map_flag = val
-                break
-            if isinstance(val, str) and val.strip():
-                lowered = val.strip().lower()
-                if lowered in {"כן", "yes", "true", "1"}:
-                    data_map_flag = True
-                    break
-        if not data_map_flag and "data_map" in requirements:
-            data_map_flag = True
+        # BUG-PRI-003 FIX: data_map is ALWAYS True for everyone (universal requirement)
+        # Per PRIVACY_SCORING_RULES.md - this is required for ALL assessments
+        data_map_flag = True
 
         submitted_at_raw = row_dict.get("submitted_at") or row_dict.get("received_at")
         submitted_at_dt = parse_iso_datetime(submitted_at_raw)
@@ -3137,6 +3127,12 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
         }
 
         level_value = level or row_dict.get("level") or "unknown"
+        # BUG-PRI-002 FIX: Add the 3 unblocked additional requirement fields
+        # Per PRIVACY_SCORING_RULES.md:
+        # - worker_security_agreement = employees_exposed
+        # - cameras_policy = cameras
+        # - direct_marketing_rules = directmail_biz OR directmail_self
+        # The "requirements" list from scoring engine contains these as strings
         requirements_payload = {
             "dpo": bool(dpo),
             "registration": bool(reg),
@@ -3144,6 +3140,13 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
             "data_map": bool(data_map_flag),
             "sensitive_people": sensitive_people_val,
             "storage_locations": extract_storage_locations(answers),
+            # Additional requirement fields (from scoring engine requirements list)
+            "worker_security_agreement": "worker_security_agreement" in requirements,
+            "cameras_policy": "cameras_policy" in requirements,
+            "direct_marketing_rules": "direct_marketing_rules" in requirements,
+            # Blocked fields - leave as null (CEO decision pending)
+            "consultation_call": None,
+            "outsourcing_text": None,
         }
 
         return {
