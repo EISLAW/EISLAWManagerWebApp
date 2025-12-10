@@ -36,13 +36,22 @@ post_start(
     task_id="CLI-009",
     task_description="API Clients List Ordering",
     branch="feature/CLI-009",
-    estimated_hours="1-2 hours"
+    estimated_hours="1-2 hours",
+    depends_on="CLI-008 (Joseph)"  # Optional: show dependencies
 )
 ```
 
 **Posts to:** `#agent-tasks`
 
-**Example output:**
+**Example output (with dependency):**
+```
+**CLI-009:** Alex is starting work - API Clients List Ordering
+**Estimated:** 1-2 hours
+**Branch:** `feature/CLI-009`
+**Depends on:** CLI-008 (Joseph)
+```
+
+**Example output (no dependency):**
 ```
 **CLI-009:** Alex is starting work - API Clients List Ordering
 **Estimated:** 1-2 hours
@@ -92,17 +101,29 @@ post_review(
     agent_name="Jacob",
     task_id="CLI-009",
     verdict="APPROVED",  # or "NEEDS_FIXES" or "BLOCKED"
-    details="All checks passed"
+    details="All checks passed",
+    unblocks="CLI-010 (Maya), CLI-011 (Alex)"  # Optional: show what can proceed
 )
 ```
 
-**Posts to:** `#reviews`
+**Posts to:** `#reviews` AND `#agent-tasks` (cross-posted for visibility)
 
-**Example output:**
+**Why cross-post?** Reviews are pipeline-critical events. CEO monitors #agent-tasks as the main channel, so reviews appear there too.
+
+**Example output (with unblocks):**
+```
+**CLI-009:** Reviewed by Jacob: ✅ APPROVED
+**Details:** All checks passed
+**Unblocks:** CLI-010 (Maya), CLI-011 (Alex)
+```
+
+**Example output (without unblocks):**
 ```
 **CLI-009:** Reviewed by Jacob: ✅ APPROVED
 **Details:** All checks passed
 ```
+
+**Note:** The `unblocks` field only shows for `APPROVED` verdicts (not NEEDS_FIXES/BLOCKED).
 
 #### CEO Alert
 
@@ -244,7 +265,34 @@ Webhook URLs are stored in `secrets.local.json`:
 
 ## Spawn Command Integration
 
-### Claude CLI Agents
+### Joe's Orchestration Pattern (3-Step Flow)
+
+```python
+# Joe spawns agent (Step 1 - Joe posts spawn notification)
+from tools.agent_chat import post_spawn
+post_spawn("Joe", "Jacob", "CLI-009", "Review Alex's API changes")
+
+# Spawn CLI agent (Step 2 - Agent posts start confirmation)
+claude -p "You are Jacob. Find task CLI-009 in TEAM_INBOX.
+
+BEFORE starting work:
+from tools.agent_chat import post_start
+post_start('Jacob', 'CLI-009', 'Review Alex API changes', 'feature/CLI-009')
+
+AFTER completing work:
+from tools.agent_chat import post_review
+post_review('Jacob', 'CLI-009', 'APPROVED', 'All checks passed', unblocks='CLI-010 (Maya)')
+
+Then update TEAM_INBOX Messages TO Joe section." \
+--tools default --dangerously-skip-permissions &
+```
+
+**CEO visibility:**
+1. Sees Joe spawn attempt immediately
+2. Sees Jacob confirm he started (spawn succeeded)
+3. Sees Jacob completion with operational status (unblocks Maya)
+
+### Claude CLI Agents (General Pattern)
 
 ```bash
 # Before starting work, post to chat:
@@ -347,6 +395,120 @@ choco install jq
 
 ---
 
+## Message Flow (Orchestration Visibility)
+
+**CRITICAL:** CEO needs to verify agents ACTUALLY started (not just that Joe attempted to spawn them).
+
+### Expected 3-Step Flow
+
+```python
+# Step 1: Joe spawns agent
+from tools.agent_chat import post_spawn
+post_spawn("Joe", "Jacob", "CLI-009", "Review Alex's API changes")
+# CEO sees: "**Joe** is spawning **Jacob** for CLI-009 - Review Alex's API changes"
+
+# Step 2: Agent confirms it started (CRITICAL for verification)
+# Jacob's code runs:
+from tools.agent_chat import post_start
+post_start("Jacob", "CLI-009", "Review Alex's API changes", "feature/CLI-009")
+# CEO sees: "**Jacob** is starting work - Review Alex's API changes"
+
+# Step 3: Agent completes with operational status
+post_review("Jacob", "CLI-009", "APPROVED", "All checks passed", unblocks="CLI-010 (Maya)")
+# CEO sees: "Reviewed by **Jacob**: ✅ **APPROVED** - Unblocks: CLI-010 (Maya)"
+```
+
+**Why 3 steps matter:**
+- **Step 1 (Joe):** CEO knows Joe ATTEMPTED to spawn
+- **Step 2 (Agent):** CEO knows agent ACTUALLY STARTED (spawn succeeded)
+- **Step 3 (Agent):** CEO knows work COMPLETED with operational status
+
+**Gap detection:** If you see Step 1 but not Step 2 → agent failed to spawn (investigate)
+
+---
+
+## Operational Status (Dependencies & Workflow)
+
+The chat integration supports **operational status information** to help CEO understand task dependencies and workflow progression:
+
+### Dependencies (`depends_on`)
+
+Use when starting a task that depends on another task:
+
+```python
+# Maya can't start until Alex finishes
+post_start(
+    agent_name="Maya",
+    task_id="CLI-010",
+    task_description="Frontend UI for clients ordering",
+    branch="feature/CLI-010",
+    depends_on="CLI-009 (Alex)"
+)
+```
+
+**Benefits:**
+- CEO sees bottlenecks at a glance
+- Clear visibility into what's blocked
+- Helps with pipeline planning
+
+### Completion Status (`ready_for`)
+
+Already built into `post_completion()` - shows what happens next:
+
+```python
+# Default: ready for Jacob review
+post_completion("Alex", "CLI-009", "1.5h", "a3b2c1d")
+
+# Custom: ready for specific action
+post_completion("Alex", "CLI-009", "1.5h", "a3b2c1d", ready_for="CEO testing on VM")
+```
+
+### Unblocked Tasks (`unblocks`)
+
+Use when approving a task that unblocks others:
+
+```python
+# Jacob approves → Maya and Alex can proceed
+post_review(
+    agent_name="Jacob",
+    task_id="CLI-009",
+    verdict="APPROVED",
+    details="All checks passed",
+    unblocks="CLI-010 (Maya), CLI-011 (Alex)"
+)
+```
+
+**Benefits:**
+- CEO knows which agents can start working
+- Clear signal for pipeline progression
+- Reduces "what's next?" questions
+
+### Example Full Workflow
+
+```python
+# 1. Joseph starts DB work (no dependencies)
+post_start("Joseph", "CLI-008", "Add order column", "feature/CLI-008")
+
+# 2. Alex starts API work (depends on Joseph)
+post_start("Alex", "CLI-009", "API ordering endpoint", "feature/CLI-009",
+          depends_on="CLI-008 (Joseph)")
+
+# 3. Joseph completes
+post_completion("Joseph", "CLI-008", "45m", "abc123", ready_for="Alex to use")
+
+# 4. Alex completes
+post_completion("Alex", "CLI-009", "1.5h", "def456", ready_for="Jacob review")
+
+# 5. Jacob reviews and approves (unblocks Maya)
+post_review("Jacob", "CLI-009", "APPROVED", "All good",
+           unblocks="CLI-010 (Maya)")
+
+# 6. Maya can now start
+post_start("Maya", "CLI-010", "Frontend ordering UI", "feature/CLI-010")
+```
+
+---
+
 ## Best Practices
 
 ### When to Post
@@ -354,10 +516,11 @@ choco install jq
 | Event | Post to Chat? | Update TEAM_INBOX? |
 |-------|--------------|-------------------|
 | **Task assigned** | ❌ No | ✅ Yes (Joe writes task) |
+| **Agent spawned** | ✅ Yes (#agent-tasks, Joe only) | ❌ No (not needed) |
 | **Task started** | ✅ Yes (#agent-tasks) | ❌ No (not needed) |
 | **Progress update** | ⚠️ Optional (#agent-tasks) | ❌ No (clutters TEAM_INBOX) |
 | **Completed** | ✅ Yes (#completions) | ✅ Yes (Messages TO Joe) |
-| **Review verdict** | ✅ Yes (#reviews) | ✅ Yes (Messages TO Joe) |
+| **Review verdict** | ✅ Yes (#reviews + #agent-tasks) | ✅ Yes (Messages TO Joe) |
 
 ### Message Formatting
 
@@ -384,4 +547,4 @@ choco install jq
 
 ---
 
-**Last Updated:** 2025-12-10 (CHAT-003)
+**Last Updated:** 2025-12-10 (CHAT-008 - Added operational status + 3-step message flow)

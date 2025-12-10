@@ -116,7 +116,8 @@ def post_start(
     task_id: str,
     task_description: str,
     branch: str,
-    estimated_hours: str = "1-2 hours"
+    estimated_hours: str = "1-2 hours",
+    depends_on: Optional[str] = None
 ) -> bool:
     """
     Post task start message to #agent-tasks.
@@ -124,12 +125,19 @@ def post_start(
     Example:
         post_start("Alex", "CLI-009", "API Clients List Ordering", "feature/CLI-009")
         # Produces: "**CLI-009:** Alex is starting work - API Clients List Ordering"
+
+        post_start("Maya", "CLI-010", "Frontend UI", "feature/CLI-010", depends_on="CLI-009 (Alex)")
+        # Shows dependency: waiting for Alex's CLI-009
     """
     message = (
         f"**{agent_name}** is starting work - {task_description}\n"
         f"**Estimated:** {estimated_hours}\n"
         f"**Branch:** `{branch}`"
     )
+
+    if depends_on:
+        message += f"\n**Depends on:** {depends_on}"
+
     return post_message(agent_name, task_id, message, channel="agent-tasks", emoji=":arrows_counterclockwise:")
 
 def post_completion(
@@ -159,14 +167,19 @@ def post_review(
     agent_name: str,  # Usually "Jacob"
     task_id: str,
     verdict: str,  # "APPROVED" or "NEEDS_FIXES"
-    details: str
+    details: str,
+    unblocks: Optional[str] = None
 ) -> bool:
     """
-    Post review verdict to #reviews.
+    Post review verdict to #reviews AND #agent-tasks (cross-posted for CEO visibility).
 
     Example:
         post_review("Jacob", "CLI-009", "APPROVED", "All checks passed")
+        # Posts to BOTH #reviews and #agent-tasks
         # Produces: "**CLI-009:** Reviewed by Jacob: ✅ APPROVED"
+
+        post_review("Jacob", "CLI-009", "APPROVED", "All checks passed", unblocks="CLI-010 (Maya), CLI-011 (Alex)")
+        # Shows what tasks can now proceed
     """
     emoji_map = {
         "APPROVED": "✅",
@@ -188,7 +201,32 @@ def post_review(
         f"Reviewed by **{agent_name}**: {emoji} **{verdict}**\n"
         f"**Details:** {details}"
     )
-    return post_message(agent_name, task_id, message, channel="reviews", emoji=icon)
+
+    if unblocks and verdict == "APPROVED":
+        message += f"\n**Unblocks:** {unblocks}"
+
+    # Cross-post to BOTH channels (reviews for tracking, agent-tasks for monitoring)
+    success_reviews = post_message(agent_name, task_id, message, channel="reviews", emoji=icon)
+    success_agent_tasks = post_message(agent_name, task_id, message, channel="agent-tasks", emoji=icon)
+
+    # Return True if at least one succeeded
+    return success_reviews or success_agent_tasks
+
+def post_spawn(
+    orchestrator: str,  # Usually "Joe"
+    agent_name: str,
+    task_id: str,
+    task_description: str
+) -> bool:
+    """
+    Post agent spawn notification to #agent-tasks (Joe only).
+
+    Example:
+        post_spawn("Joe", "Jacob", "CLI-009", "Review Alex's API changes")
+        # Produces: "**Joe** is spawning Jacob for CLI-009 - Review Alex's API changes"
+    """
+    message = f"**{orchestrator}** is spawning **{agent_name}** for {task_description}"
+    return post_message(orchestrator, task_id, message, channel="agent-tasks", emoji=":rocket:")
 
 def post_ceo_alert(
     orchestrator: str,  # Usually "Joe"
