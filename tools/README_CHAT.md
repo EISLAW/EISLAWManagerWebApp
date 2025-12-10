@@ -44,7 +44,7 @@ post_start(
 
 **Example output:**
 ```
-🔄 **Starting:** CLI-009 - API Clients List Ordering
+**CLI-009:** Alex is starting work - API Clients List Ordering
 **Estimated:** 1-2 hours
 **Branch:** `feature/CLI-009`
 ```
@@ -78,7 +78,7 @@ post_completion(
 
 **Example output:**
 ```
-✅ **Completed:** CLI-009
+**CLI-009:** Alex finished work
 **Duration:** 1.5 hours
 **Commit:** `a3b2c1d`
 **Ready for:** Jacob review

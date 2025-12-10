@@ -8,13 +8,13 @@ Gracefully handles chat service downtime (no-op if webhook fails).
 Usage:
     from tools.agent_chat import post_message, post_start, post_completion, post_review
 
-    # Task start
+    # Task start (produces: "**CLI-009:** Alex is starting work - API Clients List Ordering")
     post_start("Alex", "CLI-009", "API Clients List Ordering", "feature/CLI-009")
 
     # Progress update (optional)
     post_message("Alex", "CLI-009", "Running tests on VM...", channel="agent-tasks")
 
-    # Completion
+    # Completion (produces: "**CLI-009:** Alex finished work")
     post_completion("Alex", "CLI-009", "1.5 hours", "a3b2c1d", "Jacob review")
 
     # Review verdict (produces: "**CLI-009:** Reviewed by Jacob: ✅ APPROVED")
@@ -123,9 +123,10 @@ def post_start(
 
     Example:
         post_start("Alex", "CLI-009", "API Clients List Ordering", "feature/CLI-009")
+        # Produces: "**CLI-009:** Alex is starting work - API Clients List Ordering"
     """
     message = (
-        f"🔄 **Starting:** {task_id} - {task_description}\n"
+        f"**{agent_name}** is starting work - {task_description}\n"
         f"**Estimated:** {estimated_hours}\n"
         f"**Branch:** `{branch}`"
     )
@@ -143,9 +144,10 @@ def post_completion(
 
     Example:
         post_completion("Alex", "CLI-009", "1.5 hours", "a3b2c1d", "Jacob review")
+        # Produces: "**CLI-009:** Alex finished work"
     """
     message = (
-        f"✅ **Completed:** {task_id}\n"
+        f"**{agent_name}** finished work\n"
         f"**Duration:** {duration}\n"
         f"**Commit:** `{commit_hash}`\n"
         f"**Ready for:** {ready_for}\n"
