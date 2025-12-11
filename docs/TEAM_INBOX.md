@@ -82,6 +82,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 | ID | To | Task | Status | Doc |
 |----|-----|------|--------|-----|
 | RESEARCH-SKILLS-001 | **David** | Research Claude Skills architecture for EISLAW: Review all docs (incl. episodic memory), determine what should be Skills, create lean knowledge architecture, research self-learning Skills (update on the fly), install Anthropic DOCX/PDF/Excel Skills, research UX/UI + marketing best practice Skills | ✅ COMPLETE | `TASK_DAVID_SKILLS_RESEARCH.md` |
+| RESEARCH-SKILLS-002 | **David** | Research new development workflow (ENV-001/002: local dev + auto-sync to VM), update Skills research to reflect new workflow, update CLAUDE.md and other docs that reference old VM-first workflow | 🔄 NEW | `TASK_DAVID_UPDATE_WORKFLOW_DOCS.md` |
 
 ### Privacy & Marketing
 
