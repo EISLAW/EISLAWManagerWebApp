@@ -82,7 +82,18 @@ EISLAW is a Hebrew-language legal practice management system with:
 | ID | To | Task | Status | Doc |
 |----|-----|------|--------|-----|
 | RESEARCH-SKILLS-001 | **David** | Research Claude Skills architecture for EISLAW: Review all docs (incl. episodic memory), determine what should be Skills, create lean knowledge architecture, research self-learning Skills (update on the fly), install Anthropic DOCX/PDF/Excel Skills, research UX/UI + marketing best practice Skills | ✅ COMPLETE | `TASK_DAVID_SKILLS_RESEARCH.md` |
-| RESEARCH-SKILLS-002 | **David** | Research new development workflow (ENV-001/002: local dev + auto-sync to VM), update Skills research to reflect new workflow, update CLAUDE.md and other docs that reference old VM-first workflow | 🔄 NEW | `TASK_DAVID_UPDATE_WORKFLOW_DOCS.md` |
+| RESEARCH-SKILLS-002 | **David** | Research new development workflow (ENV-001/002: local dev + auto-sync to VM), update Skills research to reflect new workflow, update CLAUDE.md and other docs that reference old VM-first workflow | ✅ COMPLETE | `TASK_DAVID_UPDATE_WORKFLOW_DOCS.md` |
+
+### Skills Implementation (Phase 1)
+
+| ID | To | Task | Status | Doc |
+|----|-----|------|--------|-----|
+| SKILLS-001 | **Alex** | Create `.claude/skills/` directory structure (core/quality/automation/domain/external) + README with taxonomy guide | 🟢 READY | `TASK_ALEX_SKILLS_SCAFFOLD.md` |
+| SKILLS-002 | **Alex** | Implement core Skills: `local-dev-workflow`, `vm-log-viewer`, `spawn-template`, `team-inbox-update` | 🟢 READY | `TASK_ALEX_CORE_SKILLS.md` |
+| SKILLS-003 | **Alex** | Implement quality Skills: `testing-checklist`, `self-heal` | 🟢 READY | `TASK_ALEX_QUALITY_SKILLS.md` |
+| SKILLS-004 | **Alex** | Implement automation Skills: `episodic-log-update`, `working-memory-refresh` | 🟢 READY | `TASK_ALEX_AUTOMATION_SKILLS.md` |
+| SKILLS-005 | **David** | Create DOCUMENTATION_BIBLE.md (extract from CLAUDE.md §8 + doc maintenance rules) | 🟢 READY | `TASK_DAVID_DOCUMENTATION_BIBLE.md` |
+| SKILLS-006 | **CEO** | Install Claude Code plugin runner + Anthropic document Skills (PDF/DOCX/Excel) | 🔄 PENDING CEO | Instructions in SKILLS-001 doc |
 
 ### Privacy & Marketing
 
