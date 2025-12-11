@@ -144,10 +144,8 @@ def evaluate(rules: dict, answers: dict) -> dict:
         dmail_biz_v = bool(derived.get("directmail_biz"))
         ppl_v = int(derived.get("ppl") or 0)
         sensitive_v = bool(derived.get("sensitive"))
-        processor_v = bool(derived.get("processor"))
-        # PRIV-IMPL-001: Processors are excluded from LONE and BASIC (minimum MID per spec v1.2)
-        lone_possible = (not ethics_v) and (owners_v <= 2) and (access_v <= 2) and (not dmail_biz_v) and (not transfer_v) and (not processor_v) and (ppl_v < ppl_mid)
-        basic_cond = (not dmail_biz_v) and (not transfer_v) and (not processor_v) and (not lone_possible) and ((not sensitive_v) or (sensitive_v and access_v <= access_basic_max))
+        lone_possible = (not ethics_v) and (owners_v <= 2) and (access_v <= 2) and (not dmail_biz_v) and (not transfer_v) and (ppl_v < ppl_mid)
+        basic_cond = (not dmail_biz_v) and (not transfer_v) and (not lone_possible) and ((not sensitive_v) or (sensitive_v and access_v <= access_basic_max))
         if basic_cond:
             level = "basic"
     if level is None:
