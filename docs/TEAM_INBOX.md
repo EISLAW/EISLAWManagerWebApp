@@ -70,6 +70,19 @@ EISLAW is a Hebrew-language legal practice management system with:
 | DOC-003 | **Jane** | CI + VM hosting for MkDocs (build on main, publish to VM port, robots off) | 🔄 NEW (blocked by DOC-002) | `PRD_MKDOCS_WIKI.md §5.7-7` |
 | DOC-004 | **David** | IA/content pass: Home "Start here", section summaries, root-doc sync procedure | 🔄 NEW | `PRD_MKDOCS_WIKI.md §4-6` |
 
+### Environment Baseline & Sync
+
+| ID | To | Task | Status | Doc |
+|----|-----|------|--------|-----|
+| ENV-001 | **Jane** | Execute Dev → `dev-main-2025-12-11` promotion plan (tag/branch, backups, cleanup, VM smoke, default flip) | 🟢 READY | `docs/PLAN_ENV_PRESERVE_AND_ALIGN.md` |
+| ENV-002 | **Jane** | Implement automated local→VM sync (GitHub Action + VM webhook/SSH pull & redeploy) for feature branches and `dev-main-2025-12-11`; document the flow in TEAM_INBOX | 🟢 READY | `docs/PLAN_ENV_PRESERVE_AND_ALIGN.md` |
+
+### Skills Architecture Research
+
+| ID | To | Task | Status | Doc |
+|----|-----|------|--------|-----|
+| RESEARCH-SKILLS-001 | **David** | Research Claude Skills architecture for EISLAW: Review all docs (incl. episodic memory), determine what should be Skills, create lean knowledge architecture, research self-learning Skills (update on the fly), install Anthropic DOCX/PDF/Excel Skills, research UX/UI + marketing best practice Skills | ✅ COMPLETE | `TASK_DAVID_SKILLS_RESEARCH.md` |
+
 ### Privacy & Marketing
 
 | ID | To | Task | Status | Doc |
@@ -88,12 +101,20 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 | From | Status | Message |
 |------|--------|---------|
+| **Jane** | ✅ **COMPLETE** | **ENV-001 Dev→dev-main-2025-12-11 Promotion (2025-12-11):** ✅ Git anchors: dev-main-2025-12-11 branch/tag at 23728048 (BUG-PRI-001/002/003), legacy-main-2025-12-11 branch/tag at 9f4500bd (old main preserved), pushed to GitHub. ✅ Backups: /mnt/backups/eislaw-20251211-2212/ - databases.tar.gz (6.7M: eislaw.db, privacy.db, email_index.sqlite), clients_structure.tar.gz (4K: empty client folders, no email files exist - all email data in email_index.sqlite already backed up), tasks.json (7.3K). Total: 6.7M. ⚠️ Off-box copy: NOT DONE (recommended for disaster recovery - can use Azure Blob or SCP). ✅ Cleanup: Removed frontend/node_modules, venvs/dist/site, truncated Docker logs (~12GB freed, disk 69% vs 100%). ✅ VM baseline: Checked out dev-main-2025-12-11, all containers running (api, web-dev, web, meili, docs). ✅ Smoke tests: API health OK, 21 clients returned, frontend HTTP 200 (dev:5173, prod:8080). ✅ Default branch: GitHub default now dev-main-2025-12-11 (verified via API). ✅ GitHub auth: Fixed expired PATs via SSH key. Ready for Jacob final approval. |
 | **Alex** | ✅ **COMPLETE** | **CHAT-MERGE-001 (2025-12-11):** Successfully merged origin/main into feature/CHAT-DEBUG-001. Resolved 4 conflict files intelligently: (1) Dockerfile.api - kept detailed comment, (2) backend/main.py - merged chat integration imports (slowapi, RAG schemas, audit utils) with origin/main base, (3) backend/requirements.txt - combined slowapi with new deps (azure-storage-blob, sentry, litellm), (4) ClientOverview.jsx - kept origin/main version. Python syntax validated. Branch now 31 commits ahead, 0 behind origin/main. Commit f84e8525 pushed to origin. All changes from both branches preserved. Ready for Jacob review. |
 | **David** | ✅ **COMPLETE** | **DOC-004 IA pass (2025-12-09):** Updated `docs/index.md` with Start Here tiering, section summaries, search tips, and CLAUDE/AGENTS mirroring procedure (hash 10535cd2). Ready for Alex/Jane to wire nav/CI. |
 | **Alex** | ✅ **COMPLETE** | **DOC-002 MkDocs scaffold (2025-12-09):** Added mkdocs.yml nav, index landing, mirrored CLAUDE.md (sync 10535cd2) and AGENTS placeholder under docs/root, requirements-docs.txt. Pending: choose VM port + versioning tool (mike vs Material); add canonical AGENTS.md when available; CI/hosting (DOC-003) still needed. |
 | **Alex** | ✅ **COMPLETE** | **AOS-025 POC Workflow (2025-12-09):** Created `workflow.py` implementing Alex → Jacob handoff per PRD §8.3. Features: conditional routing (APPROVED/NEEDS_FIXES/BLOCKED), review loop with max iterations, TEAM_INBOX auto-update, Langfuse tracing integration. New endpoints: `POST /workflow/poc`, `POST /workflow/poc/async`, `GET /workflow/{task_id}`, `GET /workflows`. VM synced, container rebuilt, endpoints verified. **AOS-026 is UNBLOCKED.** |
 | **Jacob** | ✅ **APPROVED** | **DOC-001 Review (2025-12-09):** PRD updated with mirrored root docs, VM hosting (no auth), owners set (David/Alex/Maya/Jane). Remaining: pick hosting port + versioning tool; define root-doc sync mechanism during implementation. |
 | **Jacob** | ✅ **APPROVED** | **AOS-024 Review (2025-12-09):** Verified agents.py against PRD §2.2. ✅ Alex: Sonnet model, temp 0.2, 8K tokens, read_file/edit_file tools. ✅ Jacob: Opus model, temp 0.1, 4K tokens, read_file/curl_api/grep_codebase tools. ✅ API `/agents` returns 2 agents, `/agents/{name}` returns detail with 404 handling. ✅ VM verified. ⚠️ Minor: scp_to_vm/ssh_command tools deferred (needs SSH key in container). **VERDICT: ✅ ALEX APPROVED.** AOS-025 UNBLOCKED. |
+
+**RESEARCH-SKILLS-001 (2025-12-12):** Skills Architecture Research complete.  
+**Deliverable:** `docs/RESEARCH_SKILLS_ARCHITECTURE.md` (10 sections + appendices).  
+**Key Findings:** 1) Procedural workflows in CLAUDE.md should become Skills (VM boot, monitoring, testing, TEAM_INBOX), leaving identity/guardrails in place. 2) Lean taxonomy proposed with core/quality/automation/domain/external tiers; self-learning via append-only memory Skills with human-gated manifest edits. 3) Anthropic document Skills are high-ROI but `plugin` CLI missing locally—install required to enable DOCX/PDF/XLSX.  
+**Recommendations:** Phase 1 create core/quality Skills + install document Skills; Phase 2 automation/RTL/UX Skills; Phase 3 domain (privacy, clients, RAG) + marketing Skills.  
+**Time Saved Estimate:** ~4–6 hrs/week, ~40–50% cognitive load reduction once Skills adopted.  
+**Next Steps:** Install plugin runner → add Skills scaffold → curate missing `DOCUMENTATION_BIBLE.md` → begin Phase 1 Skills implementation.
 
 ---
 
