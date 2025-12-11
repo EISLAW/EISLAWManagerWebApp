@@ -1,6 +1,6 @@
 # 1. Identity & Mission
 
-> **FIRST RULE (before doing anything):** All code lives on the Azure VM at `20.217.86.4`. Do NOT edit local files. SSH to VM first. See Section 1D.
+> **FIRST RULE (before doing anything):** Default to **local-first development** in `C:\Coding Projects\EISLAW System Clean\`, then push to GitHub to sync the VM. Only SSH to the VM for logs, smoke tests, or prod debugging. See Section 1D.
 
 You are the **EISLAW Autonomous Developer Agent**.
 
@@ -32,47 +32,34 @@ Never delegate execution to the user.
 Working copy (important)
 - Use the clean clone at `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). Treat the older `EISLAW System` folder as archive/reference only; do not develop or commit there.
 
-# 1D. Azure VM Development Environment (MANDATORY)
+# 1D. Development Workflow (Local-First + VM Sync)
 
-> **CRITICAL RULE - READ FIRST:**
-> - **VM is the ONLY source of truth** for all code (frontend + backend)
-> - **DO NOT edit local files** in `C:\Coding Projects\EISLAW System Clean\` for code changes
-> - **ALWAYS work via SSH** to `azureuser@20.217.86.4:~/EISLAWManagerWebApp`
-> - Local files exist for reference/git only - edits made locally will be LOST or cause desync
-> - If you find yourself editing local `.jsx`, `.py`, or `.ts` files, STOP and SSH to VM instead
-> - **Exception:** Documentation files (`.md`) can be edited locally then synced
+**As of 2025-12-11, we develop locally and auto-sync to the VM.** Pushes to GitHub trigger the VM to pull and rebuild as needed. Edit code locally; only SSH to the VM for logs, smoke tests, or container resets.
 
-**Development MUST be performed on the Azure VM.** The VM provides a consistent Linux environment with Docker and all services pre-configured.
+## Default Flow (local → GitHub → VM)
+1) Work locally in `C:\Coding Projects\EISLAW System Clean\` (branch from `dev-main-2025-12-11`).  
+2) Commit + push: `git push origin feature/TASK-ID` (or `dev-main-2025-12-11` for baseline).  
+3) GitHub Action triggers; VM webhook/SSH pull fetches latest code into `~/EISLAWManagerWebApp`.  
+4) VM rebuilds/restarts containers if needed (hot-reload covers most changes).  
+5) Verify on VM URLs: frontend dev `http://20.217.86.4:5173`, API `http://20.217.86.4:8799`.
 
-## VM Connection Details
+## When to SSH to VM (not for coding)
+- View logs: `/usr/local/bin/docker-compose-v2 logs -f api` (or `web-dev`).  
+- Smoke test after push; check container status (`docker ps`, `docker-compose-v2 ps`).  
+- Restart a service if hot-reload stalls: `/usr/local/bin/docker-compose-v2 restart api`.  
+- Monitoring access via tunnel (Grafana/Prometheus); see §1E.
+
+### VM Connection Details
 | Parameter | Value |
 |-----------|-------|
 | **IP Address** | `20.217.86.4` |
 | **Username** | `azureuser` |
-| **SSH Port** | 22 |
 | **SSH Key (Windows)** | `C:\Coding Projects\eislaw-dev-vm_key.pem` |
 | **SSH Key (WSL)** | `~/.ssh/eislaw-dev-vm.pem` |
 | **Project Path** | `~/EISLAWManagerWebApp` |
+| **Default Branch** | `dev-main-2025-12-11` |
 
-## VM Specs
-- **OS:** Ubuntu 22.04
-- **Size:** Standard B2s (2 vCPUs, 4GB RAM)
-- **Location:** Israel Central (Zone 1)
-- **Resource Group:** EISLAW-Dashboard
-
-## Running Services
-| Service | Port | URL |
-|---------|------|-----|
-| Frontend (prod) | 8080 | `http://20.217.86.4:8080` |
-| Frontend (dev) | 5173 | `http://20.217.86.4:5173` |
-| API | 8799 | `http://20.217.86.4:8799` |
-| Meilisearch | 7700 | `http://20.217.86.4:7700` |
-| Grafana | 3000 | Via SSH tunnel only (see 1F) |
-| Prometheus | 9090 | Via SSH tunnel only (see 1F) |
-| Loki | 3100 | Internal only |
-| Alertmanager | 9093 | Via SSH tunnel only |
-
-## SSH Connection Commands
+### SSH Commands
 ```bash
 # From WSL (recommended):
 ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
@@ -82,84 +69,37 @@ cp /mnt/c/Coding\ Projects/eislaw-dev-vm_key.pem ~/.ssh/eislaw-dev-vm.pem
 chmod 400 ~/.ssh/eislaw-dev-vm.pem
 ```
 
-## Development Workflow (Hot-Reload - PREFERRED)
+### Running Services (VM)
+| Service | Port | URL |
+|---------|------|-----|
+| Frontend (dev) | 5173 | `http://20.217.86.4:5173` |
+| Frontend (prod) | 8080 | `http://20.217.86.4:8080` |
+| API | 8799 | `http://20.217.86.4:8799` |
+| Meilisearch | 7700 | `http://20.217.86.4:7700` |
+| Grafana | 3000 | Tunnel only |
+| Prometheus | 9090 | Tunnel only |
 
-**Both Backend AND Frontend have hot-reload** - no rebuild needed!
-
-### Backend Hot-Reload
-The API container mounts `./backend` and runs with uvicorn `--reload`.
-
-### Frontend Hot-Reload
-Use `web-dev` service instead of `web` for development with Vite hot-reload.
-
-### Quick Start
-1. **Connect to VM via SSH:**
-   ```bash
-   ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
-   ```
-
-2. **Start dev services (if not running):**
-   ```bash
-   cd ~/EISLAWManagerWebApp
-   /usr/local/bin/docker-compose-v2 up -d api web-dev meili
-   ```
-
-3. **Edit files directly on VM:**
-   ```bash
-   nano ~/EISLAWManagerWebApp/backend/main.py
-   nano ~/EISLAWManagerWebApp/frontend/src/App.tsx
-   # Or use VS Code Remote SSH (recommended)
-   ```
-
-4. **Changes apply automatically** - both backend and frontend hot-reload
-
-5. **View logs:**
-   ```bash
-   /usr/local/bin/docker-compose-v2 logs -f api      # Backend logs
-   /usr/local/bin/docker-compose-v2 logs -f web-dev  # Frontend logs
-   ```
-
-6. **Test:**
-   - Frontend dev: `http://20.217.86.4:5173`
-   - API: `http://20.217.86.4:8799`
-
-### VS Code Remote SSH (Best Experience)
-1. Install "Remote - SSH" extension in VS Code
-2. Connect to `azureuser@20.217.86.4`
-3. Open folder `~/EISLAWManagerWebApp`
-4. Edit with full IDE features - hot-reload works automatically!
-
-### When Rebuild IS Needed
-- New Python dependencies in requirements.txt
-- Dockerfile changes
-
+### Local Dev Quick Start
 ```bash
-# Rebuild API (new dependencies)
-/usr/local/bin/docker-compose-v2 up -d --build api
+# Optional local checks
+npm install               # frontend deps
+pip install -r requirements.txt  # backend tools
+npm run lint -- --fix || true    # if touching frontend
 
-# Rebuild all
-/usr/local/bin/docker-compose-v2 up -d --build
+# After work
+git add .
+git commit -m "TASK-ID: summary"
+git push origin feature/TASK-ID   # triggers VM sync
 ```
 
-## Docker Commands on VM
-**IMPORTANT:** Use `/usr/local/bin/docker-compose-v2` instead of `docker-compose` (old version has bugs)
-
+### VM Hot-Reload Reference
+If you must touch the VM (logs/smoke):
 ```bash
-# View running containers
-docker ps
-
-# View logs
-/usr/local/bin/docker-compose-v2 logs -f api
-/usr/local/bin/docker-compose-v2 logs -f web-dev
-
-# Restart services
-/usr/local/bin/docker-compose-v2 restart api
-
-# Stop all
-/usr/local/bin/docker-compose-v2 down
-
-# Start dev environment
-/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili   # start if stopped
+/usr/local/bin/docker-compose-v2 logs -f api                # tail logs
+/usr/local/bin/docker-compose-v2 restart api                # restart service
 ```
 
 # 1E. Monitoring Stack (Grafana, Prometheus, Loki)

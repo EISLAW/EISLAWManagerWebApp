@@ -24,7 +24,7 @@
 | CLAUDE.md Section | Type | Recommendation | Rationale |
 | --- | --- | --- | --- |
 | 1. Identity & Mission; 2. Bounded Creativity; 3. Outcome-Driven Autonomy; 6. Autonomy & System-Wide Thinking; 7. Consistency/Output Rules; 8. Persona Modes; 11. Secrets | Identity/guardrails | **Keep in CLAUDE.md** | Defines agent character, safety, and immutable rules. |
-| 1D Azure VM Development Environment; VM commands; hot-reload workflow | Procedural | **Skill: `core/vm-connect-and-hot-reload`** | Repeatable steps to connect/start services; reduces context sprawl. |
+| 1D Development Workflow (local-first + VM sync); VM commands; hot-reload workflow | Procedural | **Skill: `core/local-dev-workflow`** | Guides local setup, push-to-sync, and VM verification without editing on-box. |
 | 1E Monitoring Stack (tunnels to Grafana/Prometheus); credentials lookup | Procedural | **Skill: `core/monitoring-tunnel`** | Automates tunnel commands and credential retrieval. |
 | 1F Virtual Team & Communication (TEAM_INBOX rules, status codes, task doc pattern) | Procedural | **Skill: `core/team-inbox-update`** | Ensures start/completion posts and templates are applied correctly. |
 | 4 Unified Execution Alignment Loop; 13 Planning/Execution boundary | Workflow | **Skill: `core/write-plan-and-verify`** | Template for planning vs execution with checkpoints. |
@@ -40,7 +40,8 @@
 ```
 .claude/skills/
 ├── core/                 # Mandatory operational workflows
-│   ├── vm-connect-and-hot-reload/
+│   ├── local-dev-workflow/       # Local setup + push + VM sync verify
+│   ├── vm-log-viewer/            # SSH + logs/tail helpers
 │   ├── monitoring-tunnel/
 │   ├── spawn-template/
 │   ├── team-inbox-update/
@@ -102,7 +103,7 @@
 
 ## 7. Recommendations
 ### Phase 1 (Week 1) – Foundation
-- Stand up `.claude/skills` with core/quality scaffolding; implement `vm-connect-and-hot-reload`, `team-inbox-update`, `testing-checklist`, `episodic-log-update`, `spawn-template`.  
+- Stand up `.claude/skills` with core/quality scaffolding; implement `local-dev-workflow`, `vm-log-viewer`, `team-inbox-update`, `testing-checklist`, `episodic-log-update`, `spawn-template`.  
 - Install Anthropic document Skills once `plugin` CLI is available; add to `external/`.  
 - Create missing `DOCUMENTATION_BIBLE.md` (source from CLAUDE.md §8 references) and link from Skills.
 
@@ -139,7 +140,7 @@
 ## Appendices
 
 ### Appendix A. Skills Inventory (proposed)
-- **Core:** vm-connect-and-hot-reload; monitoring-tunnel; spawn-template; team-inbox-update; write-plan-and-verify.  
+- **Core:** local-dev-workflow; vm-log-viewer; monitoring-tunnel; spawn-template; team-inbox-update; write-plan-and-verify.  
 - **Quality:** testing-checklist; self-heal; rtl-a11y-sweep; data-integrity-check.  
 - **Automation:** status-report; adr-creator; episodic-log-update; working-memory-refresh.  
 - **Domain:** privacy-score-review; client-data-validator; rag-quality-checker; rtl-ui-validator; privacy-purchase-flow.  
@@ -152,17 +153,18 @@
 
 ### Appendix C. Example Skill Prototypes (manifests, draft)
 ```json
-// .claude/skills/core/vm-connect-and-hot-reload/manifest.json
+// .claude/skills/core/local-dev-workflow/manifest.json
 {
-  "name": "vm-connect-and-hot-reload",
-  "description": "Connect to Azure VM and start hot-reload services.",
-  "inputs": {},
+  "name": "local-dev-workflow",
+  "description": "Set up local dev, push to GitHub, and verify VM sync.",
+  "inputs": {"branch": "string"},
   "steps": [
-    {"type": "bash", "command": "ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4"},
-    {"type": "bash", "command": "cd ~/EISLAWManagerWebApp && /usr/local/bin/docker-compose-v2 up -d api web-dev meili"},
-    {"type": "read", "path": "docs/DEV_PORTS.md", "optional": true}
+    {"type": "bash", "command": "git checkout {{branch}} && git pull origin {{branch}}"},
+    {"type": "bash", "command": "npm install && pip install -r requirements.txt", "optional": true},
+    {"type": "info", "message": "Edit locally, then git commit && git push to trigger VM sync."},
+    {"type": "read", "path": "docs/DEV_WORKFLOW_DIAGRAM.md", "optional": true}
   ],
-  "outputs": ["Service status summary"]
+  "outputs": ["Local environment ready", "Sync path reference"]
 }
 ```
 

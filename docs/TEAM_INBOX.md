@@ -102,6 +102,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 | From | Status | Message |
 |------|--------|---------|
+| **David** | ✅ **COMPLETE** | **RESEARCH-SKILLS-002 (2025-12-12):** Workflow documentation update complete.<br><br>**Deliverables:**<br>- `WORKFLOW_UPDATE_ANALYSIS.md` - Analysis of workflow changes<br>- `DEV_WORKFLOW_DIAGRAM.md` - Visual workflow diagram<br>- Updated `CLAUDE.md` section 1D (local-first workflow)<br>- Updated `RESEARCH_SKILLS_ARCHITECTURE.md` (sections 2, 3, Appendix C)<br>- Updated `TEAM_INBOX.md` (new \"Development Workflow\" section)<br><br>**Key Changes:**<br>- CLAUDE.md: VM development → local development + auto-sync<br>- Skills: `vm-connect-and-hot-reload` → `local-dev-workflow`<br>- TEAM_INBOX: Added quick-start guide for local development<br><br>**Impact:**<br>- All docs now consistent with ENV-001/002 implementation<br>- Team members have clear guidance on new workflow<br>- Skills proposals reflect current development practices<br><br>**Branch:** feature/RESEARCH-SKILLS-002 (local changes, ready for Jacob review) |
 | **Jane** | ✅ **COMPLETE** | **ENV-001 Dev→dev-main-2025-12-11 Promotion (2025-12-11):** ✅ Git anchors: dev-main-2025-12-11 branch/tag at 23728048 (BUG-PRI-001/002/003), legacy-main-2025-12-11 branch/tag at 9f4500bd (old main preserved), pushed to GitHub. ✅ Backups: /mnt/backups/eislaw-20251211-2212/ - databases.tar.gz (6.7M: eislaw.db, privacy.db, email_index.sqlite), clients_structure.tar.gz (4K: empty client folders, no email files exist - all email data in email_index.sqlite already backed up), tasks.json (7.3K). Total: 6.7M. ⚠️ Off-box copy: NOT DONE (recommended for disaster recovery - can use Azure Blob or SCP). ✅ Cleanup: Removed frontend/node_modules, venvs/dist/site, truncated Docker logs (~12GB freed, disk 69% vs 100%). ✅ VM baseline: Checked out dev-main-2025-12-11, all containers running (api, web-dev, web, meili, docs). ✅ Smoke tests: API health OK, 21 clients returned, frontend HTTP 200 (dev:5173, prod:8080). ✅ Default branch: GitHub default now dev-main-2025-12-11 (verified via API). ✅ GitHub auth: Fixed expired PATs via SSH key. Ready for Jacob final approval. |
 | **Alex** | ✅ **COMPLETE** | **CHAT-MERGE-001 (2025-12-11):** Successfully merged origin/main into feature/CHAT-DEBUG-001. Resolved 4 conflict files intelligently: (1) Dockerfile.api - kept detailed comment, (2) backend/main.py - merged chat integration imports (slowapi, RAG schemas, audit utils) with origin/main base, (3) backend/requirements.txt - combined slowapi with new deps (azure-storage-blob, sentry, litellm), (4) ClientOverview.jsx - kept origin/main version. Python syntax validated. Branch now 31 commits ahead, 0 behind origin/main. Commit f84e8525 pushed to origin. All changes from both branches preserved. Ready for Jacob review. |
 | **David** | ✅ **COMPLETE** | **DOC-004 IA pass (2025-12-09):** Updated `docs/index.md` with Start Here tiering, section summaries, search tips, and CLAUDE/AGENTS mirroring procedure (hash 10535cd2). Ready for Alex/Jane to wire nav/CI. |
@@ -118,6 +119,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 **Next Steps:** Install plugin runner → add Skills scaffold → curate missing `DOCUMENTATION_BIBLE.md` → begin Phase 1 Skills implementation.
 
 | **Jacob** | ✅ **APPROVED** | **RESEARCH-SKILLS-001 Review (2025-12-12):** ✅ Comprehensive research across 42 docs (CLAUDE.md, episodic log, PRDs, specs). ✅ Skills vs CLAUDE.md mapping complete (detailed table: procedural → Skills, identity/guardrails → stays). ✅ Lean 4-tier taxonomy proposed (core/quality/automation/domain/external). ✅ Self-learning analysis complete (append-only memory Skills, human-gated manifests). ✅ Anthropic Skills install attempted (blocked by missing plugin CLI - environment issue, not David's fault). ✅ UX/UI + marketing Skills researched (gaps identified, custom Skills proposed). ✅ Research doc created with all 10 sections + 4 appendices. ✅ MkDocs navigation updated (mkdocs.yml line 11). ✅ TEAM_INBOX updated with completion message. ✅ 3 example Skill manifests (VM connect, episodic log, RTL/a11y). ✅ Phased roadmap with cost-benefit analysis (4-6 hrs/week saved, 40-50% cognitive load reduction). ⚠️ Noted issues: DOCUMENTATION_BIBLE.md missing (pre-existing, David flagged), plugin CLI missing (environment blocker). **VERDICT: ✅ DAVID APPROVED.** Excellent research quality. Commit 58aebb90 pushed to origin/feature/DISK-002-IMPL. Ready for CEO review and Phase 1 implementation. |
+| **Jacob** | ✅ **APPROVED (with required follow-up)** | **ENV-002 Review (2025-12-12):** ✅ Implementation VERIFIED on VM (uncommitted on dev-main-2025-12-11). **Technical Review:** ✅ `.github/workflows/sync_to_vm.yml` - GitHub Action triggers on push to dev-main-2025-12-11 & feature/** branches, SSHes to VM using secrets.VM_SSH_KEY, runs remote sync. ✅ `tools/remote_sync.sh` - Safely handles sync: stashes local changes → fetches/resets to origin → rebuilds services via docker-compose-v2 → restores stashed changes. ✅ `tools/mirror_root_docs.sh` - Syncs CLAUDE.md/AGENTS.md to docs/root/ for MkDocs. ✅ Workflow design: Concurrency control (one sync per branch), parameterized inputs (branch + services), graceful dirty tree handling. ✅ Files executable (chmod 755). ✅ VM_SSH_KEY secret already configured in GitHub repo. **Code Quality:** Excellent. Production-ready implementation. **⚠️ REQUIRED BEFORE PRODUCTION:** (1) Jane MUST commit + push ENV-002 files to GitHub (currently uncommitted on VM only), (2) Post Jane completion message to TEAM_INBOX documenting implementation. **VERDICT: ✅ TECHNICAL IMPLEMENTATION APPROVED.** Workflow will auto-activate once ENV-002 files are pushed. Awaiting Jane's commit + completion message. |
 
 ---
 
@@ -183,6 +185,31 @@ EISLAW is a Hebrew-language legal practice management system with:
 - ✅ Complete
 - ❌ Blocked
 - ⏸️ On Hold
+
+---
+
+## Development Workflow (UPDATED 2025-12-11)
+
+**We now develop locally with auto-sync to VM.**
+
+### Quick Start
+1. Work locally: `C:\Coding Projects\EISLAW System Clean\`
+2. Create feature branch: `git checkout -b feature/TASK-ID` (base `dev-main-2025-12-11`)
+3. Make changes, commit: `git add . && git commit -m "TASK-ID: description"`
+4. Push to GitHub: `git push origin feature/TASK-ID`
+5. Auto-syncs to VM (20.217.86.4)
+6. Verify at http://20.217.86.4:5173
+
+### When to SSH to VM
+- View logs: `ssh azureuser@20.217.86.4` then `/usr/local/bin/docker-compose-v2 logs api -f`
+- Debug container issues or restart a service
+- Smoke test after deployment
+- **Not for editing code** (code stays local; VM is for verification)
+
+### References
+- Full workflow: `docs/DEV_WORKFLOW_DIAGRAM.md`
+- ENV plan: `docs/PLAN_ENV_PRESERVE_AND_ALIGN.md`
+- VM details: CLAUDE.md §1D
 
 ---
 
