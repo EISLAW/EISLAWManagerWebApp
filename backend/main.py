@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 import uuid
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
+import logging
 import json
+import re
 import shutil
 from typing import Optional, List
 import os
@@ -12,6 +14,23 @@ import base64
 import fixtures
 import httpx
 import msal
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from pydantic import ValidationError
+
+from schemas.rag import (
+    RAGAssistantRequest,
+    RAGAssistantResponse,
+    RAGDeleteRequest,
+    RAGIngestRequest,
+    RAGItemResponse,
+    RAGOperationResponse,
+    RAGPublishRequest,
+    RAGReviewerUpdateRequest,
+    RAGUpdateRequest,
+)
+from utils.audit import RAGAuditLog, get_request_context
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
@@ -68,6 +87,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger = logging.getLogger("eislaw.backend")
+
+# Rate limits for costly RAG operations (per user/IP)
+RAG_RATE_LIMITS = {
+    "upload": "10/minute",
+    "ingest": "5/minute",
+    "assistant": "20/minute",
+    "delete": "10/minute",
+}
+
+
+def rate_limit_key(request: Request) -> str:
+    """Use caller identity for per-user rate limits; fall back to IP."""
+    user_header = (
+        request.headers.get("X-User-Email")
+        or request.headers.get("X-USER-EMAIL")
+        or request.headers.get("X-User-Id")
+        or request.headers.get("X-USER-ID")
+    )
+    if user_header:
+        return user_header.lower()
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        return auth_header
+    if request.client:
+        return request.client.host or get_remote_address(request)
+    return get_remote_address(request)
+
+
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Log and return 429 responses for rate limit violations."""
+    try:
+        identifier = rate_limit_key(request)
+    except Exception:
+        identifier = "unknown"
+    logger.warning(
+        "Rate limit exceeded",
+        extra={"path": str(request.url.path), "identifier": identifier, "limit": getattr(exc, "detail", None)},
+    )
+    return _rate_limit_exceeded_handler(request, exc)
+
+
+limiter = Limiter(key_func=rate_limit_key, default_limits=[])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
 BASE_DIR = Path(__file__).resolve().parent
 TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
 INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
@@ -75,6 +140,8 @@ LIBRARY_DIR = TRANSCRIPTS_DIR / "Library"
 INDEX_PATH = TRANSCRIPTS_DIR / "index.json"
 TASKS_PATH = BASE_DIR / "data" / "tasks.json"
 TASKS_ARCHIVE_PATH = BASE_DIR / "data" / "tasks_archive.json"
+AUDIO_HASH_PATTERN = re.compile(r"^[A-Fa-f0-9]{8,64}$")
+ALLOWED_AUDIO_BASES = [INBOX_DIR.resolve(), LIBRARY_DIR.resolve()]
 
 
 def ensure_dirs():
@@ -618,8 +685,10 @@ def rag_inbox():
     return {"items": load_index()}
 
 
-@app.post("/api/rag/ingest")
+@app.post("/api/rag/ingest", response_model=RAGItemResponse)
+@limiter.limit(RAG_RATE_LIMITS["ingest"])
 async def rag_ingest(
+    request: Request,
     file: UploadFile = File(...),
     hash: str = Form(...),
     filename: Optional[str] = Form(None),
@@ -634,26 +703,50 @@ async def rag_ingest(
     and records a manifest entry with status=transcribing. Duplicate hashes return
     a duplicate status without re-saving.
     """
+    context = get_request_context(request)
+    try:
+        ingest_meta = RAGIngestRequest.model_validate(
+            {
+                "hash": hash,
+                "filename": filename or file.filename,
+                "size": size,
+                "client": client,
+                "domain": domain,
+                "date": date,
+                "model": model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
+            }
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors())
+
     ensure_dirs()
-    existing = next((i for i in load_index() if i.get("hash") == hash), None)
+    existing = next((i for i in load_index() if i.get("hash") == ingest_meta.hash), None)
     if existing:
+        RAGAuditLog.log_operation(
+            user_id=context.user_id,
+            operation="ingest",
+            resource_ids=[existing.get("id")],
+            details={"status": "duplicate", "hash": ingest_meta.hash},
+            ip_address=context.ip_address,
+            success=True,
+        )
         return {
             "id": existing.get("id"),
             "status": "duplicate",
             "note": "File already exists",
-            "hash": hash,
+            "hash": ingest_meta.hash,
             "client": existing.get("client"),
         }
 
-    safe_name = filename or file.filename or "upload.bin"
-    target_path = INBOX_DIR / f"{hash}_{safe_name}"
+    safe_name = ingest_meta.filename or file.filename or "upload.bin"
+    target_path = INBOX_DIR / f"{ingest_meta.hash}_{safe_name}"
     with target_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
     transcript, note, status = [], "Saved to inbox; transcription pending", "transcribing"
     try:
-        transcript = gemini_transcribe_audio(str(target_path), model=model)
-        note = f"Transcribed with {model or os.environ.get('GEMINI_MODEL', 'gemini-3-pro-preview')}"
+        transcript = gemini_transcribe_audio(str(target_path), model=ingest_meta.model)
+        note = f"Transcribed with {ingest_meta.model or os.environ.get('GEMINI_MODEL', 'gemini-3-pro-preview')}"
         status = "ready"
     except Exception as exc:
         note = f"Transcription failed: {exc}"
@@ -662,24 +755,42 @@ async def rag_ingest(
     item = {
         "id": f"rag-{uuid.uuid4().hex[:8]}",
         "fileName": safe_name,
-        "hash": hash,
+        "hash": ingest_meta.hash,
         "status": status,
-        "client": client,
-        "domain": domain,
-        "date": date,
+        "client": ingest_meta.client,
+        "domain": ingest_meta.domain,
+        "date": ingest_meta.date,
         "note": note,
-        "size": int(size) if size and size.isdigit() else None,
+        "size": ingest_meta.size,
         "createdAt": datetime.utcnow().isoformat(),
         "transcript": transcript,
-        "modelUsed": model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
+        "modelUsed": ingest_meta.model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
         "filePath": str(target_path),
     }
     upsert_item(item)
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="ingest",
+        resource_ids=[item["id"]],
+        details={
+            "hash": ingest_meta.hash,
+            "status": status,
+            "client": ingest_meta.client,
+            "domain": ingest_meta.domain,
+            "size": ingest_meta.size,
+            "model": ingest_meta.model or os.environ.get("GEMINI_MODEL", "gemini-3-pro-preview"),
+        },
+        ip_address=context.ip_address,
+        success=status != "error",
+        error_message=None if status != "error" else note,
+    )
     return item
 
 
-@app.post("/api/rag/transcribe_doc")
+@app.post("/api/rag/transcribe_doc", response_model=RAGItemResponse)
+@limiter.limit(RAG_RATE_LIMITS["upload"])
 async def rag_transcribe_doc(
+    request: Request,
     file: UploadFile = File(...),
     client: Optional[str] = Form(None),
     model: Optional[str] = Form(None),
@@ -689,6 +800,9 @@ async def rag_transcribe_doc(
     Replace with the real desktop pipeline when wiring Gemini/ffmpeg.
     If model is provided, we just echo it for now; integration will call Gemini.
     """
+    context = get_request_context(request)
+    if client and len(client) > 200:
+        raise HTTPException(status_code=422, detail="client must be <=200 characters")
     content = await file.read()
     preview = ""
     if content:
@@ -699,7 +813,7 @@ async def rag_transcribe_doc(
     if len(preview) > 800:
         preview = preview[:800].rstrip() + "…"
 
-    return {
+    payload = {
         "id": f"tr-{uuid.uuid4().hex[:8]}",
         "client": client,
         "fileName": file.filename,
@@ -710,13 +824,23 @@ async def rag_transcribe_doc(
         "createdAt": datetime.utcnow().isoformat(),
         "modelUsed": model or "not-set",
     }
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="upload",
+        resource_ids=[payload["id"]],
+        details={"client": client, "model": model or "not-set", "bytes": len(content)},
+        ip_address=context.ip_address,
+        success=True,
+    )
+    return payload
 
 
-@app.post("/api/rag/publish/{item_id}")
-def rag_publish(item_id: str):
+@app.post("/api/rag/publish/{item_id}", response_model=RAGItemResponse)
+def rag_publish(item_id: str, payload: RAGPublishRequest = Body(default=None), request: Request = None):
     """
     Stub: moves file from Inbox to Library and marks status ready.
     """
+    context = get_request_context(request)
     ensure_dirs()
     item = find_item(item_id)
     if not item:
@@ -729,8 +853,22 @@ def rag_publish(item_id: str):
     dest_path = dest_dir / (file_path.name if file_path else f"{hash_prefix}_{item.get('fileName','file')}")
     if file_path and file_path.exists():
         shutil.move(str(file_path), dest_path)
-    updated = {**item, "status": "ready", "note": "Published to library", "libraryPath": str(dest_path), "filePath": str(dest_path)}
+    updated = {
+        **item,
+        "status": "ready",
+        "note": "Published to library",
+        "libraryPath": str(dest_path),
+        "filePath": str(dest_path),
+    }
     upsert_item(updated)
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="publish",
+        resource_ids=[item_id],
+        details={"metadata": payload.metadata if payload else None, "status": "ready"},
+        ip_address=context.ip_address,
+        success=True,
+    )
     return updated
 
 
@@ -769,18 +907,20 @@ def rag_reviewer_get(item_id: str):
     return payload
 
 
-@app.patch("/api/rag/reviewer/{item_id}")
-def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
+@app.patch("/api/rag/reviewer/{item_id}", response_model=RAGItemResponse)
+def rag_reviewer_update(item_id: str, payload: RAGReviewerUpdateRequest = Body(...), request: Request = None):
     ensure_dirs()
     item = find_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
+    context = get_request_context(request)
     updated = {**item}
-    if "transcript" in payload:
-        updated["transcript"] = payload["transcript"]
-    for key in ["client", "domain", "date", "tags", "note", "status"]:
-        if key in payload:
-            updated[key] = payload[key]
+    payload_data = payload.model_dump(exclude_none=True)
+    if "transcript" in payload_data:
+        updated["transcript"] = payload_data["transcript"]
+    for key in ["client", "domain", "date", "tags", "note", "status", "title"]:
+        if key in payload_data:
+            updated[key] = payload_data[key]
     if updated.get("status") == "ready":
         hash_prefix = updated.get("hash")
         file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None)
@@ -792,6 +932,14 @@ def rag_reviewer_update(item_id: str, payload: dict = Body(...)):
         updated["libraryPath"] = str(dest_path)
         updated["filePath"] = str(dest_path)
     upsert_item(updated)
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="update",
+        resource_ids=[item_id],
+        details={"fields": list(payload_data.keys())},
+        ip_address=context.ip_address,
+        success=True,
+    )
     return updated
 
 
@@ -820,19 +968,21 @@ def rag_models():
     return {"providers": providers, "errors": errors}
 
 
-@app.patch("/api/rag/file/{item_id}")
-def rag_update(item_id: str, payload: dict = Body(...)):
+@app.patch("/api/rag/file/{item_id}", response_model=RAGItemResponse)
+def rag_update(item_id: str, payload: RAGUpdateRequest = Body(...), request: Request = None):
     """
     Update metadata/status for an inbox item. If status is set to 'ready', we attempt to move to Library.
     """
+    context = get_request_context(request)
     ensure_dirs()
     item = find_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     updated = {**item}
+    payload_data = payload.model_dump(exclude_none=True)
     for key in ["client", "domain", "date", "status", "note", "tags"]:
-        if key in payload:
-            updated[key] = payload[key]
+        if key in payload_data:
+            updated[key] = payload_data[key]
 
     # if moving to ready and file still in inbox, move to library folder
     if updated.get("status") == "ready":
@@ -847,25 +997,87 @@ def rag_update(item_id: str, payload: dict = Body(...)):
         updated["filePath"] = str(dest_path)
 
     upsert_item(updated)
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="update",
+        resource_ids=[item_id],
+        details={"fields": list(payload_data.keys())},
+        ip_address=context.ip_address,
+        success=True,
+    )
     return updated
 
 
-@app.delete("/api/rag/file/{item_id}")
-def rag_delete(item_id: str):
+@app.delete("/api/rag/file/{item_id}", response_model=RAGOperationResponse)
+@limiter.limit(RAG_RATE_LIMITS["delete"])
+def rag_delete(request: Request, item_id: str, payload: RAGDeleteRequest = Body(...)):
     """
     Stub hard delete: removes index entry and associated files (Inbox + Library).
     """
+    context = get_request_context(request)
     ensure_dirs()
     item = find_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    hash_prefix = item.get("hash")
-    for p in INBOX_DIR.glob(f"{hash_prefix}_*"):
-        p.unlink(missing_ok=True)
-    for p in LIBRARY_DIR.glob(f"**/{hash_prefix}_*"):
-        p.unlink(missing_ok=True)
-    removed = remove_item(item_id)
-    return {"deleted": removed, "id": item_id}
+
+    target_ids = payload.transcript_ids or []
+    if item_id not in target_ids:
+        target_ids.append(item_id)
+
+    deleted_ids: List[str] = []
+    for target_id in target_ids:
+        target_item = find_item(target_id)
+        if not target_item:
+            continue
+        hash_prefix = target_item.get("hash")
+        if hash_prefix:
+            for p in INBOX_DIR.glob(f"{hash_prefix}_*"):
+                p.unlink(missing_ok=True)
+            for p in LIBRARY_DIR.glob(f"**/{hash_prefix}_*"):
+                p.unlink(missing_ok=True)
+        if remove_item(target_id):
+            deleted_ids.append(target_id)
+
+    success = len(deleted_ids) > 0
+    message = "Deleted requested transcripts" if success else "No transcripts deleted"
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="delete",
+        resource_ids=deleted_ids or [item_id],
+        details={"reason": payload.reason},
+        ip_address=context.ip_address,
+        success=success,
+        error_message=None if success else "No matching transcripts deleted",
+    )
+    return RAGOperationResponse(success=success, message=message, affected_ids=deleted_ids)
+
+
+def resolve_audio_path(item: dict) -> Path:
+    """Validate hash and return a safe audio path within allowed directories."""
+    hash_value = (item.get("hash") or "").strip()
+    if not AUDIO_HASH_PATTERN.match(hash_value):
+        raise HTTPException(status_code=400, detail="Invalid file identifier")
+
+    candidates = []
+    file_path = item.get("filePath")
+    if file_path:
+        candidates.append(Path(file_path))
+    candidates.append(next(INBOX_DIR.glob(f"{hash_value}_*"), None))
+    candidates.append(next(LIBRARY_DIR.glob(f"**/{hash_value}_*"), None))
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        resolved = Path(candidate).resolve()
+        if not any(str(resolved).startswith(str(base)) for base in ALLOWED_AUDIO_BASES):
+            logger.warning(
+                "Blocked audio path outside allowed directories",
+                extra={"hash": hash_value, "path": str(resolved)},
+            )
+            raise HTTPException(status_code=403, detail="Access denied")
+        if resolved.exists():
+            return resolved
+    raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.get("/api/rag/audio/{item_id}")
@@ -877,53 +1089,47 @@ def rag_audio(item_id: str):
     item = find_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    path = item.get("filePath")
-    if not path or not Path(path).exists():
-        # try to resolve by hash
-        hash_prefix = item.get("hash")
-        file_path = next(INBOX_DIR.glob(f"{hash_prefix}_*"), None) or next(
-            LIBRARY_DIR.glob(f"**/{hash_prefix}_*"), None
-        )
-        if not file_path:
-            raise HTTPException(status_code=404, detail="File not found")
-        path = file_path
-    return FileResponse(path, filename=Path(path).name)
+    path = resolve_audio_path(item)
+    return FileResponse(path, filename=path.name)
 
 
-@app.post("/api/rag/assistant")
-def rag_assistant(payload: dict = Body(default=None)):
+@app.post("/api/rag/assistant", response_model=RAGAssistantResponse)
+@limiter.limit(RAG_RATE_LIMITS["assistant"])
+def rag_assistant(request: Request, payload: dict = Body(default=None)):
     """
     Lightweight assistant stub: searches local manifest and stitches snippets.
     Replace with real RAG+LLM when ready.
     """
+    context = get_request_context(request)
     ensure_dirs()
-    if payload is None:
-        payload = {}
-    q = (payload.get("question") or "").strip()
-    if not q:
-        raise HTTPException(status_code=400, detail="question is required")
-    client = (payload.get("client") or "").strip() or None
-    domain = (payload.get("domain") or "").strip() or None
-    include_personal = bool(payload.get("include_personal"))
-    include_drafts = bool(payload.get("include_drafts"))
+    try:
+        assistant_req = RAGAssistantRequest.model_validate(
+            {
+                **(payload or {}),
+                "personal_only": bool((payload or {}).get("include_personal"))
+                or bool((payload or {}).get("personal_only")),
+            }
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors())
 
     items = load_index()
     results = []
     for it in items:
-        if client and (it.get("client") or "").lower() != client.lower():
+        if assistant_req.client and (it.get("client") or "").lower() != assistant_req.client.lower():
             continue
-        if domain and domain.lower() != "all" and (it.get("domain") or "").lower() != domain.lower():
+        if assistant_req.domain and assistant_req.domain.lower() != "all" and (it.get("domain") or "").lower() != assistant_req.domain.lower():
             continue
-        if not include_personal and (it.get("domain") or "").lower() == "personal":
+        if not assistant_req.personal_only and (it.get("domain") or "").lower() == "personal":
             continue
-        if not include_drafts and (it.get("status") or "") != "ready":
+        if not assistant_req.include_drafts and (it.get("status") or "") != "ready":
             continue
         txt = ""
         transcript = it.get("transcript") or []
         if transcript and isinstance(transcript, list):
             txt = " ".join(seg.get("text") or "" for seg in transcript)
         snippet = txt[:400] + ("…" if len(txt) > 400 else "")
-        if q.lower() in txt.lower() or not txt:
+        if assistant_req.question.lower() in txt.lower() or not txt:
             results.append({**it, "snippet": snippet})
 
     snippets = [r.get("snippet") or "" for r in results if r.get("snippet")]
@@ -939,7 +1145,16 @@ def rag_assistant(payload: dict = Body(default=None)):
         }
         for r in results[:5]
     ]
-    return {"answer": answer, "sources": sources}
+    response = {"answer": answer, "sources": sources}
+    RAGAuditLog.log_operation(
+        user_id=context.user_id,
+        operation="query",
+        resource_ids=[s.get("id") for s in sources if s.get("id")] or [],
+        details={"question": assistant_req.question[:200]},
+        ip_address=context.ip_address,
+        success=True,
+    )
+    return response
 
 
 # ─────────────────────────────────────────────────────────────
