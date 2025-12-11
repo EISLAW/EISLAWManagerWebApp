@@ -4,11 +4,22 @@
 
 The agent chat integration allows spawned CLI agents to post real-time updates to Mattermost channels for CEO visibility, while maintaining TEAM_INBOX as the canonical source of truth.
 
-**Channels:**
-- `#agent-tasks` - Task start + progress updates
-- `#completions` - Completion announcements
-- `#reviews` - Jacob's review verdicts
-- `#ceo-updates` - High-priority alerts
+**Consolidated Channel (CHAT-FIXES):**
+- `#agent-tasks` - **PRIMARY CHANNEL** - All agent messages go here
+- `#ceo-updates` - High-priority alerts only (pipeline blockers)
+
+**Deprecated Channels (still work but use agent-tasks instead):**
+- `#completions` - Now redirected to #agent-tasks
+- `#reviews` - Now redirected to #agent-tasks
+
+**Emoji Conventions:**
+| Emoji | Message Type | Example |
+|-------|-------------|---------|
+| 🚀 | Start/Spawn | Agent starting work |
+| ✅ | Completion | Task complete |
+| 📋 | Review | Review verdict |
+| 🟢 | Unblock | Tasks now unblocked |
+| 🚨 | Alert | CEO attention needed |
 
 **Principle:** Chat is for real-time visibility. TEAM_INBOX is for structured records.
 
@@ -45,7 +56,7 @@ post_start(
 
 **Example output (with dependency):**
 ```
-**CLI-009:** Alex is starting work - API Clients List Ordering
+🚀 **CLI-009:** **Alex**: Starting work - API Clients List Ordering
 **Estimated:** 1-2 hours
 **Branch:** `feature/CLI-009`
 **Depends on:** CLI-008 (Joseph)
@@ -53,7 +64,7 @@ post_start(
 
 **Example output (no dependency):**
 ```
-**CLI-009:** Alex is starting work - API Clients List Ordering
+🚀 **CLI-009:** **Alex**: Starting work - API Clients List Ordering
 **Estimated:** 1-2 hours
 **Branch:** `feature/CLI-009`
 ```
@@ -83,11 +94,11 @@ post_completion(
 )
 ```
 
-**Posts to:** `#completions`
+**Posts to:** `#agent-tasks` (consolidated channel)
 
 **Example output:**
 ```
-**CLI-009:** Alex finished work
+✅ **CLI-009:** **Alex**: Task complete
 **Duration:** 1.5 hours
 **Commit:** `a3b2c1d`
 **Ready for:** Jacob review
@@ -106,24 +117,42 @@ post_review(
 )
 ```
 
-**Posts to:** `#reviews` AND `#agent-tasks` (cross-posted for visibility)
-
-**Why cross-post?** Reviews are pipeline-critical events. CEO monitors #agent-tasks as the main channel, so reviews appear there too.
+**Posts to:** `#agent-tasks` (consolidated channel)
 
 **Example output (with unblocks):**
 ```
-**CLI-009:** Reviewed by Jacob: ✅ APPROVED
+📋 **CLI-009:** **Jacob**: Review ✅ APPROVED
 **Details:** All checks passed
-**Unblocks:** CLI-010 (Maya), CLI-011 (Alex)
+🟢 **Unblocks:** CLI-010 (Maya), CLI-011 (Alex)
 ```
 
 **Example output (without unblocks):**
 ```
-**CLI-009:** Reviewed by Jacob: ✅ APPROVED
+📋 **CLI-009:** **Jacob**: Review ✅ APPROVED
 **Details:** All checks passed
 ```
 
 **Note:** The `unblocks` field only shows for `APPROVED` verdicts (not NEEDS_FIXES/BLOCKED).
+
+#### Unblock Notification
+
+```python
+from tools.agent_chat import post_unblock
+
+post_unblock(
+    orchestrator="Joe",
+    task_ids="CLI-010 (Maya), CLI-011 (Alex)",
+    reason="CLI-009 approved by Jacob"
+)
+```
+
+**Posts to:** `#agent-tasks`
+
+**Example output:**
+```
+🟢 **UNBLOCKED:** CLI-010 (Maya), CLI-011 (Alex)
+**Reason:** CLI-009 approved by Jacob
+```
 
 #### CEO Alert
 
@@ -513,14 +542,15 @@ post_start("Maya", "CLI-010", "Frontend ordering UI", "feature/CLI-010")
 
 ### When to Post
 
-| Event | Post to Chat? | Update TEAM_INBOX? |
-|-------|--------------|-------------------|
-| **Task assigned** | ❌ No | ✅ Yes (Joe writes task) |
-| **Agent spawned** | ✅ Yes (#agent-tasks, Joe only) | ❌ No (not needed) |
-| **Task started** | ✅ Yes (#agent-tasks) | ❌ No (not needed) |
-| **Progress update** | ⚠️ Optional (#agent-tasks) | ❌ No (clutters TEAM_INBOX) |
-| **Completed** | ✅ Yes (#completions) | ✅ Yes (Messages TO Joe) |
-| **Review verdict** | ✅ Yes (#reviews + #agent-tasks) | ✅ Yes (Messages TO Joe) |
+| Event | Post to Chat? | Update TEAM_INBOX? | Emoji |
+|-------|--------------|-------------------|-------|
+| **Task assigned** | ❌ No | ✅ Yes (Joe writes task) | - |
+| **Agent spawned** | ✅ Yes (#agent-tasks) | ❌ No (not needed) | 🚀 |
+| **Task started** | ✅ Yes (#agent-tasks) | ❌ No (not needed) | 🚀 |
+| **Progress update** | ⚠️ Optional (#agent-tasks) | ❌ No (clutters TEAM_INBOX) | - |
+| **Completed** | ✅ Yes (#agent-tasks) | ✅ Yes (Messages TO Joe) | ✅ |
+| **Review verdict** | ✅ Yes (#agent-tasks) | ✅ Yes (Messages TO Joe) | 📋 |
+| **Tasks unblocked** | ✅ Yes (#agent-tasks) | ❌ No (not needed) | 🟢 |
 
 ### Message Formatting
 
@@ -547,4 +577,4 @@ post_start("Maya", "CLI-010", "Frontend ordering UI", "feature/CLI-010")
 
 ---
 
-**Last Updated:** 2025-12-10 (CHAT-008 - Added operational status + 3-step message flow)
+**Last Updated:** 2025-12-10 (CHAT-FIXES - Channel consolidation + emoji conventions)

@@ -14,7 +14,55 @@
 | **Status** | 🔄 In Progress |
 | **PRD/Spec** | `docs/{relevant_doc}.md` |
 | **Output Doc** | `docs/TASK_{AGENT}_{DESC}.md` |
-| **Branch** | `feature/{TASK-ID}` |
+| **Branch** | `feature/{TASK-ID}` _(Created by Joe - agent works here, does NOT commit/push)_ |
+| **CLI** | {Codex / Claude} |
+
+---
+
+## CLI Selection & Limitations
+
+> **For Joe:** When CEO says "no Claude," use Codex first, Gemini API as fallback. Do NOT ask permission.
+> **For Agent:** If you hit Codex limitations, task will auto-fallback to Gemini API.
+
+| Item | Value |
+|------|-------|
+| **Primary CLI** | Codex (free, unlimited) |
+| **Fallback** | Gemini 2.5 Flash API ($0.30/$2.50) |
+| **Reason** | {Why this task is Codex-suitable or needs fallback} |
+| **Known Limitations** | {List Codex limitations for this task, if any} |
+| **Fallback Trigger** | {What would cause Gemini fallback?} |
+
+### Codex Limitations Reference (Triggers Gemini Fallback)
+
+**Codex CANNOT (use Gemini instead):**
+- ❌ Docker operations (Docker MCP fails) → Gemini 2.5 Flash API
+- ❌ Complex browser automation (Playwright timeout) → Gemini 2.5 Flash API
+- ❌ SSH to VM in sandbox mode → Gemini 2.5 Flash API
+- ❌ Complex multi-file refactoring → Gemini 2.5 Pro API
+
+**Codex CAN (99% of tasks):**
+- ✅ SQLite queries (excellent, fast) - Model: Codex 5.1
+- ✅ File read/write (via shell fallback) - Free unlimited
+- ✅ Sequential thinking (task breakdown) - MCP working
+- ✅ Code reviews - Cost-efficient, good quality
+- ✅ Research tasks (Memory MCP) - Context retention
+- ✅ Simple/moderate implementations - 69-72% SWE-bench
+
+### Example CLI Selection Logic
+
+```
+Task: "Add SQLite migration for new table"
+✅ Codex CLI: SQLite is Codex's strength ($0 cost)
+
+Task: "Build Docker image and test on VM"
+⚠️ Codex tries first → Docker fails → Gemini 2.5 Flash fallback (~$0.50 cost)
+
+Task: "Implement API endpoint + write Playwright tests"
+⚠️ Codex does API → Playwright fails → Gemini 2.5 Flash for tests (~$0.50 total)
+
+Task: "Review code quality and suggest improvements"
+✅ Codex CLI: Code review is perfect for Codex (free, fast, accurate)
+```
 
 ---
 
@@ -63,10 +111,11 @@
 - [ ] Tested on VM (http://20.217.86.4:...)
 - [ ] No console errors or warnings
 
-### Git
-- [ ] On feature branch `feature/{TASK-ID}`
-- [ ] All changes committed
-- [ ] Pushed to origin
+### Git (Agent Checklist - DO NOT commit/push)
+- [ ] On feature branch `feature/{TASK-ID}` (created by Joe)
+- [ ] All changes saved locally
+- [ ] **DO NOT commit** (Jacob does this after approval)
+- [ ] **DO NOT push** (Jacob does this after approval)
 
 ### Documentation (per CLAUDE.md §8)
 - [ ] `API_ENDPOINTS_INVENTORY.md` (if API changed)

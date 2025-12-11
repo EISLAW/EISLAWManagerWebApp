@@ -2,6 +2,35 @@
 
 > **Core Principle:** Joe (CTO) is a ROUTER, not a WORKER. Minimize Joe's token usage by delegating ALL actual work to CLI agents.
 
+---
+
+## 🎯 PRIMARY ORCHESTRATION METHOD: CLI Agent Spawning
+
+> **POLICY (2025-12-10):** CLI-based agent spawning with chat integration is the **DEFAULT and PRIMARY** method. VM-based orchestration is **OPTIONAL** (only when CEO explicitly requests it).
+
+### Quick Decision Tree
+
+```
+CEO gives task
+    ↓
+Does CEO say "use VM orchestration" or "run on Azure"?
+    ↓
+    YES → Use VM-based orchestration (§3 Azure VM)
+    NO  → Use CLI agent spawning (DEFAULT - this section)
+```
+
+### Why CLI is Default
+
+| Factor | CLI Spawning (DEFAULT) | VM Orchestration (OPTIONAL) |
+|--------|------------------------|------------------------------|
+| **Speed** | Instant spawn, no SSH overhead | Requires SSH connection |
+| **Visibility** | Real-time chat updates | Logs via docker-compose |
+| **Parallelism** | Native (background `&`) | Limited by VM resources |
+| **CEO Experience** | Live Mattermost updates | Manual log checking |
+| **Best For** | All development tasks | Deployment, production ops |
+
+---
+
 ## Architecture
 
 ```
@@ -15,14 +44,16 @@
 │                    JOE (Lightweight Orchestrator)                │
 │                                                                  │
 │   Token Budget: MINIMAL                                          │
+│   DEFAULT Method: CLI Agent Spawning + Chat Integration         │
 │                                                                  │
 │   Joe DOES:                                                      │
 │   ✅ Parse CEO request into task list                           │
 │   ✅ Determine task dependencies                                 │
-│   ✅ Spawn CLI agents with full prompts                         │
-│   ✅ Wait for results                                            │
-│   ✅ Route outputs to next agent                                 │
-│   ✅ Report final status to CEO                                  │
+│   ✅ Spawn CLI agents (DEFAULT) with chat integration           │
+│   ✅ Post to #agent-tasks for CEO visibility                    │
+│   ✅ Return to CEO immediately (async operation)                │
+│   ✅ Monitor TEAM_INBOX + chat for completions                  │
+│   ✅ Route dependent tasks when unblocked                       │
 │                                                                  │
 │   Joe does NOT:                                                  │
 │   ❌ Read files (tell agents to read)                           │
@@ -31,6 +62,7 @@
 │   ❌ Review PRDs (Jacob does this)                              │
 │   ❌ Run tests (Eli does this)                                  │
 │   ❌ Document outcomes (Jacob does this → TEAM_INBOX)           │
+│   ❌ Default to VM orchestration (use CLI unless CEO says so)   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -49,9 +81,10 @@
 | **Noa** | Legal/Copy | Privacy forms, legal text, UX copy |
 | **Jacob** | Skeptical CTO | Code review, architecture review, approval gate, **documents to TEAM_INBOX** |
 
-## Execution Patterns
+## Execution Patterns (CLI Agent Spawning - DEFAULT)
 
-> **DEFAULT: PARALLEL.** Joe spawns agents in parallel unless there's a blocking dependency.
+> **DEFAULT: PARALLEL.** Joe spawns CLI agents in parallel unless there's a blocking dependency.
+> **ALWAYS use CLI spawning + chat integration** unless CEO explicitly requests VM orchestration.
 
 ### Pattern 1: Parallel (DEFAULT - Independent Tasks)
 
@@ -487,3 +520,50 @@ wait
 # Spawn with timeout (5 min)
 timeout 300 claude -p "You are Jacob..." > /tmp/jacob_result.txt
 ```
+
+---
+
+## OPTIONAL: VM-Based Orchestration
+
+> **Only use when CEO explicitly requests "use VM orchestration" or "run on Azure".**
+
+VM orchestration is the **secondary/alternative method**. Use only when:
+- CEO explicitly says "run on VM" or "use VM orchestration"
+- Production deployment or Docker-specific tasks
+- Tasks requiring VM infrastructure (Langfuse, Meilisearch, etc.)
+
+### VM Orchestration Commands
+
+```bash
+# Connect to VM
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+
+# Docker commands
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+/usr/local/bin/docker-compose-v2 logs -f api
+/usr/local/bin/docker-compose-v2 restart api
+
+# Orchestrator service (port 8801)
+curl http://20.217.86.4:8801/health
+```
+
+### When VM Orchestration is Required
+
+| Scenario | Why VM Needed |
+|----------|---------------|
+| Production deployment | Docker containers on Azure |
+| API container restart | Docker-compose required |
+| Langfuse tracing setup | VM-hosted service |
+| Database migrations (production) | SQLite on VM volume |
+| Full E2E testing with all services | Multi-container orchestration |
+
+### Key Difference from CLI Spawning
+
+| Aspect | CLI Spawning (DEFAULT) | VM Orchestration (OPTIONAL) |
+|--------|------------------------|------------------------------|
+| Agent spawn | `claude -p "..."` | SSH + scripts on VM |
+| Visibility | Mattermost chat | Docker logs |
+| Task tracking | TEAM_INBOX + chat | TEAM_INBOX only |
+| Best for | Development, PRDs, reviews | Deployment, ops |
+
+**Remember:** If CEO doesn't specify, use CLI spawning. VM is the exception, not the rule.
