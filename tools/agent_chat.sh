@@ -14,7 +14,18 @@
 #   agent_chat_review "Jacob" "CLI-009" "APPROVED" "All checks passed"
 
 # Load webhook URLs from secrets.json
-SECRETS_FILE="C:/Coding Projects/EISLAW System/secrets.local.json"
+# Handle both Windows and WSL paths
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    # Windows CMD or Git Bash
+    SECRETS_FILE="C:/Coding Projects/EISLAW System Clean/secrets.local.json"
+elif [[ -d "/mnt/c/Coding Projects/EISLAW System Clean" ]]; then
+    # WSL environment
+    SECRETS_FILE="/mnt/c/Coding Projects/EISLAW System Clean/secrets.local.json"
+else
+    # Fallback - relative path from script location
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    SECRETS_FILE="${SCRIPT_DIR}/secrets.local.json"
+fi
 
 # Extract webhook URLs (requires jq)
 if command -v jq &> /dev/null; then
@@ -98,7 +109,8 @@ agent_chat_complete() {
 
     local message="✅ **Completed:** $task_id\n**Duration:** $duration\n**Commit:** \`$commit_hash\`\n**Ready for:** $ready_for\n**Details:** See TEAM_INBOX.md Messages TO Joe"
 
-    agent_chat_message "$agent_name" "$task_id" "$message" "completions" ":white_check_mark:"
+    # Changed from "completions" to "agent-tasks" per CHAT-FIXES consolidation
+    agent_chat_message "$agent_name" "$task_id" "$message" "agent-tasks" ":white_check_mark:"
 }
 
 # Post review verdict
@@ -130,7 +142,8 @@ agent_chat_review() {
 
     local message="$emoji **$verdict:** $task_id\n**Details:** $details"
 
-    agent_chat_message "$agent_name" "$task_id" "$message" "reviews" "$icon"
+    # Changed from "reviews" to "agent-tasks" per CHAT-FIXES consolidation
+    agent_chat_message "$agent_name" "$task_id" "$message" "agent-tasks" "$icon"
 }
 
 # Post CEO alert
