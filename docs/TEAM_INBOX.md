@@ -109,12 +109,14 @@ EISLAW is a Hebrew-language legal practice management system with:
 | **Jacob** | ✅ **APPROVED** | **DOC-001 Review (2025-12-09):** PRD updated with mirrored root docs, VM hosting (no auth), owners set (David/Alex/Maya/Jane). Remaining: pick hosting port + versioning tool; define root-doc sync mechanism during implementation. |
 | **Jacob** | ✅ **APPROVED** | **AOS-024 Review (2025-12-09):** Verified agents.py against PRD §2.2. ✅ Alex: Sonnet model, temp 0.2, 8K tokens, read_file/edit_file tools. ✅ Jacob: Opus model, temp 0.1, 4K tokens, read_file/curl_api/grep_codebase tools. ✅ API `/agents` returns 2 agents, `/agents/{name}` returns detail with 404 handling. ✅ VM verified. ⚠️ Minor: scp_to_vm/ssh_command tools deferred (needs SSH key in container). **VERDICT: ✅ ALEX APPROVED.** AOS-025 UNBLOCKED. |
 
-**RESEARCH-SKILLS-001 (2025-12-12):** Skills Architecture Research complete.  
-**Deliverable:** `docs/RESEARCH_SKILLS_ARCHITECTURE.md` (10 sections + appendices).  
-**Key Findings:** 1) Procedural workflows in CLAUDE.md should become Skills (VM boot, monitoring, testing, TEAM_INBOX), leaving identity/guardrails in place. 2) Lean taxonomy proposed with core/quality/automation/domain/external tiers; self-learning via append-only memory Skills with human-gated manifest edits. 3) Anthropic document Skills are high-ROI but `plugin` CLI missing locally—install required to enable DOCX/PDF/XLSX.  
-**Recommendations:** Phase 1 create core/quality Skills + install document Skills; Phase 2 automation/RTL/UX Skills; Phase 3 domain (privacy, clients, RAG) + marketing Skills.  
-**Time Saved Estimate:** ~4–6 hrs/week, ~40–50% cognitive load reduction once Skills adopted.  
+**RESEARCH-SKILLS-001 (2025-12-12):** Skills Architecture Research complete.
+**Deliverable:** `docs/RESEARCH_SKILLS_ARCHITECTURE.md` (10 sections + appendices).
+**Key Findings:** 1) Procedural workflows in CLAUDE.md should become Skills (VM boot, monitoring, testing, TEAM_INBOX), leaving identity/guardrails in place. 2) Lean taxonomy proposed with core/quality/automation/domain/external tiers; self-learning via append-only memory Skills with human-gated manifest edits. 3) Anthropic document Skills are high-ROI but `plugin` CLI missing locally—install required to enable DOCX/PDF/XLSX.
+**Recommendations:** Phase 1 create core/quality Skills + install document Skills; Phase 2 automation/RTL/UX Skills; Phase 3 domain (privacy, clients, RAG) + marketing Skills.
+**Time Saved Estimate:** ~4–6 hrs/week, ~40–50% cognitive load reduction once Skills adopted.
 **Next Steps:** Install plugin runner → add Skills scaffold → curate missing `DOCUMENTATION_BIBLE.md` → begin Phase 1 Skills implementation.
+
+| **Jacob** | ✅ **APPROVED** | **RESEARCH-SKILLS-001 Review (2025-12-12):** ✅ Comprehensive research across 42 docs (CLAUDE.md, episodic log, PRDs, specs). ✅ Skills vs CLAUDE.md mapping complete (detailed table: procedural → Skills, identity/guardrails → stays). ✅ Lean 4-tier taxonomy proposed (core/quality/automation/domain/external). ✅ Self-learning analysis complete (append-only memory Skills, human-gated manifests). ✅ Anthropic Skills install attempted (blocked by missing plugin CLI - environment issue, not David's fault). ✅ UX/UI + marketing Skills researched (gaps identified, custom Skills proposed). ✅ Research doc created with all 10 sections + 4 appendices. ✅ MkDocs navigation updated (mkdocs.yml line 11). ✅ TEAM_INBOX updated with completion message. ✅ 3 example Skill manifests (VM connect, episodic log, RTL/a11y). ✅ Phased roadmap with cost-benefit analysis (4-6 hrs/week saved, 40-50% cognitive load reduction). ⚠️ Noted issues: DOCUMENTATION_BIBLE.md missing (pre-existing, David flagged), plugin CLI missing (environment blocker). **VERDICT: ✅ DAVID APPROVED.** Excellent research quality. Commit 58aebb90 pushed to origin/feature/DISK-002-IMPL. Ready for CEO review and Phase 1 implementation. |
 
 ---
 
