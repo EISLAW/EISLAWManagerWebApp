@@ -1,0 +1,1533 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import Card from '../../../components/Card.jsx'
+import KPI from '../../../components/KPI.jsx'
+import StagePills from '../../../components/StagePills.jsx'
+import TabNav from '../../../components/TabNav.jsx'
+import TasksPanel from '../../../components/TasksPanel.jsx'
+import TaskBoard from '../../../features/tasksNew/TaskBoard.jsx'
+import TasksWidget from '../../../components/TasksWidget.jsx'
+import EmailsWidget from '../../../components/EmailsWidget.jsx'
+import AddClientModal from '../../../components/AddClientModal.jsx'
+import LinkAirtableModal from '../../../components/LinkAirtableModal.jsx'
+import { addClientTask, updateTaskFields } from '../../../features/tasksNew/TaskAdapter.js'
+import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight, Archive, ArchiveRestore} from 'lucide-react'
+import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../../utils/apiBase.js'
+
+// Simple in-memory cache for client summaries during the session to avoid re-fetch on tab switches
+const summaryCache = new Map()
+export default function ClientOverview(){
+  const { name } = useParams()
+  const decodedName = useMemo(() => decodeURIComponent(name), [name])
+  const encodedName = useMemo(() => encodeURIComponent(decodedName), [decodedName])
+  const loc = useLocation()
+  const navigate = useNavigate()
+  const params = new URLSearchParams(loc.search)
+  const tab = params.get('tab') || 'overview'
+  const base = `/clients/${encodedName}`
+  const ENV_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/,'')
+  const [apiBase, setApiBase] = useState(() => getStoredApiBase() || ENV_API || 'https://eislaw-api-01.azurewebsites.net')
+  const API = useMemo(() => (apiBase || ENV_API || 'https://eislaw-api-01.azurewebsites.net').replace(/\/$/,''), [apiBase, ENV_API])
+  const MODE = (import.meta.env.VITE_MODE || '').toUpperCase()
+  const HIDE_OUTLOOK = String(import.meta.env.VITE_HIDE_OUTLOOK||'').toLowerCase() === '1' || String(import.meta.env.VITE_HIDE_OUTLOOK||'').toLowerCase() === 'true'
+
+  const [summary, setSummary] = useState({ client:{ name: decodedName }, files:[], emails:[] })
+  const [online, setOnline] = useState({ emails:[], loading:false })
+  const [emailRefreshKey, setEmailRefreshKey] = useState(0)
+  const [syncingEmails, setSyncingEmails] = useState(false)
+  const [syncStatus, setSyncStatus] = useState('')
+  const [syncResult, setSyncResult] = useState(null)
+  const [spBusy, setSpBusy] = useState(false)
+  const [locations, setLocations] = useState(null)
+  const [edit, setEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ email: '', phone: '' })
+  const owaRef = useRef(null)
+  const [showWord, setShowWord] = useState(false)
+  const [wordList, setWordList] = useState([])
+  const [wordStatus, setWordStatus] = useState('')
+  const TEMPLATE_DIR = import.meta.env.VITE_TEMPLATES_PATH || 'C:\\\\Users\\\\USER\\\\Eitan Shamir & Co\\\\EISLAW TEAM - מסמכים\\\\לקוחות משרד\\\\לקוחות משרד_טמפלייטים'
+  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role_desc: '', address: '', id_number: '' })
+  const [idx, setIdx] = useState({ items: [], total: 0, loading: false, mode: '' })
+  const [emailFilters, setEmailFilters] = useState({ query:'', sender:'', receiver:'', dateFrom:'', dateTo:'', attachments:'any' })
+  const [viewer, setViewer] = useState({ open: false, loading: false, error: '', html: '', meta: {} })
+  const [sel, setSel] = useState(null)
+  const [clientCardOpen, setClientCardOpen] = useState(false)
+  const [clientModalKey, setClientModalKey] = useState(0)
+  const [syncingClientCard, setSyncingClientCard] = useState(false)
+  const [airtableLinkModal, setAirtableLinkModal] = useState({ open: false, afterSync: false })
+  const [creatingTaskId, setCreatingTaskId] = useState(null)
+  const pendingSyncAfterLinkRef = useRef(false)
+  const sharepointLinked = Boolean(summary.client?.sharepoint_url)
+  const airtableLinked = Boolean(summary.client?.airtable_id)
+  const [emailSinceDays, setEmailSinceDays] = useState(90)
+  const [lastAutoSync, setLastAutoSync] = useState(null)
+  const autoSyncAttemptedRef = useRef(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [isArchived, setIsArchived] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  // Simple toast helper
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  // Load summary before hooks that depend on it to avoid TDZ errors
+  const loadSummary = useCallback(async (opts = {}) => {
+    const key = encodedName
+    const useCache = opts.useCache !== false
+    if(useCache && summaryCache.has(key)){
+      const cached = summaryCache.get(key)
+      setSummary(cached)
+      setEditForm({ email: (cached.client?.emails||[])[0] || '', phone: cached.client?.phone||'' })
+    }
+    try{
+      const r = await fetch(`${API}/api/client/summary?name=${encodedName}&limit=10`)
+      if(!r.ok) return null
+      const j = await r.json()
+      summaryCache.set(key, j)
+      setSummary(j)
+      setIsArchived(j?.client?.active === false)
+      setEditForm({ email: (j.client?.emails||[])[0] || '', phone: j.client?.phone||'' })
+      return j
+    }catch{
+      return summaryCache.get(key) || null
+    }
+  }, [API, encodedName])
+
+  const openLinkModal = useCallback((afterSync = false) => {
+    pendingSyncAfterLinkRef.current = afterSync
+    setAirtableLinkModal({ open: true, afterSync })
+  }, [])
+  const handleLinkModalClose = useCallback(() => {
+    pendingSyncAfterLinkRef.current = false
+    setAirtableLinkModal({ open: false, afterSync: false })
+  }, [])
+  const handleLinkCompleted = useCallback(
+    async (linkedRecord) => {
+      const refreshed = await loadSummary()
+      setAirtableLinkModal({ open: false, afterSync: false })
+      // Optimistically reflect linked Airtable ID if refresh didn't populate it yet
+      if (!refreshed?.client?.airtable_id && linkedRecord?.id) {
+        setSummary((prev) => ({
+          ...prev,
+          client: {
+            ...(prev.client || {}),
+            airtable_id: linkedRecord.id,
+            airtable_url: linkedRecord.airtable_url || (prev.client?.airtable_url || ''),
+          },
+        }))
+      }
+      const shouldSync = pendingSyncAfterLinkRef.current
+      pendingSyncAfterLinkRef.current = false
+      if (shouldSync && ((refreshed && refreshed.client) || summary.client)) {
+        await syncClientCard((refreshed && refreshed.client) || summary.client)
+      }
+    },
+    [loadSummary, summary.client, syncClientCard]
+  )
+
+  useEffect(() => {
+    if(apiBase && apiBase !== getStoredApiBase()){
+      setStoredApiBase(apiBase)
+    }
+    if(!apiBase || apiBase === 'https://eislaw-api-01.azurewebsites.net'){
+      (async()=>{
+        const detected = await detectApiBase([apiBase, ENV_API])
+        if(detected) setApiBase(detected)
+      })()
+    }
+  }, [apiBase, ENV_API])
+
+  useEffect(() => { loadSummary({ useCache:true }) }, [loadSummary])
+
+  useEffect(() => {
+    if(tab === 'emails'){
+      (async()=>{
+        try{
+          setIdx(s=>({ ...s, loading: true }))
+          const r = await fetch(`${API}/email/by_client?name=${encodedName}&limit=25&offset=0`)
+          if(r.ok){
+            const j = await r.json();
+            // If primary path yields 0 (e.g., client not linked), attempt a search by email as a UI-side fallback
+            if((j.total||0) === 0){
+              const emails = Array.from(new Set([ ...(summary.client?.emails||[]).filter(Boolean), ...(((summary.client?.contacts)||[]).map(c=>c?.email).filter(Boolean)) ]))
+              if(emails.length){
+                const q = encodeURIComponent(emails[0])
+                try{
+                  const r2 = await fetch(`${API}/email/search?q=${q}&limit=25&offset=0`)
+                  if(r2.ok){ const j2 = await r2.json(); setIdx({ items: j2.items||[], total: j2.total||0, loading: false, mode: 'search' }); return }
+                }catch{}
+              }
+            }
+            setIdx({ items: j.items||[], total: j.total||0, loading: false, mode: (j.mode||'client') })
+          } else {
+            setIdx({ items: [], total: 0, loading: false, mode: '' })
+          }
+        }catch{ setIdx({ items: [], total: 0, loading: false, mode: '' }) }
+      })()
+    }
+  }, [tab, encodedName, summary, API, emailRefreshKey])
+
+  // Auto-sync emails when visiting the emails tab for the first time per client session
+  // Only auto-syncs if:
+  // 1. We're on the emails tab
+  // 2. Client has email addresses configured
+  // 3. Haven't auto-synced for this client in the current session
+  // 4. Not already syncing
+  useEffect(() => {
+    if (tab !== 'emails') return
+    if (autoSyncAttemptedRef.current) return
+    if (syncingEmails) return
+
+    const clientEmails = summary.client?.emails || []
+    const contactEmails = (summary.client?.contacts || []).map(c => c?.email).filter(Boolean)
+    const hasEmails = clientEmails.length > 0 || contactEmails.length > 0
+    if (!hasEmails) return
+
+    // Check localStorage for last sync time for this client
+    const storageKey = `eislaw.email.lastSync.${encodedName}`
+    try {
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        const lastSync = new Date(stored)
+        const now = new Date()
+        const hoursSinceSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
+        // Skip auto-sync if synced within the last 2 hours
+        if (hoursSinceSync < 2) {
+          autoSyncAttemptedRef.current = true
+          setLastAutoSync(lastSync)
+          return
+        }
+      }
+    } catch {}
+
+    // Mark as attempted to prevent re-running
+    autoSyncAttemptedRef.current = true
+
+    // Trigger background sync
+    ;(async () => {
+      const windowDays = 45 // Use a shorter window for auto-sync
+      setSyncingEmails(true)
+      setSyncStatus('סנכרון אוטומטי...')
+      try {
+        const r = await fetch(`${API}/email/sync_client`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: decodedName, since_days: windowDays })
+        })
+        if (r.ok) {
+          const data = await r.json()
+          const summary = data?.summary || {}
+          const insertedRaw = summary?.inserted_or_updated ?? summary?.updated ?? summary?.inserted ?? summary?.count ?? null
+          const inserted = Number.isFinite(Number(insertedRaw)) ? Number(insertedRaw) : null
+          const now = new Date()
+          setLastAutoSync(now)
+          try {
+            localStorage.setItem(storageKey, now.toISOString())
+          } catch {}
+          setSyncResult({
+            inserted,
+            participants: Array.isArray(data?.participants) ? data.participants.filter(Boolean) : [],
+            sinceDays: data?.since_days || windowDays,
+            at: now.toISOString()
+          })
+          setSyncStatus(inserted !== null ? `סונכרנו ${inserted} אימיילים` : 'סנכרון אוטומטי הושלם')
+          await loadSummary()
+          setEmailRefreshKey(v => v + 1)
+        }
+      } catch (err) {
+        console.warn('Auto email sync failed:', err)
+        setSyncStatus('')
+      } finally {
+        setSyncingEmails(false)
+        setTimeout(() => setSyncStatus(''), 4000)
+      }
+    })()
+  }, [tab, encodedName, summary.client?.emails, summary.client?.contacts, syncingEmails, API, decodedName, loadSummary])
+
+  // Reset auto-sync flag when client changes
+  useEffect(() => {
+    autoSyncAttemptedRef.current = false
+    setLastAutoSync(null)
+  }, [encodedName])
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setShowMoreMenu(false)
+      }
+    }
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMoreMenu])
+
+  const primaryEmail = useMemo(() => (summary.client?.emails||[])[0] || '', [summary])
+  const phoneDigits = useMemo(() => (summary.client?.phone||'').replace(/\D/g,''), [summary])
+  const filteredIdxItems = useMemo(() => {
+    const q = (emailFilters.query || '').toLowerCase().trim()
+    const sender = (emailFilters.sender || '').toLowerCase().trim()
+    const receiver = (emailFilters.receiver || '').toLowerCase().trim()
+    const hasAttach = emailFilters.attachments
+    const fromTs = emailFilters.dateFrom ? Date.parse(emailFilters.dateFrom) : null
+    const toTs = emailFilters.dateTo ? Date.parse(emailFilters.dateTo) + (24*60*60*1000 - 1) : null
+    return (idx.items || []).filter(it => {
+      const derivedAttachments = Boolean(it?.has_attachments || Number(it?.attachments_count||0) > 0)
+      const receivedTs = it.received ? Date.parse(it.received) : null
+      if(fromTs && (receivedTs === null || receivedTs < fromTs)) return false
+      if(toTs && (receivedTs === null || receivedTs > toTs)) return false
+      if(q){
+        const hay = `${it.subject||''} ${it.preview||''} ${it.from||''} ${it.to||''} ${it.cc||''}`.toLowerCase()
+        if(!hay.includes(q)) return false
+      }
+      if(sender && !String(it.from||'').toLowerCase().includes(sender)) return false
+      const allRecipients = `${it.to||''} ${it.cc||''}`.toLowerCase()
+      if(receiver && !allRecipients.includes(receiver)) return false
+      if(hasAttach === 'yes' && !derivedAttachments) return false
+      if(hasAttach === 'no' && derivedAttachments) return false
+      return true
+    })
+  }, [idx.items, emailFilters])
+  const lastSyncLabel = useMemo(() => {
+    if(!syncResult?.at) return ''
+    try{
+      return new Date(syncResult.at).toLocaleString('he-IL', { dateStyle:'short', timeStyle:'short' })
+    }catch{
+      return ''
+    }
+  }, [syncResult])
+
+  // Relative time label for last sync (auto or manual)
+  const relativeTimeSinceSync = useMemo(() => {
+    const syncTime = syncResult?.at ? new Date(syncResult.at) : lastAutoSync
+    if (!syncTime) return null
+    const now = new Date()
+    const diffMs = now.getTime() - syncTime.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    if (diffMinutes < 1) return 'עכשיו'
+    if (diffMinutes < 60) return `לפני ${diffMinutes} דקות`
+    const diffHours = Math.floor(diffMinutes / 60)
+    if (diffHours < 24) return `לפני ${diffHours} שעות`
+    const diffDays = Math.floor(diffHours / 24)
+    return `לפני ${diffDays} ימים`
+  }, [syncResult?.at, lastAutoSync])
+  const isRtl = useCallback((txt='') => /[\u0590-\u05FF]/.test(txt), [])
+  const syncParticipantsMeta = useMemo(() => {
+    if(!Array.isArray(syncResult?.participants)) return { items: [], extra: 0 }
+    const filtered = syncResult.participants.filter(Boolean)
+    return {
+      items: filtered.slice(0, 4),
+      extra: Math.max(0, filtered.length - 4)
+    }
+  }, [syncResult])
+
+  const modalClient = useMemo(() => {
+    const base = summary?.client || {}
+    if(!base || Object.keys(base).length === 0) return null
+    const emails = Array.isArray(base.emails)
+      ? base.emails
+      : base.email
+      ? [base.email]
+      : []
+    const clientType = Array.isArray(base.client_type)
+      ? base.client_type
+      : base.client_type
+      ? [base.client_type].flat().filter(Boolean)
+      : []
+    return {
+      ...base,
+      name: base.display_name || base.name || decodedName,
+      display_name: base.display_name || base.name || decodedName,
+      emails,
+      phone: base.phone || '',
+      notes: base.notes || base.description || '',
+      status: base.stage || base.status || '',
+      client_type: clientType,
+      contacts: Array.isArray(base.contacts) ? base.contacts : [],
+      airtable_id: base.airtable_id || base.id || '',
+      airtable_url: base.airtable_url || base.airtableUrl || '',
+      folder: base.folder || '',
+    }
+  }, [summary, decodedName])
+
+  const openClientCardModal = () => {
+    if(!modalClient){
+      alert('נתוני הלקוח עדיין לא מוכנים. נסה שוב בעוד רגע.')
+      return
+    }
+    setClientModalKey(v => v + 1)
+    setClientCardOpen(true)
+  }
+
+  const closeClientCardModal = () => setClientCardOpen(false)
+
+  const handleClientModalSaved = async () => {
+    await loadSummary()
+    setEmailRefreshKey(v => v + 1)
+  }
+
+  async function syncClientCard(clientData){
+    if(!clientData){
+      alert('נתוני הלקוח עדיין לא מוכנים.')
+      return
+    }
+    if(!clientData.airtable_id){
+      openLinkModal(true)
+      return
+    }
+    const emails = Array.isArray(clientData.emails) ? clientData.emails : []
+    if(!emails.length){
+      alert('ללקוח חסרת כתובת אימייל. יש להוסיף אחת קודם.')
+      return
+    }
+    setSyncingClientCard(true)
+    const payloadBase = { method:'POST', headers:{'Content-Type':'application/json'} }
+    try{
+      await fetch(`${API}/airtable/clients_upsert`, {
+        ...payloadBase,
+        body: JSON.stringify({
+          name: clientData.name || decodedName,
+          email: emails[0],
+          airtable_id: clientData.airtable_id || clientData.id,
+          phone: clientData.phone || undefined,
+        })
+      })
+      const registryPayload = {
+        display_name: clientData.display_name || clientData.name || decodedName,
+        email: emails,
+        phone: clientData.phone || '',
+        client_type: Array.isArray(clientData.client_type) ? clientData.client_type : [],
+        stage: clientData.stage || clientData.status || '',
+        notes: clientData.notes || '',
+        contacts: Array.isArray(clientData.contacts) ? clientData.contacts : [],
+        airtable_id: clientData.airtable_id || clientData.id || '',
+        airtable_url: clientData.airtable_url || clientData.airtableUrl || '',
+      }
+      if(clientData.folder){
+        registryPayload.folder = clientData.folder
+      }
+      await fetch(`${API}/registry/clients`, {
+        ...payloadBase,
+        body: JSON.stringify(registryPayload)
+      })
+      await loadSummary()
+      alert('הלקוח סונכרן בהצלחה.')
+    }catch(err){
+      console.error('syncClientCard', err)
+      alert('סנכרון הלקוח נכשל. בדוק את הקונסול לפרטים.')
+    }finally{
+      setSyncingClientCard(false)
+    }
+  }
+
+  const attachIndicator = (item) => {
+    const count = Number(item?.attachments_count || 0)
+    const hasAtt = Boolean(item?.has_attachments || count > 0)
+    if(!hasAtt) return <span className="inline-block w-4" aria-hidden="true" />
+    const label = count > 0 ? `${count} קבצים מצורפים` : 'כולל קבצים מצורפים'
+    return (
+      <span
+        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+        title={label}
+        aria-label={label}
+      >
+        <Paperclip className="w-3 h-3" aria-hidden="true" />
+        {count > 0 && <span>{count}</span>}
+      </span>
+    )
+  }
+
+  function gotoIndexedEmails(){
+    try{
+      window.location.assign(`/clients/${encodedName}?tab=emails`)
+    }catch{}
+  }
+
+  function outlookMode(){
+    try{ return localStorage.getItem('outlookOpenMode') || 'search' }catch{ return 'search' }
+  }
+
+  function openOwaWindow(url){
+    const realm = 'eislaw.co.il'
+    const warmUrl = `https://outlook.office.com/owa/?realm=${encodeURIComponent(realm)}&exsvurl=1`
+    const features = 'noreferrer,resizable=yes,scrollbars=yes,status=no,width=1200,height=900'
+    try{
+      const w = window.open(url || warmUrl, 'EISLAW-OWA', features)
+      owaRef.current = w
+      try { w && w.focus && w.focus() } catch {}
+      if(!w){
+        const a = document.createElement('a'); a.href = url || warmUrl; a.target = '_blank'; a.rel = 'noreferrer';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      return w
+    }catch{ return null }
+  }
+
+  async function openOutlookFor(email){
+    if(HIDE_OUTLOOK) return
+    if(!email) return
+    // Compose a new message to the selected email
+    const mailto = `mailto:${encodeURIComponent(email)}`
+    try{
+      // prefer same-tab navigation to mailto to avoid extra blank tabs
+      const a = document.createElement('a'); a.href = mailto; a.rel = 'noreferrer';
+      a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+    }catch{}
+  }
+
+  function openOutlookSearch(email, months=2){
+    if(HIDE_OUTLOOK) return
+    // Build AQS for last X months
+    const d = new Date();
+    d.setMonth(d.getMonth() - months)
+    const since = d.toISOString().slice(0,10)
+    const realm = 'eislaw.co.il'
+    const query = encodeURIComponent(`participants:${email} AND received>=${since}`)
+    const owa = `https://outlook.office.com/owa/?realm=${encodeURIComponent(realm)}&exsvurl=1&path=/mail/search&query=${query}`
+    const w = openOwaWindow(owa); try { if(w) w.location = owa } catch {}
+  }
+
+  function getAllAddresses(){
+    const clientEmails = (summary.client?.emails||[]).filter(Boolean)
+    const contactEmails = ((summary.client?.contacts)||[]).map(c => c?.email).filter(Boolean)
+    const seen = new Set(); const all = []
+    for(const e of [...clientEmails, ...contactEmails]){ if(!seen.has(e)){ seen.add(e); all.push(e) } }
+    return all
+  }
+
+  async function openLocalPath(path){
+    if(!path) return
+    try{
+      const res = await fetch(`${API}/dev/desktop/open_path`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path }) })
+      if(!res.ok){
+        const txt = await res.text()
+        throw new Error(txt || res.statusText)
+      }
+      return true
+    }catch(err){
+      setWordStatus(prev => prev || `Unable to open path: ${err?.message||err}`)
+      return false
+    }
+  }
+
+  async function pickFolderDialog(){
+    try{
+      const res = await fetch(`${API}/dev/desktop/pick_folder`, { method:'POST' })
+      if(!res.ok) return false
+      const j = await res.json()
+      if(j?.path){
+        await openLocalPath(j.path)
+        return true
+      }
+    }catch{}
+    return false
+  }
+
+  async function openClientFolder(){
+    try{
+      await fetch(`${API}/dev/open_folder`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: decodedName }) })
+    }catch{}
+  }
+
+  async function openFolderKpi(){
+    const isLocalApi = API.startsWith('http://127.0.0.1') || API.startsWith('http://localhost')
+    // Try local folder first
+    if(isLocalApi){
+      try{
+        const res = await fetch(`${API}/dev/open_folder`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: decodedName }) })
+        if(res.ok) return
+      }catch{}
+    }
+    // Try stored SharePoint URL first (most reliable)
+    if(summary.client?.sharepoint_url){
+      window.open(summary.client.sharepoint_url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    // Fallback to SharePoint API lookup
+    try{
+      const resp = await fetch(`${API}/api/sharepoint/search?name=${encodeURIComponent(decodedName)}`)
+      if(resp.ok){
+        const j = await resp.json()
+        if(j.found && j.folder?.webUrl){ window.open(j.folder.webUrl, '_blank', 'noopener,noreferrer'); return }
+      }
+    }catch{}
+    // As last resort, try local folder path if present
+    if(summary.client?.folder){ await openLocalPath(summary.client.folder) }
+  }
+
+  async function openEmailsAll(){
+    const addrs = getAllAddresses()
+    const toList = addrs.length ? addrs : (primaryEmail ? [primaryEmail] : [])
+    if(!toList.length) return
+    // Compose a single message addressed to all collected emails
+    const mailto = `mailto:${encodeURIComponent(toList.join(','))}`
+    try{
+      const a = document.createElement('a'); a.href = mailto; a.rel = 'noreferrer';
+      a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove()
+    }catch{}
+  }
+
+  async function ensureLocations(){
+    if(locations) return locations
+    // First check if we have SharePoint URL from client summary
+    if(summary.client?.sharepoint_url){
+      const data = { localFolder: summary.client?.folder||'', sharepointUrl: summary.client.sharepoint_url }
+      setLocations(data)
+      return data
+    }
+    const r = await fetch(`${API}/api/client/locations?name=${encodedName}`)
+    if(r.ok){
+      const data = await r.json(); setLocations(data); return data
+    }
+    return { localFolder: summary.client?.folder||'', sharepointUrl: '' }
+  }
+
+  async function openExplorerPath(){
+    const loc = await ensureLocations()
+    const p = loc.localFolder || summary.client?.folder
+    const isLocalApi = API.startsWith('http://127.0.0.1') || API.startsWith('http://localhost')
+    // Prefer server-side Explorer open first (prevents protocol prompts)
+    if(isLocalApi){
+      try{ const res = await fetch(`${API}/dev/open_folder?name=${encodedName}`, { method:'POST' }); if(res.ok) return }catch{}
+    }
+    // Fallbacks
+    if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer'); return }
+    if(p){ navigator.clipboard?.writeText(p); alert(`נתיב התיקייה הועתק:\n${p}`); return }
+    alert('עדיין אין מיפוי תיקייה')
+  }
+
+  async function openSharePoint(){
+    try{
+      setSpBusy(true)
+      const loc = await ensureLocations()
+      if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer') }
+      else { throw new Error('not found') }
+    }catch(err){
+      alert('לא ניתן למצוא את תיקיית SharePoint. ניתן להגדיר מיפוי אם צריך.')
+    }finally{
+      setSpBusy(false)
+    }
+  }
+
+  async function fetchOnlinePreview(){
+    setOnline(s => ({...s, loading:true}))
+    try{
+      const r = await fetch(`${API}/api/client/summary_online?name=${encodedName}&limit=25`)
+      if(r.ok){
+        const data = await r.json()
+        setOnline({ emails: data.emails||[], loading:false })
+        return
+      }
+    }catch{}
+    setOnline(s => ({...s, loading:false}))
+  }
+
+  async function syncEmails(){
+    if(syncingEmails) return
+    const windowDays = Math.max(30, Math.min(365, Number(emailSinceDays)||90))
+    setSyncingEmails(true)
+    setSyncStatus('מושך מיילים...')
+    fetchOnlinePreview()
+    try{
+      const r = await fetch(`${API}/email/sync_client`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ name: decodedName, since_days: windowDays })
+      })
+      if(!r.ok){
+        const msg = await r.text()
+        throw new Error(msg || 'sync failed')
+      }
+      const data = await r.json()
+      const summary = data?.summary || {}
+      const insertedRaw = summary?.inserted_or_updated ?? summary?.updated ?? summary?.inserted ?? summary?.count ?? null
+      const inserted = Number.isFinite(Number(insertedRaw)) ? Number(insertedRaw) : null
+      setSyncResult({
+        inserted,
+        participants: Array.isArray(data?.participants) ? data.participants.filter(Boolean) : [],
+        sinceDays: data?.since_days || 45,
+        at: new Date().toISOString()
+      })
+      setSyncStatus(inserted !== null ? `הועלו ${inserted} אימיילים` : 'סנכרון הושלם')
+      await loadSummary()
+      setEmailRefreshKey(v => v + 1)
+    }catch(err){
+      console.error('syncEmails', err)
+      setSyncStatus('הסנכרון נכשל')
+      alert('סנכרון האימיילים נכשל. בדוק את הקונסול לפרטים.')
+    }finally{
+      setSyncingEmails(false)
+      setTimeout(() => setSyncStatus(''), 6000)
+    }
+  }
+
+  // Archive/Restore functions
+  async function archiveClient() {
+    // Check for open tasks first
+    try {
+      const tasksRes = await fetch(`${API}/api/tasks?client=${encodeURIComponent(decodedName)}&status=new,in_progress`)
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json()
+        const openTasks = tasksData.tasks || []
+        if (openTasks.length > 0) {
+          if (!confirm(`ללקוח זה יש ${openTasks.length} משימות פתוחות. להעביר לארכיון בכל זאת?`)) return
+        } else {
+          if (!confirm('להעביר לקוח זה לארכיון?')) return
+        }
+      } else {
+        if (!confirm('להעביר לקוח זה לארכיון?')) return
+      }
+    } catch {
+      if (!confirm('להעביר לקוח זה לארכיון?')) return
+    }
+
+    try {
+      const r = await fetch(`${API}/api/clients/${encodeURIComponent(decodedName)}/archive`, {
+        method: 'PATCH'
+      })
+      if (r.ok) {
+        setIsArchived(true)
+        showToast('הלקוח הועבר לארכיון', 'success')
+      } else {
+        showToast('שגיאה בהעברה לארכיון', 'error')
+      }
+    } catch {
+      showToast('שגיאה בהעברה לארכיון', 'error')
+    }
+  }
+
+  async function restoreClient() {
+    if (!confirm('להחזיר לקוח זה לפעילים?')) return
+    try {
+      const r = await fetch(`${API}/api/clients/${encodeURIComponent(decodedName)}/restore`, {
+        method: 'PATCH'
+      })
+      if (r.ok) {
+        setIsArchived(false)
+        showToast('הלקוח הוחזר לפעילים', 'success')
+      } else {
+        showToast('שגיאה בשחזור', 'error')
+      }
+    } catch {
+      showToast('שגיאה בשחזור', 'error')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Archived client banner */}
+      {isArchived && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-600 font-medium">לקוח זה בארכיון</span>
+            <span className="text-sm text-amber-500">הנתונים נשמרים אך הלקוח מוסתר מהרשימה הראשית</span>
+          </div>
+          <button
+            onClick={restoreClient}
+            className="px-3 py-1.5 rounded bg-amber-600 text-white text-sm hover:bg-amber-700"
+          >
+            החזר לפעילים
+          </button>
+        </div>
+      )}
+      {/* Simplified Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/clients')}
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+            title="חזרה לרשימת הלקוחות"
+          >
+            <ArrowRight className="w-5 h-5 text-slate-600" />
+          </button>
+          <h1 className="heading text-2xl font-bold text-slate-800">{decodedName}</h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Primary actions - always visible */}
+          {primaryEmail && (
+            <a
+              href={`mailto:${primaryEmail}`}
+              data-testid="send-email"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              שלח מייל
+            </a>
+          )}
+
+          <button
+            data-testid="open-client-card"
+            onClick={openClientCardModal}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            כרטיס לקוח
+          </button>
+
+          {/* More menu */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              onClick={() => setShowMoreMenu(v => !v)}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              aria-label="פעולות נוספות"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showMoreMenu && (
+              <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg z-50 py-1">
+                                {!isArchived ? (
+                  <button
+                    onClick={() => { archiveClient(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Archive className="w-4 h-4" />
+                    העבר לארכיון
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { restoreClient(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ArchiveRestore className="w-4 h-4" />
+                    החזר לפעילים
+                  </button>
+                )}
+<button
+                  data-testid="edit-client"
+                  onClick={() => { setEdit(v => !v); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  {edit ? 'סגור עריכה' : 'ערוך לקוח'}
+                </button>
+
+                <button
+                  data-testid="airtable-sync"
+                  disabled={syncingClientCard || !modalClient}
+                  onClick={() => {
+                    setShowMoreMenu(false)
+                    if (!modalClient?.airtable_id) {
+                      openLinkModal(true)
+                      return
+                    }
+                    syncClientCard(modalClient)
+                  }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  {syncingClientCard ? 'מסנכרן...' : 'סנכרן Airtable'}
+                </button>
+
+                {summary.client?.folder && (
+                  <button
+                    onClick={() => { openFolderKpi(); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    פתח תיקייה
+                  </button>
+                )}
+
+                {!HIDE_OUTLOOK && primaryEmail && (
+                  <button
+                    data-testid="open-emails"
+                    onClick={() => { openOutlookFor(primaryEmail); setShowMoreMenu(false) }}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    פתח ב-Outlook
+                  </button>
+                )}
+
+                {phoneDigits && (
+                  <a
+                    data-testid="open-whatsapp"
+                    href={`https://wa.me/${phoneDigits}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                )}
+
+                <div className="border-t border-slate-100 my-1" />
+
+                <button
+                  onClick={() => { window.location.assign(`/clients/${encodedName}?tab=tasks`); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  הצג משימות
+                </button>
+
+                <button
+                  onClick={() => { gotoIndexedEmails(); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  הצג אימיילים
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <TabNav base={base} current={tab} tabs={[
+          {key:'overview', label:'סקירה'},
+          {key:'files', label:'קבצים'},
+          {key:'emails', label:'אימיילים'},
+          {key:'tasks', label:'משימות'},
+          // {key:'rag', label:'RAG'}, // Hidden until implemented
+          // {key:'privacy', label:'פרטיות (בקרוב)'} // Hidden until implemented
+        ]}/>
+      </div>
+
+            {tab==='overview' && (
+        <div className="space-y-6">
+          {/* Edit panel - only shown when edit mode is active */}
+          {edit && (
+            <Card title="עריכת לקוח">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className="text-sm">אימייל<input value={editForm.email} onChange={e=>setEditForm({...editForm, email:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
+                <label className="text-sm">טלפון<input value={editForm.phone} onChange={e=>setEditForm({...editForm, phone:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
+              </div>
+              <div className="mt-3">
+                <button data-testid="save-client" className="px-3 py-1 rounded bg-success text-white" onClick={async ()=>{
+                  const nm = decodedName
+                  const email = editForm.email.trim(); const phone = editForm.phone.trim()
+                  try{
+                    await fetch(`${API}/registry/clients`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ display_name: nm, email: email? [email]: [], phone }) })
+                    if(email){ await fetch(`${API}/airtable/clients_upsert`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: nm, email }) }) }
+                    showToast('נשמר', 'success')
+                    const encoded = encodeURIComponent(nm)
+                    const r = await fetch(`${API}/api/client/summary?name=${encoded}&limit=10`)
+                    if(r.ok){ setSummary(await r.json()) }
+                    setEdit(false)
+                  }catch(e){ showToast('שמירה נכשלה', 'error') }
+                }}>שמור</button>
+              </div>
+            </Card>
+          )}
+
+          {/* Two-column layout: Tasks + Emails side by side */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <TasksWidget clientName={decodedName} limit={5} />
+            <EmailsWidget clientName={decodedName} clientEmails={summary.client?.emails || []} limit={5} />
+          </div>
+
+          {/* Quick contact info */}
+          {(primaryEmail || phoneDigits) && (
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-sm text-slate-600 font-medium">יצירת קשר מהירה:</span>
+              {primaryEmail && (
+                <a
+                  href={`mailto:${primaryEmail}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-700 hover:border-petrol hover:text-petrol transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  {primaryEmail}
+                </a>
+              )}
+              {phoneDigits && (
+                <>
+                  <a
+                    href={`tel:${phoneDigits}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-700 hover:border-petrol hover:text-petrol transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    {summary.client?.phone}
+                  </a>
+                  <a
+                    href={`https://wa.me/${phoneDigits}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm hover:bg-emerald-600 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Contacts list (if any) */}
+          {(summary.client?.contacts || []).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b px-4 py-3">
+                <h3 className="font-semibold text-slate-800">אנשי קשר</h3>
+              </div>
+              <div className="divide-y">
+                {(summary.client?.contacts || []).map((c, i) => (
+                  <div key={c.email || i} className="px-4 py-2.5 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-slate-700">{c.name}</div>
+                      <div className="text-xs text-slate-500">{c.role_desc || c.email}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="p-1.5 rounded text-slate-400 hover:text-petrol hover:bg-slate-100">
+                          <Mail className="w-4 h-4" />
+                        </a>
+                      )}
+                      {c.phone && (
+                        <a href={`tel:${c.phone.replace(/\D/g,'')}`} className="p-1.5 rounded text-slate-400 hover:text-petrol hover:bg-slate-100">
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Integration status badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            {airtableLinked ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Airtable מקושר
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                onClick={() => openLinkModal(false)}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                Airtable לא מקושר
+              </button>
+            )}
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${sharepointLinked ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${sharepointLinked ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              {sharepointLinked ? 'SharePoint מקושר' : 'SharePoint לא מקושר'}
+            </span>
+          </div>
+        </div>
+      )}\n{tab==='files' && (
+        <Card title="קבצים">
+          {(summary.files||[]).length === 0 ? (
+            <div className="text-sm text-slate-500 text-center py-4">
+              אין קבצים עדיין
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-slate-600 mb-2">קבצים מקומיים:</div>
+              <ul className="list-disc pl-6 text-sm">
+                {(summary.files||[]).map(f => (
+                  <li key={f.path}>{f.name}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+      )}
+      {tab==='emails' && (
+        <Card title="אימיילים">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <button
+              type="button"
+              data-testid="emails-sync"
+              onClick={syncEmails}
+              disabled={syncingEmails}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg border border-slate-300 text-sm bg-white hover:bg-slate-50 disabled:opacity-60"
+            >
+              {syncingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4 text-petrol" />}
+              <span>משוך מיילים</span>
+            </button>
+            <label className="text-xs text-slate-600 flex items-center gap-1">
+              חלון סנכרון (ימים)
+              <input
+                type="number"
+                min={30}
+                max={365}
+                value={emailSinceDays}
+                onChange={e=>{
+                  const v = Math.max(30, Math.min(365, Number(e.target.value)||90))
+                  setEmailSinceDays(v)
+                }}
+                className="w-20 rounded border px-2 py-0.5 text-xs"
+              />
+            </label>
+            {syncStatus && <span className="text-xs text-slate-500" data-testid="emails-sync-status">{syncStatus}</span>}
+            {!syncStatus && relativeTimeSinceSync && (
+              <span className="text-xs text-slate-500 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700" data-testid="emails-last-sync">
+                עודכן {relativeTimeSinceSync}
+              </span>
+            )}
+            {syncResult && (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500" data-testid="emails-sync-meta">
+                {typeof syncResult.inserted === 'number' && !Number.isNaN(syncResult.inserted) && (
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {syncResult.inserted} הודעות חדשות
+                  </span>
+                )}
+                {lastSyncLabel && <span>עודכן {lastSyncLabel}</span>}
+                {syncParticipantsMeta.items.length > 0 && (
+                  <span className="truncate max-w-xs">
+                    מעקב אחרי: {syncParticipantsMeta.items.join(', ')}
+                    {syncParticipantsMeta.extra > 0 && ` ועוד ${syncParticipantsMeta.extra}`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                data-testid="email-filter-query"
+                className="min-w-[220px] flex-1 rounded border px-2 py-1 text-sm"
+                placeholder="Search subject/body/sender"
+                value={emailFilters.query}
+                onChange={e => setEmailFilters(f => ({ ...f, query: e.target.value }))}
+              />
+              <input
+                data-testid="email-filter-from"
+                type="date"
+                className="rounded border px-2 py-1 text-sm"
+                value={emailFilters.dateFrom}
+                onChange={e => setEmailFilters(f => ({ ...f, dateFrom: e.target.value }))}
+              />
+              <input
+                data-testid="email-filter-to"
+                type="date"
+                className="rounded border px-2 py-1 text-sm"
+                value={emailFilters.dateTo}
+                onChange={e => setEmailFilters(f => ({ ...f, dateTo: e.target.value }))}
+              />
+              <input
+                data-testid="email-filter-sender"
+                className="rounded border px-2 py-1 text-sm"
+                placeholder="Sender"
+                value={emailFilters.sender}
+                onChange={e => setEmailFilters(f => ({ ...f, sender: e.target.value }))}
+              />
+              <input
+                data-testid="email-filter-receiver"
+                className="rounded border px-2 py-1 text-sm"
+                placeholder="Receiver"
+                value={emailFilters.receiver}
+                onChange={e => setEmailFilters(f => ({ ...f, receiver: e.target.value }))}
+              />
+              <select
+                data-testid="email-filter-attachments"
+                className="rounded border px-2 py-1 text-sm"
+                value={emailFilters.attachments}
+                onChange={e => setEmailFilters(f => ({ ...f, attachments: e.target.value }))}
+              >
+                <option value="any">All</option>
+                <option value="yes">Has attachments</option>
+                <option value="no">No attachments</option>
+              </select>
+              <button
+                type="button"
+                className="text-xs text-petrol underline"
+                onClick={()=>setEmailFilters({ query:'', sender:'', receiver:'', dateFrom:'', dateTo:'', attachments:'any' })}
+              >
+                Clear filters
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-slate-600">
+              Showing {filteredIdxItems.length} of {idx.items.length} loaded emails
+              {idx.loading && ' (loading…)'}.
+            </div>
+          </div>
+          {((idx.total||0) === 0) && (
+            <>
+              <div className="text-sm text-slate-600">Recent (local index):</div>
+              <ul className="list-disc pl-6 text-sm mb-4">
+                {(summary.emails||[]).slice(0,10).map(e => (
+                  <li key={e.id}><span className="text-slate-500">{e.received?.slice(0,10)}:</span> {e.subject}</li>
+                ))}
+              </ul>
+              <div className="text-sm text-slate-600">אחרונים (Graph): {online.loading ? 'טוען…' : ''}</div>
+              <ul className="list-disc pl-6 text-sm">
+                {(online.emails||[]).map(e => (
+                  <li key={e.id}><span className="text-slate-500">{e.received?.slice(0,10)}:</span> {e.subject}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <div className="mt-4">
+            <div className="text-sm text-slate-600 mb-2 flex items-center gap-2">אימיילים (מאונדקסים){idx.loading? ' – טוען…' : ` — ${idx.total||0}`}
+              {idx.mode && (
+                <span className={`text-xs px-1.5 py-0.5 rounded border ${idx.mode==='search' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                  מצב: {idx.mode==='search' ? 'חיפוש' : 'מאונדקס'}
+                </span>
+              )}
+            </div>
+            <div className="border rounded divide-y">
+              {idx.items.length === 0 && !idx.loading && (
+                <div className="p-3 text-sm text-slate-500">אין אימיילים מאונדקסים עדיין.</div>
+              )}
+              {idx.items.length > 0 && filteredIdxItems.length === 0 && (
+                <div className="p-3 text-sm text-slate-500">אין אימיילים התואמים את המסננים.</div>
+              )}
+              {filteredIdxItems.map(it => (
+                <div key={it.id} data-testid="indexed-email-row" className="p-1">
+                  <button className="w-full text-left p-2 rounded hover:bg-slate-50 cursor-pointer" onClick={()=> setSel(sel && sel.id===it.id ? null : it)}>
+                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                      {attachIndicator(it)}
+                      <span className="font-semibold truncate max-w-[40%]">{(it.from||'').split(/[<]/)[0].trim() || 'שולח לא ידוע'}</span>
+                      <span className="text-slate-500 truncate">— {it.subject||'(ללא נושא)'}</span>
+                      <span className="ml-auto text-xs text-slate-400">{(it.received||'').slice(0,16)}</span>
+                    </div>
+                    {!(sel && sel.id===it.id) && (
+                      <div className={`text-xs text-slate-600 line-clamp-2 whitespace-pre-wrap ${isRtl(it.preview||it.subject||it.from) ? 'text-right' : 'text-left'}`}>
+                        {(it.preview||'').trim() || 'אין תצוגה מקדימה.'}
+                      </div>
+                    )}
+                  </button>
+                  {sel && sel.id===it.id && (
+                      <div className="mt-2 p-2 rounded bg-slate-50 border text-sm">
+                        <div className={`text-slate-600 whitespace-pre-wrap ${isRtl(it.preview||it.subject||it.from) ? 'text-right' : 'text-left'}`}>
+                          {(it.preview||'').slice(0,1000) || 'No preview available.'}
+                        </div>
+                        {it.has_attachments && (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                            <Paperclip className="w-3 h-3" />
+                            <span>{it.attachments_count ? `${it.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}</span>
+                          </div>
+                        )}
+                        <div className="mt-2 flex gap-3 flex-wrap items-center">
+                          <button className="text-petrol underline" onClick={() => showEmailInline(it)}>
+                            Open in Viewer
+                          </button>
+                          {!HIDE_OUTLOOK && (
+                            <>
+                              <button className="text-petrol underline" onClick={() => openEmailInOutlook(it)}>
+                                Open in Outlook
+                              </button>
+                            <button className="text-petrol underline" onClick={() => copyOutlookLink(it)}>
+                              Copy Outlook Link
+                            </button>
+                          </>
+                          )}
+                          <button
+                            className="text-petrol underline"
+                            onClick={() => createTaskFromEmail(it)}
+                            disabled={creatingTaskId === it.id}
+                          >
+                            {creatingTaskId === it.id ? 'Creating…' : 'Create task'}
+                          </button>
+                        </div>
+                      </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+      {tab==='tasks' && (
+        <div className="space-y-3">
+          <Card title="משימות ללקוח">
+            {(() => {
+              const qs = new URLSearchParams(loc.search)
+              const qDisable = qs.get('tasks_new') === '0'
+              if (qs.get('tasks_new') === '1') { try { localStorage.setItem('eislaw.useTasksNew','1') } catch {} }
+              if (qs.get('tasks_new') === '0') { try { localStorage.setItem('eislaw.useTasksNew','0') } catch {} }
+              let lsDisable = false
+              try { lsDisable = (localStorage.getItem('eislaw.useTasksNew')||'') === '0' } catch {}
+              const envDisable = String(import.meta.env.VITE_TASKS_NEW||'').toLowerCase()==='0'
+              // Default to new board unless explicitly disabled
+              const useNew = !(qDisable || lsDisable || envDisable)
+              return useNew
+                ? <TaskBoard clientName={decodedName} />
+                : <TasksPanel title={`משימות — ${decodedName}`} scope="all" clientFilter={decodedName} limit={0} />
+            })()}
+          </Card>
+        </div>
+      )}
+      {/* RAG and Privacy tabs hidden until implemented */}
+      {viewer.open && (
+        <div className="fixed inset-0 z-50 bg-black/40 px-4 py-6 flex items-start justify-center overflow-auto">
+          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <div className="text-base font-semibold text-petrol">{viewer.meta.subject || 'אימייל'}</div>
+                <div className="text-xs text-slate-500">
+                  {viewer.meta.from && <span>מאת: {viewer.meta.from}</span>}
+                  {viewer.meta.received && <span className="ml-2">התקבל: {viewer.meta.received}</span>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="text-sm text-petrol underline"
+                  onClick={() => {
+                    if(viewer.meta.id){
+                      const match = idx.items.find(m => m.id === viewer.meta.id)
+                      if(match){
+                        openEmailInOutlook(match)
+                      }
+                    }
+                  }}
+                >
+                  פתח ב-Outlook
+                </button>
+                <button className="rounded-full bg-slate-100 px-3 py-1 text-sm" onClick={closeViewer}>סגור</button>
+              </div>
+            </div>
+            <div className="p-4 min-h-[400px]">
+              {viewer.loading && (
+                <div className="flex items-center justify-center text-slate-500 gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> טוען אימייל…
+                </div>
+              )}
+              {!viewer.loading && viewer.error && (
+                <div className="rounded bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{viewer.error}</div>
+              )}
+              {!viewer.loading && !viewer.error && (
+                <iframe
+                  title="תוכן האימייל"
+                  className="w-full h-[70vh] border rounded"
+                  sandbox=""
+                  srcDoc={viewer.html}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {clientCardOpen && modalClient && (
+        <AddClientModal
+          key={clientModalKey}
+          apiBase={apiBase}
+          mode="edit"
+          initialClient={modalClient}
+          onClose={closeClientCardModal}
+          onAdded={handleClientModalSaved}
+        />
+      )}
+      {airtableLinkModal.open && (
+        <LinkAirtableModal
+          apiBase={apiBase}
+          envApi={ENV_API}
+          clientName={decodedName}
+          clientSummary={summary}
+          onClose={handleLinkModalClose}
+          onLinked={handleLinkCompleted}
+        />
+      )}
+      
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={"fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all " +
+          (toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500') + ' text-white'}>
+          {toast.message}
+        </div>
+      )}
+    </div>
+  )
+  async function openEmailInOutlook(item){
+    if(!item?.id) return
+    try{
+      const data = await fetchEmailOpenData(item, { launchOutlook: true })
+      if(data?.desktop_launched){
+        return
+      }
+      if(data?.link){
+        showToast('פתיחה ישירה ב-Outlook נחסמה', 'error')
+      }else{
+        showToast('לא ניתן למצוא קישור Outlook', 'error')
+      }
+    }catch(err){
+      console.error('openEmailInOutlook', err)
+      showToast('נכשל ביצירת קשר עם השרת', 'error')
+    }
+  }
+
+  async function copyOutlookLink(item){
+    if(!item?.id) return
+    try{
+      const data = await fetchEmailOpenData(item, { launchOutlook: false })
+      const link = data?.link || ''
+      if(link){
+        const ok = await copyEmailLinkToClipboard(link)
+        showToast(ok ? 'הועתק ללוח' : 'ההעתקה נחסמה', ok ? 'success' : 'error')
+      } else {
+        showToast('עדיין אין קישור Outlook', 'error')
+      }
+    }catch(err){
+      console.error('copyOutlookLink', err)
+      alert('העתקת קישור ה-Outlook נכשלה.')
+    }
+  }
+
+  async function showEmailInline(item){
+    if(!item?.id) return
+    setViewer({
+      open: true,
+      loading: true,
+      error: '',
+      html: '',
+      meta: {
+        id: item.id,
+        subject: item.subject || '',
+        from: item.from || '',
+        received: item.received || ''
+      }
+    })
+    try{
+      const params = new URLSearchParams({ id: item.id, client: decodedName })
+      const res = await fetch(`${API}/email/content?${params.toString()}`)
+      if(!res.ok){
+        const msg = await res.text()
+        throw new Error(msg || 'Fetch failed')
+      }
+      const data = await res.json()
+      setViewer({
+        open: true,
+        loading: false,
+        error: '',
+        html: data.html || '',
+        meta: {
+          id: item.id,
+          subject: data.subject || item.subject || '',
+          from: data.from || item.from || '',
+          received: data.received || item.received || ''
+        }
+      })
+    }catch(err){
+      setViewer(v => ({
+        ...v,
+        loading: false,
+        error: 'Unable to load email. ' + (err?.message || '')
+      }))
+    }
+  }
+
+  function closeViewer(){
+    setViewer({ open: false, loading: false, error: '', html: '', meta: {} })
+  }
+
+  function resolveViewerAbsolute(value){
+    if(!value) return ''
+    if(/^https?:\/\//i.test(value)) return value
+    const base = (API || '').replace(/\/$/,'')
+    if(!base) return value
+    const rel = value.startsWith('/') ? value : `/${value}`
+    return `${base}${rel}`
+  }
+
+  function buildViewerUrl(item, hint){
+    const hintUrl = resolveViewerAbsolute(hint)
+    if(hintUrl) return hintUrl
+    if(!item?.id) return ''
+    const params = new URLSearchParams({ id: item.id, client: decodedName })
+    return `${API}/email/viewer?${params.toString()}`
+  }
+
+  async function fetchEmailOpenData(item, opts = {}){
+    const launch = opts.launchOutlook !== undefined ? opts.launchOutlook : true
+    const res = await fetch(`${API}/email/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: item.id, client: decodedName, launch_outlook: launch })
+    })
+    if(!res.ok){
+      const msg = await res.text()
+      throw new Error(msg || 'email/open failed')
+    }
+    return res.json()
+  }
+
+}
+
+  function buildTaskTitle(item){
+    const subject = (item?.subject || '').trim()
+    if(subject) return subject.length > 80 ? `${subject.slice(0,77)}…` : subject
+    if(item?.from) return `Email from ${item.from}`
+    return 'Email follow-up'
+  }
+
+  async function createTaskFromEmail(item){
+    if(!item?.id) return
+    setCreatingTaskId(item.id)
+    try{
+      const title = buildTaskTitle(item)
+      const displayTitle = title ? `Email · ${title}` : 'Email Follow-up'
+      const task = addClientTask(decodedName, displayTitle)
+      const descParts = [
+        item.from ? `From: ${item.from}` : null,
+        item.received ? `Received: ${item.received}` : null,
+        item.subject ? `Subject: ${item.subject}` : null,
+      ].filter(Boolean)
+      updateTaskFields(task.id, {
+        desc: descParts.join('\n'),
+        source: 'email',
+        emailRefs: [
+          ...(task.emailRefs || []),
+          {
+            id: item.id,
+            subject: item.subject || '',
+            from: item.from || '',
+            received: item.received || '',
+            hasAttachments: !!item.has_attachments,
+            attachmentsCount: item.attachments_count || 0,
+          },
+        ],
+      })
+      try{
+        await fetch(`${API}/tasks/create_or_get_folder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_name: decodedName, task_title: displayTitle, task_id: task.id }),
+        })
+      }catch(err){
+        console.error('tasks/create_or_get_folder', err)
+      }
+      window.dispatchEvent(new CustomEvent('tasks:refresh', { detail: { client: decodedName } }))
+      alert('משימה נוצרה מהאימייל. עבור לטאב המשימות כדי להמשיך לעבוד עליה.')
+    }catch(err){
+      console.error('createTaskFromEmail', err)
+      alert('יצירת משימה מהאימייל נכשלה.')
+    }finally{
+      setCreatingTaskId(null)
+    }
+  }
+
+async function copyEmailLinkToClipboard(link){
+  if(!link) return false
+  try{
+    if(navigator?.clipboard?.writeText){
+      await navigator.clipboard.writeText(link)
+      return true
+    }
+  }catch{
+    // ignore and fall back
+  }
+  try{
+    const textarea = document.createElement('textarea')
+    textarea.value = link
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  }catch{
+    return false
+  }
+}
+

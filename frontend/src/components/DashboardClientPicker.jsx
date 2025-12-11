@@ -62,7 +62,7 @@ export default function DashboardClientPicker({ value, onChange, apiBase }) {
       </label>
       <button
         type="button"
-        className="text-xs text-petrol underline disabled:text-slate-400"
+        className="text-xs text-petrol underline disabled:text-slate-400 min-h-[44px] px-2 inline-flex items-center"
         disabled={!value}
         onClick={() =>
           value && window.location.assign(`/clients/${encodeURIComponent(value)}`)
@@ -72,7 +72,7 @@ export default function DashboardClientPicker({ value, onChange, apiBase }) {
       </button>
       <button
         type="button"
-        className="text-xs text-slate-500 underline"
+        className="text-xs text-slate-500 underline min-h-[44px] px-2 inline-flex items-center"
         disabled={!value && !loading}
         onClick={() => onChange?.('')}
       >

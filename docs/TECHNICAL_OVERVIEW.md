@@ -1,150 +1,351 @@
-<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
-# EISLAW System – Technical Overview
+# EISLAW System - Technical Overview
 
-Purpose: a single, engineer‑facing overview of the current system, core modules, data flows, tools, and operational procedures so new contributors can come up to speed quickly and operate safely.
+**Last Updated:** 2025-12-05
 
-Scope: covers the “System” platform, the Privacy/TK module (questionnaire → scoring → review → send), email mirror and catalog, Airtable contacts integration, and the RAG pilot.
+Purpose: Engineer-facing overview of the current system, core modules, data flows, tools, and operational procedures.
+
+---
 
 ## Architecture Snapshot
 
-- Code and docs: `EISLAW System/`
-- Secrets: `EISLAW System/secrets.local.json` (see `docs/Integrations.md` for schema). Contains Fillout, Microsoft Graph/Entra, Airtable, Facebook Marketing, Instagram.
-- Clients workspace: `EISLAW System/clients/` (one folder per client + `Unassigned` for unmatched emails).
-- Tools (CLI utilities): `EISLAW System/tools/`.
-- Frontend (UI scaffold): `EISLAW System/frontend/` (see `docs/Frontend_Dashboard_Plan.md`).
- - RAG Agent prompt: `EISLAW System/agents/RAG_Agent/SYSTEM_PROMPT.md`.
-- Services: `EISLAW System/scoring_service/` (FastAPI webhook for Fillout scoring; optional offline CLI exists).
-- Persistent search index (emails): SQLite FTS DB created by `tools/email_catalog.py` alongside client folders.
+### Development Environment
+- **Primary**: Azure VM at `20.217.86.4` (Ubuntu 22.04)
+- **Deployment**: Docker containers via docker-compose-v2
+- **Hot-Reload**: Enabled for both frontend and backend
+
+### Services
+| Service | Port | Technology |
+|---------|------|------------|
+| Frontend (prod) | 8080 | React + Vite + Tailwind |
+| Frontend (dev) | 5173 | Vite dev server |
+| API | 8799 | FastAPI + Uvicorn |
+| Meilisearch | 7700 | Search engine |
+| Grafana | 3000 | Monitoring dashboard |
+| Prometheus | 9090 | Metrics collection |
+| Loki | 3100 | Log aggregation |
+
+### Key Paths
+| Item | Path |
+|------|------|
+| Backend Code | backend/ |
+| Frontend Code | frontend/src/ |
+| Configuration | config/ |
+| Documentation | docs/ |
+| Secrets | secrets.local.json (NOT committed) |
+| Client Registry | ~/.eislaw/store/clients.json |
+| Tasks Store | ~/.eislaw/store/tasks.json |
+
+---
 
 ## Modules
 
-### Privacy (Questionnaire → Scoring → Review → Send)
+### 1. Clients Module
 
-- Form source: Fillout (live link managed in `docs/fillout_field_mapping.json`). Hidden fields mirror logical values; the scoring uses only hidden fields where available.
-- Rules/spec: `docs/Security_Scoring_Spec.md` defines levels (lone/basic/mid/high), obligations (reg, report, dpo), requirements, and triggers. Single level result per submission (mutually exclusive by precedence rules).
-- Fetch & score:
-  - Pull on demand: `tools/fillout_fetch_and_score.py` (reads latest submissions via Fillout REST, maps fields, applies rules, outputs normalized JSON including level, obligations, requirements, trigger blurbs).
-  - Webhook service: `scoring_service/` (FastAPI endpoint for automatic processing; optional).
-- Word review flow (manual QC):
-  - Compose example selection sheet: `tools/make_word_review_example.ps1`.
-  - Apply selection to a deliverable doc via macro: `tools/word_apply_selection.ps1` and `docs/Word/ComposeCheckedBlocks.bas`.
-  - Operator marks checkboxes in Word, runs macro; selected blocks insert into the final document.
-- Email compose: `tools/security_email_compose.py` can draft a mail from scored results (to be integrated with the automailer pipeline).
+**Purpose**: Client registry, file management, email integration, task tracking.
 
-Operational notes:
-- Hidden field logic in the form prevents contradictory answers (e.g., sensitive types → prompt count; biometric sub‑question only appears if relevant). Scoring assumes missing sub‑questions = false.
-- Registration/reporting/DPO dependencies: if registration or reporting is required, DPO is also required (captured in rules).
+**Features (December 2025)**:
+- Client list with search and status filters (active/archived/all)
+- Client overview with tabs (Overview, Files, Emails, Tasks)
+- Email sync via Microsoft Graph (per-client)
+- SharePoint folder linking
+- Tasks backend with CRUD, due dates, priorities
+- Archive/restore with open tasks warning
+- Quote templates management
 
-### Email Mirror & Catalog (legacy tools)
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/clients | List clients (status filter) |
+| POST | /registry/clients | Create new client |
+| GET | /api/client/summary | Client with all data |
+| PATCH | /api/clients/{name}/archive | Archive client |
+| PATCH | /api/clients/{name}/restore | Restore client |
+| GET | /api/tasks | List all tasks |
+| POST | /api/tasks | Create task |
+| PATCH | /api/tasks/{id} | Update task |
+| DELETE | /api/tasks/{id} | Delete task |
 
-- Mirror (read‑only) from Microsoft 365 Graph: `tools/email_sync_graph.py`
-  - Pulls last N days (`--days`) and optional `--limit` (0 = uncapped) for `eitan@eislaw.co.il`.
-  - Saves each message as `.eml` and normalized `.json` under the mapped client folder; unknowns under `clients/Unassigned`.
-  - Mapping to clients is based on a local registry and known aliases; additional addresses can be assigned post‑sync.
-- Assign/move tool: `tools/email_assign_and_move.py` maps an alias (e.g., a contact’s alternate Gmail) to a client and moves matching messages from `Unassigned` to the client folder.
-- Catalog & search: `tools/email_catalog.py` builds an SQLite FTS index; `tools/email_list.py` lists threads or runs FTS searches per client.
+**Frontend Components**:
+| Component | Path |
+|-----------|------|
+| ClientsList | frontend/src/pages/Clients/ClientsList.jsx |
+| ClientOverview | frontend/src/pages/Clients/ClientCard/ClientOverview.jsx |
+| TaskBoard | frontend/src/features/tasksNew/TaskBoard.jsx |
+| TasksWidget | frontend/src/components/TasksWidget.jsx |
+| EmailsWidget | frontend/src/components/EmailsWidget.jsx |
 
-### Email Index (app‑integrated)
-- Ingestor (Graph app‑only): `tools/email_sync_worker.py` — filters by `config/email_sync.json` (mailboxes, folders/categories, participants_allow, since_days). Writes `clients/email_index.sqlite` with `body_preview`.
-- Backend endpoints:
-  - `GET /email/by_client?name=&limit=&offset=` → paginated list `{ items, total, next_offset }`
-  - `GET /email/search?q=&mailbox=&limit=&offset=` → LIKE search across subject/from/to (FTS later)
-- Frontend:
-  - Client → Emails tab → “Emails (Indexed)” list; click a row to expand preview and Reply/Forward via mailto.
-  - In LOCAL mode, Outlook shortcuts are hidden to prevent navigation. In CLOUD (or when enabled), “Open Emails (Search)” opens a named Outlook window.
-- Tests:
-  - Backend: `scoring_service/tests/test_email_index.py`
-  - UI: `tests/email_index_ui.spec.ts`, `tests/emails_preview.spec.ts`
+---
 
-Operational notes:
-- After a large sync, re‑index: `python tools/email_catalog.py`.
-- Common workflow: sync → re‑index → list by client → open client folder.
+### 2. PrivacyExpress Module
 
-### Airtable Contacts Integration (see `docs/Airtable_Schema.md` for table/view mapping)
+**Purpose**: Questionnaire -> Scoring -> Review -> Report -> Send
 
-- Upsert contacts and link to client: `tools/airtable_contacts_upsert.py`
-  - Resolves Client by name (`--clients-table` or `--clients-table-id`).
-  - Discovers actual column names in your Contacts table (Hebrew/English variants) and writes only to existing fields to avoid 422 errors.
-  - Supports fields: Name, Email, Phone, Role, and link to Client.
-- Example upserts (tested):
-  - `--client "יוניסל דיגיטל - סמוב" --name "עמית בן יהודה" --email "amit@unicell.co.il" --phone "0544499985" --role "מנכ""ל"`
-  - `--client "יוניסל דיגיטל - סמוב" --name "אוהד עפגין" --email "ohad@unicell.co.il" --phone "052-5328484" --role "סמנכ""ל כספים"`
+**Features**:
+- Fillout form integration (fetch submissions)
+- Automated scoring algorithm (level, obligations, requirements)
+- Review UI with checklist overrides
+- Report generation (unified HTML template)
+- Email preview and send via Microsoft Graph
+- Tokenized short links (/r/{token})
+- Accuracy metrics tracking
 
-### RAG Pilot
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /privacy/submissions | List all submissions |
+| GET | /privacy/submissions/{id} | Single submission with score |
+| POST | /privacy/save_review | Save review to Airtable |
+| POST | /privacy/approve_and_publish | Generate token, return links |
+| GET | /privacy/report/{token} | Render HTML report |
+| GET | /r/{token} | Short redirect to report |
+| POST | /privacy/preview_email | Preview email content |
+| POST | /privacy/send_email | Send via Microsoft Graph |
+| GET | /privacy/metrics | Accuracy metrics |
 
-- Ingest transcripts: `RAG_Pilot/ingest_transcripts.py` (targets `EISLAW System/RAG_Pilot/transcripts` by default).
-- Search: `RAG_Pilot/search.py` for quick retrieval testing.
-- Goal: unify Zoom transcripts and other artifacts under client context for future assistants.
+**Scoring Logic**:
+- Rules defined in `config/security_scoring_rules.json`
+- Levels: lone, basic, mid, high (mutually exclusive by precedence)
+- Obligations: reg (registration), report, dpo
+- Requirements: worker_security_agreement, cameras_policy, consultation_call, outsourcing_text, direct_marketing_rules
 
-### Insights Extension (RAG)
+**Key Files**:
+| Item | Path |
+|------|------|
+| Frontend | frontend/src/pages/Privacy/index.jsx |
+| Scoring Rules | config/security_scoring_rules.json |
+| Field Mapping | docs/fillout_field_mapping.json |
+| Report Template | docs/PrivacyExpress/privacy_unified_template.html |
+| Result Texts | docs/PrivacyExpress/ResultTexts/*.md |
 
-- Product definition: `docs/INSIGHTS_RAG_PRD.md`.
-- Backend (planned): new endpoints under `/api/insights/*` (search/add/review) in `scoring_service/main.py` or a dedicated service.
-- Frontend (planned): `/src/pages/Insights/` — chat with context memory, filters (client/tags/source), insight cards, and “Convert to Content”.
-- Vector store: start with SQLite (local/dev); leave abstraction to allow Elastic/Qdrant in staging/prod.
-- Review queue: “Pending Review” → speaker alignment check → approve to index.
-- Config: `config/insights_metadata.json` for canonical tags/status values.
+---
 
-## End‑to‑End Workflows
+### 3. RAG Module
 
-### Privacy Deliverable Flow
+**Purpose**: Transcript ingestion, semantic search, insight generation.
 
-1) Intake (Fillout): client submits form; hidden fields normalize logic.
-2) Fetch & Score: via webhook or `tools/fillout_fetch_and_score.py`; outputs: level, obligations, requirements, trigger blurbs.
-3) Review in Word: operator loads selection sheet, checks blocks, runs macro to generate deliverable; optionally convert to PDF.
-4) Send: compose email (`tools/security_email_compose.py`) or use automailer; attach deliverable.
+**Features (December 2025)**:
+- Zoom Cloud Recordings sync (32+ recordings)
+- Audio/Video filter buttons
+- Bulk download with queue status
+- Transcript editing with speaker names (chat-bubble format)
+- Meilisearch integration
+- Inbox/Published workflow
 
-### Communications Unification
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/rag/inbox | List inbox items |
+| POST | /api/rag/ingest | Upload and transcribe |
+| GET | /api/rag/reviewer/{id} | Get transcript for editing |
+| PATCH | /api/rag/reviewer/{id} | Save transcript edits |
+| POST | /api/rag/publish/{id} | Publish to library |
+| DELETE | /api/rag/file/{id} | Hard delete |
+| GET | /api/zoom/transcripts/{id} | Get Zoom transcript |
+| PUT | /api/zoom/transcripts/{id} | Update Zoom transcript |
+| DELETE | /api/zoom/transcripts/{id} | Delete Zoom transcript |
 
-1) Email sync: `python tools/email_sync_graph.py --days 180 --limit 0`
-2) Re‑index: `python tools/email_catalog.py`
-3) List recent by client: `python tools/email_list.py --client "<Client Name>" --top 20`
-4) Resolve unknown aliases: `python tools/email_assign_and_move.py --client-name "<Client Name>" --email "alias@example.com"`
+**Transcription**:
+- Primary: Gemini API (gemini-2.0-flash)
+- Fallback: Whisper (planned)
 
-### Contacts Maintenance (Airtable)
+---
 
-1) Ensure PAT and Base ID in `secrets.local.json`.
-2) Upsert contact(s) with client linkage using `tools/airtable_contacts_upsert.py`.
-3) Verify in Contacts view; records are typecasted and linked.
+### 4. Email Integration
+
+**Purpose**: Sync and display emails from Microsoft 365.
+
+**Features**:
+- Per-client email sync via Microsoft Graph
+- Full email body fetch on demand
+- "Open in Outlook" web link
+- Search across mailboxes
+
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /email/sync_client | Sync emails for client |
+| GET | /email/by_client | Get client emails |
+| GET | /email/content | Full email HTML body |
+| POST | /email/open | Get Outlook web link |
+| GET | /email/search | Search emails |
+
+**Authentication**:
+- MSAL app-only authentication
+- Application permission: Mail.Read, Mail.Send
+- Tenant/Client ID/Secret in secrets.local.json
+
+---
+
+### 5. SharePoint Integration
+
+**Purpose**: Link client folders in SharePoint.
+
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/sharepoint/sites | List SharePoint sites |
+| GET | /api/sharepoint/search | Search for client folder |
+| POST | /api/sharepoint/link_client | Link folder to registry |
+
+**Configuration**:
+- Target site: "EISLAW OFFICE" (EISLAWTEAM)
+- Folder URL stored in client registry as `sharepoint_url`
+
+---
+
+### 6. AI Studio Module
+
+**Purpose**: Conversational AI assistant with agent capabilities for system interaction.
+
+**Features (Phase 2 - December 2025)**:
+- Natural language interface for system queries
+- Agent Mode with tool execution
+- Chat Mode for general questions
+- Tool execution visibility in UI
+
+**API Endpoints**:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/ai-studio/tools | List available tools |
+| POST | /api/ai-studio/chat | Send message (chat mode) |
+| POST | /api/ai-studio/agent | Send message (agent mode) |
+
+**Available Tools**:
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `get_system_summary` | System statistics | "System overview" |
+| `search_clients` | Find clients | "Find client Sivan" |
+| `get_client_details` | Full client info | "Show me details for that client" |
+| `search_tasks` | Find tasks | "What tasks are pending?" |
+| `create_task` | Create new task | "Create a reminder to call David" |
+| `update_task` | Update task status | "Mark that task as done" |
+
+**Frontend**:
+| Component | Path |
+|-----------|------|
+| AI Studio Page | frontend/src/pages/AIStudio/index.jsx |
+
+**Dependencies**:
+- Uses current JSON data storage
+- Will automatically benefit from SQLite migration
+
+---
 
 ## Configuration & Secrets
 
-- `secrets.local.json` (local only; do not commit):
-  - Airtable: `{ "airtable": { "token": "...", "base_id": "app..." } }`
-  - Microsoft Graph: client/app registration for `eitan@eislaw.co.il` access; see `docs/Integrations.md` (Graph scopes and test).
-  - Azure ARM: uses the same Microsoft app (tenant/client/secret) to request `https://management.azure.com/.default` for subscription checks; see `tools/azure_check.ps1`.
-  - Fillout: API key and form IDs; see `docs/Integrations.md` and mapping JSON.
+### secrets.local.json Structure
+```json
+{
+  "airtable": {
+    "token": "pat...",
+    "base_id": "app...",
+    "table_id": "tbl...",
+    "contacts_table": "tbl..."
+  },
+  "graph": {
+    "tenant_id": "...",
+    "client_id": "...",
+    "client_secret": "..."
+  },
+  "fillout": {
+    "api_key": "..."
+  },
+  "gemini": {
+    "api_key": "..."
+  },
+  "zoom": {
+    "account_id": "...",
+    "client_id": "...",
+    "client_secret": "..."
+  },
+  "azure_kudu": {
+    "username": "...",
+    "password": "..."
+  },
+  "grafana": {
+    "username": "admin",
+    "password": "..."
+  }
+}
+```
+
+---
 
 ## Operational Playbook
 
-- Preflight tests (new integration or token change): follow `docs/AGENT_BOOT.md`.
-- Email:
-  - First sync (last 6 months): `python tools/email_sync_graph.py --days 180 --limit 0`
-  - Reindex: `python tools/email_catalog.py`
-  - List by client: `python tools/email_list.py --client "..." --top 20`
-- Privacy:
-  - Fetch latest and score: `python tools/fillout_fetch_and_score.py --form "<id>" --limit 20`
-  - Word review: run `tools/make_word_review_example.ps1`, mark checkboxes, apply via `tools/word_apply_selection.ps1`.
-- Airtable:
-  - Upsert: `python tools/airtable_contacts_upsert.py --clients-table "לקוחות" --contacts-table-id "tbl..." --client "..." --name "..." --email "..."`.
+### Start Development
+```bash
+# Connect to VM
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
 
-## Known Limitations / Open Items
+# Start services
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
 
-- Email listing help text can throw Unicode encode errors in non‑UTF8 consoles; prefer setting `PYTHONIOENCODING=utf-8`.
-- `email_sync_graph.py` uses `datetime.utcnow()` (deprecation warning); migrate to timezone‑aware UTC in a future patch.
-- Client lookup pagination in Airtable can miss records beyond first pages if the client table is very large; formula filtering is preferred once the exact name field is known.
-- “Client Card” GUI (planned): a simple desktop view to see Name, primary email, additional contacts, quick actions (Review in Word, Email Threads, Open Folder, Sync to Airtable).
+# View logs
+/usr/local/bin/docker-compose-v2 logs -f api
+```
+
+### Rebuild After Changes
+```bash
+# Only needed for new dependencies or Dockerfile changes
+/usr/local/bin/docker-compose-v2 up -d --build api
+```
+
+### Access Monitoring
+```bash
+# Create SSH tunnel (from WSL)
+ssh -i ~/.ssh/eislaw-dev-vm.pem -L 3000:localhost:3000 -N azureuser@20.217.86.4
+
+# Open Grafana
+# http://localhost:3000 (admin / eislaw2024)
+```
+
+### Test Privacy Flow
+```bash
+# Fetch and score submissions
+python tools/fillout_fetch_and_score.py --form-id t9nJNoMdBgus --limit 5
+
+# Smoke test
+python tools/privacy_flow_smoke_test.py --count 2
+```
+
+---
+
+## Testing
+
+### E2E Tests (Playwright)
+```bash
+cd frontend
+npx playwright test
+```
+
+### Test Files
+| Test | Path |
+|------|------|
+| UX Audit | tests/ux-audit.spec.cjs |
+| Adversarial | tests/adversarial-audit.spec.cjs |
+| Add Client Modal | tests/add-client-modal.spec.cjs |
+
+---
+
+## Known Limitations
+
+1. **TaskBoard has English labels** - Need Hebrew translation
+2. **Privacy tab RTL broken** - Layout needs swap
+3. **No mobile responsiveness** - Desktop-first design
+4. **Airtable rate limits** - Consider SQLite for Privacy
+
+---
 
 ## References
 
-- Docs Index: `docs/README.md`
-- Boot Policy: `docs/AGENT_BOOT.md`
-- Working Memory: `docs/WORKING_MEMORY.md`
-- Integrations: `docs/Integrations.md`
-- Frontend Plan: `docs/Frontend_Dashboard_Plan.md`
-- Azure Check Script: `tools/azure_check.ps1`
-- Scoring Spec: `docs/Security_Scoring_Spec.md`
-- Fillout Mapping: `docs/Fillout_Mapping.md`, `docs/fillout_field_mapping.json`
-- Word Macro: `docs/Word/ComposeCheckedBlocks.bas`
-- Tools: `tools/` (see filenames above)
- - RAG CLI: `tools/rag_search_cli.py` (JSON results)
+| Document | Path |
+|----------|------|
+| Project Status | docs/PROJECT_STATUS.md |
+| Changelog | docs/CHANGELOG.md |
+| Next Actions | docs/NEXT_ACTIONS.md |
+| Working Memory | docs/WORKING_MEMORY.md |
+| Integrations | docs/Integrations.md |
+| Docker Setup | docs/DOCKER_SETUP.md |
+| Deploy Runbook | docs/DEPLOY_RUNBOOK.md |

@@ -1,261 +1,250 @@
 <!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
 # EISLAW PrivacyExpress — Project Overview (Partner Brief)
 
+**Last Updated:** 2025-12-05
+**Status:** Active Development | Pilot Ready
+
 Audience: Business partners, project stakeholders, and internal team.
 
 Links: see docs/PrivacyExpress/README.md and docs/INDEX.md
 Controls map: see `docs/UX_UI/Controls_Map.md` for button actions and test IDs.
 
+---
+
 ## 1) Executive Summary
 
 PrivacyExpress converts a short online questionnaire into an actionable privacy deliverable. The system fetches submissions, scores them using codified rules, presents a lightweight review UI, and composes a branded report and client email. Reviewers can override suggested outputs; the system tracks overrides and accuracy over time.
 
-Goals
+**Goals**
 - Faster, consistent privacy diagnostics for small/medium businesses
 - Clear reviewer control with transparent overrides
 - Branded, RTL Hebrew deliverables ready for email/PDF
 - Measurable accuracy that improves with feedback
 
-Outcomes
+**Outcomes**
 - Client-facing report (HTML/PDF), email preview, and optional Word path
-- Review queue + status trail (waiting_review → in_review → approved → sent)
-- Metrics for overall accuracy and rolling last‑N accuracy
-- 2025 Pilot: launching with a large SaaS partner who will route tens of privacy test takers through the system each week. The pilot requires near-zero downtime, quick rollback, and tight monitoring so two-person team can respond fast.
+- Review queue + status trail (waiting_review -> in_review -> approved -> sent)
+- Metrics for overall accuracy and rolling last-N accuracy
+- 2025 Pilot: launching with a large SaaS partner who will route tens of privacy test takers through the system each week.
 
-Pilot readiness principles
+**Pilot Readiness Principles**
 - Document every deploy/incident so a fresh operator (or new LLM session) can catch up within minutes.
 - Keep the UI/API ship-ready: no long-running migrations; every change must be shippable.
-- Automate packaging/deploys to avoid manual zip drift; target containerized hosting to match local env and accelerate hotfixes.
+- Automate packaging/deploys to avoid manual zip drift; target containerized hosting.
 
-## 2) System Components
+---
 
-- Frontend (app): Privacy page with list + expandable card details and checklists
- - Backend (FastAPI): scoring webhook, Fillout fetch, Airtable upserts, tokenized reports, Microsoft Graph email send
- - Fillout: live form and submissions API (also provides contact metadata used in report/email)
- - Airtable: review state, selections, status, metrics (`PRIVACY_REVIEWS` table)
- - Microsoft Graph: send client email (Application permission `Mail.Send`)
-- Templates & texts: modular Markdown templates and a unified HTML/CSS wrapper
+## 2) Current Development Status (December 2025)
 
-Key Paths
-- Tools: `tools/fillout_fetch_and_score.py`, `tools/compose_report_from_md.py`, `tools/airtable_utils.py`, `tools/airtable_preflight.py`
+### 2.1 Infrastructure (Azure VM)
+- **Production VM**: `20.217.86.4` (Ubuntu 22.04, Israel Central)
+- **Services Running**:
+  - Frontend (prod): port 8080
+  - Frontend (dev): port 5173 (hot-reload)
+  - API: port 8799
+  - Meilisearch: port 7700
+- **Deployment**: Docker containers with docker-compose-v2
+- **Hot-Reload**: Both backend (uvicorn --reload) and frontend (Vite) support instant changes
+
+### 2.2 Recent Completions (2025-12-04)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Zoom Cloud Recordings | Done | Full sync, audio/video filters, bulk download, transcript editing |
+| Quote Templates UI | Done | Full CRUD at /settings/quotes, preview modal, categories |
+| Archive Feature | Done | Active/archived clients, E2E tests passing |
+| Email Sync | Done | Microsoft Graph integration, per-client sync |
+| SharePoint Integration | Done | Client folder linking via Graph API |
+| Tasks Backend | Done | CRUD endpoints, due dates, priorities |
+
+### 2.3 Active Development (In Progress)
+| Task | Priority | PRD |
+|------|----------|-----|
+| Privacy QA Redesign | HIGH | docs/PRD_PRIVACY_QA_REDESIGN.md |
+| Privacy Purchase Flow | HIGH | docs/PRD_PRIVACY_PURCHASE_FLOW.md |
+| Clients UX Sprint | CRITICAL | docs/reports/CLIENTS_SECTION_COMPREHENSIVE_AUDIT_2025-12-03.md |
+| SQLite Migration | HIGH | Replace Airtable for privacy data |
+
+---
+
+## 3) System Components
+
+- **Frontend (React)**: Privacy page with list + expandable card details and checklists
+- **Backend (FastAPI)**: scoring webhook, Fillout fetch, Airtable upserts, tokenized reports, Microsoft Graph email send
+- **Fillout**: live form and submissions API (also provides contact metadata used in report/email)
+- **Airtable**: review state, selections, status, metrics (PRIVACY_REVIEWS table)
+- **Microsoft Graph**: send client email (Application permission Mail.Send)
+- **Templates & texts**: modular Markdown templates and a unified HTML/CSS wrapper
+
+**Key Paths**
+- Tools: `tools/fillout_fetch_and_score.py`, `tools/compose_report_from_md.py`, `tools/airtable_utils.py`
 - Rules: `config/security_scoring_rules.json`
 - Mapping: `docs/fillout_field_mapping.json`
-- Texts: `docs/PrivacyExpress/ResultTexts/*` (levels, obligations, requirements, email)
+- Texts: `docs/PrivacyExpress/ResultTexts/*`
 - Unified HTML: `docs/PrivacyExpress/privacy_unified_template.html`
 
-## 3) Data Model (inputs → results)
+---
 
-Identity & Metadata
+## 4) Data Model (inputs -> results)
+
+**Identity & Metadata**
 - contact_name, business_name, contact_email, contact_phone, submitted_at, submission_id, form_id
 
-Inputs (scoring)
+**Inputs (scoring)**
 - owners, access, ethics, ppl, sensitive_people, sensitive_types, biometric_100k, transfer, directmail_biz, directmail_self, monitor_1000, processor, processor_large_org, employees_exposed, cameras
 - Derived: sensitive (from sensitive_people/sensitive_types) and small normalizations
 
-Results (summary)
-- level (label in UI: “מאגר מנוהל בידי יחיד” for lone; basic, mid, high)
+**Results (summary)**
+- level (label in UI: "מאגר מנוהל בידי יחיד" for lone; basic, mid, high)
 - dpo, reg, report (booleans)
 - requirements: [worker_security_agreement, cameras_policy, consultation_call, outsourcing_text, direct_marketing_rules]
 
-Hebrew Labels (UI)
-- Provided mapping for identity and inputs; can be edited later without code changes
+---
 
-## 4) End‑to‑End Flow
+## 5) API Endpoints (Backend - FastAPI)
 
-Phase 1 (current)
-1. Fetch submissions from Fillout API (on demand refresh) and map contact fields + answers
-2. Score locally using `security_scoring_rules.json`
-3. Show list of assessments (email, name, phone, business, submitted_at, score badge)
-4. Expand an assessment card to review details with Hebrew labels
-5. Pre‑check deliverable checklists from results; reviewer can override
-6. Compose report (unified HTML + selected modules) and preview client email
-7. Approve & Publish generates a unique token, persists secure links, and exposes a short redirect
-8. Send the client email: either via the built-in Microsoft Graph "Send Email" action (recommended) or copy from Preview. Status moves to `sent`
+### Privacy Module
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /health | Health check |
+| GET | /privacy/labels | Hebrew labels for UI |
+| GET | /privacy/submissions | List all submissions |
+| GET | /privacy/submissions/{id} | Single submission with score |
+| POST | /privacy/save_review | Save review to Airtable |
+| POST | /privacy/approve_and_publish | Generate token, return links |
+| GET | /privacy/report/{token} | Render HTML report |
+| GET | /r/{token} | Short redirect to report |
+| POST | /privacy/preview_email | Preview email content |
+| POST | /privacy/send_email | Send via Microsoft Graph |
+| GET | /privacy/metrics | Accuracy metrics |
 
-Phase 2 (planned)
-- Fillout → backend webhook (`/fillout/webhook`) for real‑time push
-- Upsert core state to Airtable immediately (CRM and queue continuity)
-- PDF export of HTML and richer email tracking
-- Containerized deployment (target): backend + frontend bundled into a single image deployed to Azure Web App for Containers (or AKS). This removes manual zip vendoring, lets us reproduce prod locally, and supports faster hotfixes during the SaaS pilot.
-- CI/CD guardrails: GitHub Action builds image + runs smoke script (`tools/privacy_flow_smoke_test.py`) before pushing to production slot.
+### Clients Module
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/clients | List clients (status filter) |
+| POST | /registry/clients | Create new client |
+| PATCH | /api/clients/{name}/archive | Archive client |
+| PATCH | /api/clients/{name}/restore | Restore client |
+| GET | /api/client/summary | Client with all data |
 
-## 4.1) Implementation Status (2025-11-07)
+### Email & SharePoint
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /email/sync_client | Sync emails via Graph |
+| GET | /email/by_client | Get client emails |
+| GET | /email/content | Full email body |
+| GET | /api/sharepoint/search | Search client folder |
+| POST | /api/sharepoint/link_client | Link folder to registry |
 
-- Backend endpoints (FastAPI)
-  - `GET /health`
-  - `GET /privacy/labels` — Hebrew labels used in UI
-  - `GET /privacy/submissions` — list submissions (via Fillout API)
-  - `GET /privacy/submissions/{id}` — single submission with mapped answers + score
-  - `POST /privacy/save_review` — upsert review row in Airtable (selections, overrides, accuracy)
-  - `POST /privacy/approve_and_publish` — generate token, persist `report_url` + `share_url`, return links
-  - `GET /privacy/report/{token}` — render unified HTML report for this token
-  - `GET /r/{token}` — short redirect to the report
-  - `POST /privacy/preview_email` — fills `ResultTexts/email_to_client.md` with context (includes `{{report_url}}`)
-  - `GET /privacy/metrics?window=10` — accuracy and change-rate metrics (via configured Airtable view)
-  - `POST /privacy/send_email` - sends the composed email via Microsoft Graph (Application `Mail.Send`)
+### RAG & Zoom
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/rag/inbox | List inbox items |
+| POST | /api/rag/ingest | Upload and transcribe |
+| POST | /api/rag/publish/{id} | Publish to library |
+| GET | /api/zoom/transcripts/{id} | Get transcript |
+| PUT | /api/zoom/transcripts/{id} | Update transcript |
 
-- Frontend (Privacy page)
-  - Route `#/privacy`: list submissions; expandable card shows identity, score, and a "Questionnaire Results" block (answers)
-  - Radio for level selection, toggles for obligations/requirements, per-change notes
-  - Side-by-side layout for "Security Level" and "Components" for efficient use of space
-  - Tab/list item width condensed to show just name, email, phone
-  - Actions: Save Review, Approve & Publish (returns links), Preview Email, Send Email (Graph), Copy WhatsApp link (short URL)
+---
 
-- Tokenized links
-  - Short: `/r/{token}` → redirects to `/privacy/report/{token}`
-  - TTL default: 30 days (env `REPORT_TOKEN_TTL_DAYS`); host may be overridden by `REPORT_LINK_HOST`
+## 6) Next Actions (Prioritized)
 
-- Email template
-  - `docs/PrivacyExpress/ResultTexts/email_to_client.md` supports `{{report_url}}`
-  - CTA currently plain link; optional styled button next
-  - Preview via `/privacy/preview_email` and send via `/privacy/send_email`
+### Immediate (This Week)
+1. **Privacy QA Redesign** - Transform Privacy tab into algorithm validation tool
+   - RTL layout fix
+   - One-click validation button
+   - Status icons in list (pending, correct, override)
+   - Target: >90% algorithm accuracy before automation
 
-- Airtable (table: `PRIVACY_REVIEWS`)
-  - Config: `secrets.local.json` → `airtable.base_id`, `table_id`, `view`
-  - Fields created/verified via Meta API helper: selections, overrides, mirrors, status, links (see §6)
-  - Save Review upserts the row; Approve & Publish updates link fields on the existing row
+2. **Clients UX Sprint** - Fix critical visual inconsistencies
+   - Hebrew labels in TaskBoard
+   - Unify TaskBoard/TasksWidget styling
+   - Hide placeholder RAG/Privacy tabs
 
-## 5) Review UI (Management)
+### Short-term (Next 2 Weeks)
+3. **Privacy Purchase Flow** - Full automation pipeline
+   - WooCommerce product creation
+   - WordPress results page
+   - Payment to report delivery automation
 
-Layout
-- Two‑pane or list with expandable cards (confirmed: expandable card)
+4. **SQLite Migration** - Replace Airtable for privacy data
+   - Faster, more reliable for 3-4/min load
+   - Stress test: 99.9% success rate, <500ms response
 
-Card Sections
-- Identity + metadata (name, business, email, phone, submitted_at)
-- System diagnosis: level + flags (dpo, reg, report)
-- Checklists
-  - Obligations: DPO, Registration, Report (pre‑checked based on logic)
-  - Requirements: five content modules (pre‑checked based on logic)
-  - Level text is included for copy but does not toggle the level itself
-- Overrides
-  - UI highlights changes in red and logs an audit entry per change
-- Actions
-  - Save Review (status + checklists; upserts to Airtable)
-  - Preview Email (renders `email_to_client.md` with placeholders)
-  - Approve & Publish (generates links; copies short URL for WhatsApp)
-  - Send Email (via Microsoft Graph)
+### Medium-term
+5. **Dashboard Redesign** - Unified task/email view
+6. **RAG Improvements** - Conversational memory, client-scoped tags
 
-## 6) Persistence & Analytics
-
-Storage: Airtable (`PRIVACY_REVIEWS`)
-- submission_id (primary), form_id, submitted_at
-- email, contact_name, contact_phone, business_name
-- status (waiting_review, in_review, approved, sent); reviewer, reviewed_at
-- auto_selected_modules (snapshot from logic) and selected_modules (final reviewer selection)
-- auto_level, selected_level, level_overridden (checkbox)
-- overrides_added, overrides_removed, overrides_diff_json, override_reason
-- Mirrors for score: score_level, score_reg, score_report, score_dpo, score_requirements, is_correct_auto, is_correct_reviewed
-- Publish links: report_token_hash, report_expires_at, report_url, share_url
-
-Audit Table (Review_Audit)
-- submission_id, module, action (checked/unchecked), from→to, reviewer, timestamp
-
-Accuracy Metrics
-- is_correct_auto: auto_selected_modules == selected_modules (exact set match)
-- is_correct_reviewed: reviewer’s correctness judgment (optional override)
-- accuracy_overall = avg(is_correct_reviewed if set else is_correct_auto)
-- accuracy_lastN = same metric but over the most recent N reviewed items (N is UI‑configurable)
+---
 
 ## 7) Deliverables
 
-Report
+**Report**
 - Unified RTL template: `privacy_unified_template.html`
 - Content modules linked to results: `ResultTexts/*.md`
-- Composer fills placeholders (e.g., `{{business_name}}`, `{{contact_name}}`) and merges selected modules
-- Examples: `docs/PrivacyExpress/sample_report_lone.html`, `docs/PrivacyExpress/report_from_lone.html`
+- Composer fills placeholders and merges selected modules
 
-Email
+**Email**
 - Template: `ResultTexts/email_to_client.md`
-- First line sets subject with `[EMAIL_SUBJECT]: ...`
-- Preview in UI; send directly via Microsoft Graph (recommended) or copy/paste into Outlook as fallback
-- Endpoint: `POST /privacy/send_email`
-- Required app settings: `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID`, `GRAPH_MAILBOX`
+- Subject line from first line with `[EMAIL_SUBJECT]: ...`
+- Send via Microsoft Graph (requires Azure AD App Registration)
+
+---
 
 ## 8) Security & Privacy
 
-- Secrets live in `EISLAW System/secrets.local.json` (not committed). See `docs/Integrations.md`
-- Avoid PII in URLs; URL parameters from Fillout are treated as untrusted metadata (used as fallback only)
-- Minimal data cached in Airtable; attachments/links stored via URL fields when applicable
-- CORS limited to local dev origins; production domains to be configured per environment
-- Microsoft Graph requires Azure AD App Registration with Application permission `Mail.Send` (admin consent). Store credentials as app settings or GitHub secrets.
+- Secrets in `secrets.local.json` (not committed)
+- Avoid PII in URLs; URL parameters treated as untrusted
+- CORS limited to configured origins
+- Microsoft Graph requires Application permission Mail.Send (admin consent)
 
-## 9) Operations (Dev)
+---
 
-- Local start: `session_start.bat` (or `open_local.bat` for lighter start)
-- Fillout fetch/score (ad‑hoc):
-  - `python tools/fillout_fetch_and_score.py --form-id <id> --limit 3`
-  - Optional upsert: add `--airtable-upsert --airtable-status waiting_review`
-- Airtable preflight (quick sanity):
-  - `python tools/airtable_preflight.py`
-- Report from a module (example):
-  - `python tools/compose_report_from_md.py docs/PrivacyExpress/ResultTexts/level_lone.md docs/PrivacyExpress/report_from_lone.html "דו"ח פרטיות" "" "דוח פרטיות, נערך על-ידי עו"ד איתן שמיר"`
+## 9) Operations
 
-Pilot operations checklist
-- Keep `docs/NEXT_ACTIONS.md` → “Current Incident” up to date after each deploy or outage so future sessions know the live blocker.
-- Update `docs/DEPLOY_RUNBOOK.md` table after every deploy attempt (pass/fail, timestamp, summary).
-- During the SaaS pilot run Kudu log stream (`tools/azure_log_stream.py`) whenever deploying; archive relevant snippets into `docs/Testing_Episodic_Log.md`.
-- Target container build (`docker build -f Dockerfile.api .`) -> push to Azure Container Registry -> use App Service for Containers. Until then, ensure `infra/package_backend.ps1` is run before every zip deploy so dependencies (azure identity/opencensus) are included.
-- Smoke test after deploy: `python tools/privacy_flow_smoke_test.py --count 2 --airtable-status waiting_review` to confirm questionnaire→Airtable chain before notifying the partner.
-E2E test (local)
-- Run: `start_dev.bat` → backend `http://127.0.0.1:8788`, frontend `http://localhost:5173/#/privacy`
-- In UI: open a submission → set level/checklists → Save Review (see Airtable row)
-- Click Approve & Publish → copy `share_url` (`/r/{token}`) and open it → report renders
-- Click Preview Email → `{{report_url}}` present; send manually for now
+### VM Connection
+```bash
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+```
 
-Questionnaire → Airtable smoke test
-- Script: `python tools/privacy_flow_smoke_test.py --count 10 --form-id t9nJNoMdBgus`
-- Prereqs: `secrets.local.json` must include `fillout.api_key` and the Airtable token/base/table IDs; the script reuses `docs/fillout_field_mapping.json` plus `config/security_scoring_rules.json`.
-- Flow: seeds the Fillout form with `{count}` timestamped submissions via the bulk API response (no polling), scores them locally, and upserts each submission into `Security_Submissions` via `tools.airtable_utils`.
-- Output: prints a JSON summary listing each submission id, derived level, Airtable record id, and stored status/level so we can confirm the answers landed end-to-end.
-- Optional flags: `--email-template privacy-test+{ts}-{n}@domain`, `--airtable-status waiting_review`.
+### Start Dev Services
+```bash
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+```
 
-## 10) Roadmap
-- Click Send Email → email is sent via Microsoft Graph (requires app settings)
+### View Logs
+```bash
+/usr/local/bin/docker-compose-v2 logs -f api      # Backend
+/usr/local/bin/docker-compose-v2 logs -f web-dev  # Frontend
+```
 
-### Task Files (system-wide)
-- Per-task canonical folder in SharePoint (human: “<Client Name> — <Task Title>”).
-- Files saved with Hebrew-safe names + DD.MM.YY suffix; DriveItem IDs stored (stable links).
-- UI: Task modal → Files panel supports Upload, Rename title (renames in SP), Set Current, Add email (EML + attachments).
-- Email attach: EML is canonical; optional PDF snapshot; attachments named short and linked by metadata.
-- Click Send Email → email is sent via Microsoft Graph (requires app settings)
+### Test URLs
+- Frontend: http://20.217.86.4:5173
+- API: http://20.217.86.4:8799
 
-### 9.1) Cloud Deployment (Privacy module only)
-- GitHub Action: `.github/workflows/deploy_privacy.yml` builds backend + frontend and deploys to Azure Web App + Static Website
-- Required repository secrets:
-  - `AZURE_CREDENTIALS` (JSON for SPN with access to RG/webapp/storage)
-  - `FILLOUT_API_KEY`
-  - `AIRTABLE_TOKEN`, `AIRTABLE_BASE_ID`
-  - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID`, `GRAPH_MAILBOX`
-  - Optional: `REPORT_TOKEN_TTL_DAYS`, `REPORT_LINK_HOST`
-- Azure resources (current env): RG `EISLAW-Dashboard`, Web App `eislaw-api-01`, Storage `eislawstweb`
-- CORS: allow the static site origin to call the API (`https://<storage>.z39.web.core.windows.net`)
-- Post-deploy smoke: open `/#/privacy`, expand a submission, Save Review, Approve & Publish, Preview Email, Send Email
+---
 
-Near-term (polish)
-- Frontend Hebrew label corrections in `#/privacy`
-- Styled CTA button in the email template (Petrol/Copper)
-- Optional `Review_Audit` table and audit inserts
-
-Next
-- Real-time webhook ingest from Fillout to backend, then upsert to Airtable
-- Outlook/Graph assisted send with PDF export of HTML
-- Batch backfill + rolling accuracy dashboard
-
-## 12) Redirect & Hero Page (Fillout)
-
-- Hero page URL: your published Fillout page (brand section already live)
-- Button target for published reports: short link `https://eislaw-api-01.azurewebsites.net/r/{token}`
-- The backend returns this link after Approve & Publish; include it in email/WhatsApp
-- For immediate access via Hero, configure the redirect after approval using the generated short link
-
-## 11) Success Criteria
+## 10) Success Criteria
 
 - Reviewer can approve/override and send within minutes
-- ≥90% correctness auto‑selection on last N assessments
+- 90% or higher correctness auto-selection on last N assessments
 - Consistent brand styling across all outputs (browser + PDF)
 - Zero data loss: every change audited; statuses accurate
 
 ---
 
-If any resource mentioned here is missing, respond in the session with: `Missing resource: <path>. Please add or re-link.`
+## 11) Documentation Index
 
+| Document | Purpose |
+|----------|---------|
+| CHANGELOG.md | Dated release notes |
+| NEXT_ACTIONS.md | Prioritized task queue |
+| PRD_PRIVACY_QA_REDESIGN.md | QA workflow redesign |
+| PRD_PRIVACY_PURCHASE_FLOW.md | Purchase automation |
+| WORKPLAN_CLIENTS_AND_DASHBOARD.md | Clients/Dashboard sprint plan |
+| DEPLOY_RUNBOOK.md | Deployment procedures |
+| Testing_Episodic_Log.md | Lessons learned |
+
+---
+
+If any resource mentioned here is missing, respond in the session with: `Missing resource: <path>. Please add or re-link.`

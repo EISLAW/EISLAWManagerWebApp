@@ -1,5 +1,80 @@
 import React, { useEffect, useMemo, useState } from 'react'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Hebrew Labels & Options
+// ═══════════════════════════════════════════════════════════════════════════
+const LABELS = {
+  modalTitle: 'הוסף לקוח',
+  modalTitleEdit: 'עריכת לקוח',
+  searchPlaceholder: 'הקלד שם לקוח לחיפוש או יצירה...',
+  searchHint: 'החיפוש מתבצע ב-Airtable. אם לא נמצא - תוכל ליצור לקוח חדש.',
+  noResults: 'לא נמצאו תוצאות',
+  createNew: 'צור לקוח חדש',
+  createHint: 'הלקוח יסונכרן אוטומטית ל-Airtable',
+  selectExisting: 'בחר לקוח קיים',
+  clientName: 'שם לקוח',
+  email: 'אימייל',
+  emailHint: 'מספר אימיילים מופרדים בפסיק',
+  phone: 'טלפון',
+  clientType: 'סוג לקוח',
+  stage: 'סטטוס',
+  notes: 'הערות',
+  folder: 'תיקייה',
+  folderBrowse: 'עיין',
+  folderLinking: 'מקשר...',
+  folderNotLinked: 'לא מקושר',
+  folderLinked: 'מקושר',
+  cancel: 'ביטול',
+  submit: 'הוסף לקוח',
+  submitEdit: 'שמור שינויים',
+  submitting: 'שומר...',
+  duplicateWarning: 'לקוח עם שם דומה כבר קיים',
+  syncPending: 'ממתין לסנכרון',
+  syncSuccess: 'סונכרן בהצלחה',
+  required: 'שדה חובה',
+  searching: 'מחפש...',
+  airtableId: 'מזהה Airtable',
+  contacts: 'אנשי קשר',
+  addContact: 'הוסף איש קשר',
+  editContact: 'ערוך איש קשר',
+  contactName: 'שם',
+  contactRole: 'תפקיד',
+  contactEmail: 'אימייל',
+  contactPhone: 'טלפון',
+  contactPrimary: 'איש קשר ראשי',
+  saveContact: 'שמור',
+  cancelContact: 'ביטול',
+  deleteContact: 'מחק',
+  noContacts: 'אין אנשי קשר',
+}
+
+const CLIENT_TYPES = [
+  { value: 'בטיפול', label: 'בטיפול' },
+  { value: 'ריטיינר', label: 'ריטיינר' },
+  { value: 'ליטיגציה', label: 'ליטיגציה' },
+  { value: 'טיפול הושלם', label: 'טיפול הושלם' },
+  { value: 'פוטנציאלי', label: 'פוטנציאלי' },
+]
+
+const STAGES = [
+  { value: '', label: 'לא נבחר' },
+  { value: 'חדש', label: 'חדש' },
+  { value: 'בתהליך', label: 'בתהליך' },
+  { value: 'ממתין', label: 'ממתין' },
+  { value: 'הושלם', label: 'הושלם' },
+]
+
+const folderPills = {
+  idle: { label: LABELS.folderNotLinked, className: 'bg-slate-100 text-slate-600' },
+  not_linked: { label: LABELS.folderNotLinked, className: 'bg-slate-100 text-slate-600' },
+  linking: { label: LABELS.folderLinking, className: 'bg-amber-50 text-amber-700' },
+  linked: { label: LABELS.folderLinked, className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  error: { label: 'שגיאה', className: 'bg-red-50 text-red-700' },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Helper Functions
+// ═══════════════════════════════════════════════════════════════════════════
 function normalizeSeedRecords(records = []) {
   if (!Array.isArray(records)) return []
   return records
@@ -11,7 +86,7 @@ function normalizeSeedRecords(records = []) {
         : item.email
         ? [item.email]
         : []
-      const normalized = {
+      return {
         id: item.airtable_id || item.id || name,
         name,
         emails: emailList,
@@ -20,67 +95,19 @@ function normalizeSeedRecords(records = []) {
         status: item.stage || '',
         notes: item.notes || '',
         contacts: item.contacts || [],
-        registry_defaults: {
-          display_name: name,
-          email: emailList,
-          phone: item.phone || '',
-          client_type: item.client_type || [],
-          stage: item.stage || '',
-          notes: item.notes || '',
-          airtable_id: item.airtable_id || item.id || '',
-        },
+        airtable_url: item.airtable_url || '',
       }
-      return normalized
     })
     .filter(Boolean)
 }
 
 function parseEmails(input = '') {
-  return input
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
+  return input.split(',').map((part) => part.trim()).filter(Boolean)
 }
 
-function normalizeSingleClient(item) {
-  if (!item) return null
-  const [normalized] = normalizeSeedRecords([item])
-  if (normalized) return normalized
-  const emails = Array.isArray(item.emails)
-    ? item.emails
-    : item.email
-    ? [item.email]
-    : []
-  return {
-    id: item.airtable_id || item.id || item.name || '',
-    name: item.display_name || item.name || item.client_name || '',
-    emails,
-    phone: item.phone || '',
-    client_type: item.client_type || [],
-    status: item.stage || item.status || '',
-    notes: item.notes || '',
-    contacts: item.contacts || [],
-    registry_defaults: item.registry_defaults || {},
-  }
-}
-
-const folderPills = {
-  idle: { label: 'Not linked', className: 'bg-[#EBF0FA] text-[#616E7C]' },
-  not_linked: { label: 'Not linked', className: 'bg-[#EBF0FA] text-[#616E7C]' },
-  linking: {
-    label: 'Linking…',
-    className: 'bg-[#FFF4E5] text-[#B76E00]',
-  },
-  linked: {
-    label: 'Linked',
-    className: 'bg-[#E6F7ED] text-[#16A34A] border border-[#16A34A33]',
-  },
-  error: {
-    label: 'Error',
-    className: 'bg-[#FEE2E2] text-[#B91C1C]',
-  },
-}
-
+// ═══════════════════════════════════════════════════════════════════════════
+// Main Component
+// ═══════════════════════════════════════════════════════════════════════════
 export default function AddClientModal({
   apiBase,
   envApi,
@@ -95,94 +122,178 @@ export default function AddClientModal({
     () => (apiBase || envApi || 'http://127.0.0.1:8788').replace(/\/$/, ''),
     [apiBase, envApi]
   )
+
+  const isEditMode = mode === 'edit'
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // State
+  // ─────────────────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState(initialQuery)
-  const [searchStatus, setSearchStatus] = useState('idle')
+  const [searchStatus, setSearchStatus] = useState('idle') // idle | searching | ready | empty | error
   const [searchResults, setSearchResults] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
-  const [summary, setSummary] = useState(null)
-  const [summaryStatus, setSummaryStatus] = useState('idle')
-  const [folder, setFolder] = useState({
-    path: '',
-    status: 'not_linked',
-    message: '',
-  })
-  const [addStatus, setAddStatus] = useState('idle')
-  const [submitError, setSubmitError] = useState('')
-  const [clientDraft, setClientDraft] = useState(null)
-  const isEditMode = mode === 'edit'
-  const normalizedInitial = useMemo(() => normalizeSingleClient(initialClient), [initialClient])
-  const showSearchSection = !isEditMode
-  const parsedEmails = useMemo(() => {
-    if (clientDraft && typeof clientDraft.emailsText === 'string') {
-      return parseEmails(clientDraft.emailsText)
-    }
-    return selectedClient?.emails || []
-  }, [clientDraft, selectedClient])
-  const draftName = (clientDraft?.name || '').trim() || selectedClient?.name || ''
-  const draftPhone = clientDraft?.phone ?? selectedClient?.phone ?? ''
-  const draftStatus = clientDraft?.status ?? selectedClient?.status ?? ''
-  const draftNotes = clientDraft?.notes ?? selectedClient?.notes ?? ''
-  const primaryEmailFromDraft = parsedEmails[0] || ''
-  const resolvedClient = useMemo(() => {
-    if (!selectedClient) return null
-    return {
-      ...selectedClient,
-      name: draftName || selectedClient.name,
-      emails: parsedEmails.length ? parsedEmails : selectedClient.emails || [],
-      phone: draftPhone,
-      notes: draftNotes,
-      status: draftStatus,
-    }
-  }, [selectedClient, draftName, parsedEmails, draftPhone, draftNotes, draftStatus])
-  const updateDraft = (field, value) => {
-    setClientDraft((prev) => ({ ...(prev || {}), [field]: value }))
-  }
-  const summaryClient = resolvedClient || selectedClient
-  const modalTitle = isEditMode ? 'Update Client' : 'Add Client'
-  const submitLabel = isEditMode ? 'Save Changes' : 'Add Client'
+  const [isCreateMode, setIsCreateMode] = useState(false) // Smart Flow: true = create new, false = select existing
 
+  const [formData, setFormData] = useState({
+    name: '',
+    emailsText: '',
+    phone: '',
+    clientTypes: [],
+    stage: '',
+    notes: '',
+  })
+
+  const [folder, setFolder] = useState({ path: '', status: 'not_linked', message: '' })
+  const [submitStatus, setSubmitStatus] = useState('idle') // idle | submitting | success | error
+  const [submitError, setSubmitError] = useState('')
+  const [duplicateWarning, setDuplicateWarning] = useState(null)
+
+  // Contacts state
+  const [contacts, setContacts] = useState([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingContact, setEditingContact] = useState(null)
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    role: '',
+    email: '',
+    phone: '',
+    is_primary: false,
+  })
+  const [pendingContactDeletes, setPendingContactDeletes] = useState([]) // IDs to delete on save
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Derived Values
+  // ─────────────────────────────────────────────────────────────────────────
+  const parsedEmails = useMemo(() => parseEmails(formData.emailsText), [formData.emailsText])
+  const currentFolderPill = folderPills[folder.status] || folderPills.not_linked
+
+  const canSubmit = useMemo(() => {
+    if (submitStatus === 'submitting') return false
+    if (!formData.name.trim()) return false
+    if (parsedEmails.length === 0) return false
+    return true
+  }, [submitStatus, formData.name, parsedEmails])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Effects
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Lock body scroll
   useEffect(() => {
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = originalOverflow
-    }
+    return () => { document.body.style.overflow = originalOverflow }
   }, [])
 
+  // Initialize from existing client (edit mode)
   useEffect(() => {
-    if (normalizedInitial) {
-      setSelectedClient(normalizedInitial)
-      setSearchQuery(normalizedInitial.name || '')
-      setSearchResults([normalizedInitial])
-    }
-  }, [normalizedInitial])
+    if (initialClient) {
+      const normalized = normalizeSeedRecords([initialClient])[0]
+      if (normalized) {
+        setSelectedClient(normalized)
+        setFormData({
+          name: normalized.name || '',
+          emailsText: (normalized.emails || []).join(', '),
+          phone: normalized.phone || '',
+          clientTypes: normalized.client_type || [],
+          stage: normalized.status || '',
+          notes: normalized.notes || '',
+        })
+        setSearchQuery(normalized.name || '')
 
-  useEffect(() => {
-    if (!showSearchSection) {
-      setSearchStatus('idle')
-      return
+        // Initialize contacts from normalized data
+        if (normalized.contacts?.length > 0) {
+          setContacts(normalized.contacts)
+        }
+
+        // Load existing folder/SharePoint info and contacts from client summary
+        const clientName = normalized.name || initialClient.display_name || initialClient.name
+        const clientId = initialClient.id || normalized.id
+        if (clientName && isEditMode) {
+          // Fetch client summary for folder info
+          fetch(`${API}/api/client/summary?name=${encodeURIComponent(clientName)}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const client = data?.client
+              if (client?.sharepoint_url) {
+                setFolder({ path: client.sharepoint_url, status: 'linked', message: '' })
+              } else if (client?.folder) {
+                setFolder({ path: client.folder, status: 'linked', message: '' })
+              }
+              // Also get contacts from summary if available
+              if (client?.contacts?.length > 0) {
+                setContacts(client.contacts)
+              }
+            })
+            .catch(() => {})
+
+          // Fetch contacts from API if we have a client ID
+          if (clientId) {
+            setContactsLoading(true)
+            fetch(`${API}/contacts/${clientId}`)
+              .then(res => res.ok ? res.json() : null)
+              .then(data => {
+                if (data?.contacts?.length > 0) {
+                  setContacts(data.contacts)
+                }
+              })
+              .catch(() => {})
+              .finally(() => setContactsLoading(false))
+          }
+        }
+      }
     }
+  }, [initialClient, isEditMode, API])
+
+  // Smart Search with debounce
+  useEffect(() => {
+    if (isEditMode) return
     if (!searchQuery.trim()) {
       setSearchResults([])
       setSearchStatus('idle')
+      setIsCreateMode(false)
+      setDuplicateWarning(null)
       return
     }
+
     setSearchStatus('searching')
+    setDuplicateWarning(null)
     const controller = new AbortController()
+
     const handle = setTimeout(async () => {
       try {
-        const endpoint = `${API}/airtable/search?q=${encodeURIComponent(
-          searchQuery.trim()
-        )}`
+        // Search in Airtable
+        const endpoint = `${API}/airtable/search?q=${encodeURIComponent(searchQuery.trim())}`
         const res = await fetch(endpoint, { signal: controller.signal })
+
         if (!res.ok) throw new Error('Search failed')
         const data = await res.json()
         const items = Array.isArray(data?.items) ? data.items : []
-        setSearchResults(items)
-        setSearchStatus(items.length ? 'ready' : 'empty')
+        const normalized = normalizeSeedRecords(items)
+
+        setSearchResults(normalized)
+
+        if (normalized.length === 0) {
+          setSearchStatus('empty')
+          setIsCreateMode(true) // Auto-switch to create mode
+          // Pre-fill form with search query
+          setFormData(prev => ({ ...prev, name: searchQuery.trim() }))
+        } else {
+          setSearchStatus('ready')
+          setIsCreateMode(false)
+          // Check for potential duplicate
+          const exactMatch = normalized.find(c =>
+            c.name.toLowerCase() === searchQuery.trim().toLowerCase()
+          )
+          if (exactMatch) {
+            setDuplicateWarning(exactMatch)
+          }
+        }
       } catch (err) {
         if (controller.signal.aborted) return
-        // Fallback to local rows (seed clients filter)
+
+        // Fallback to local seed clients
         const fallback = (seedClients || []).filter((c) => {
           const name = (c.name || '').toLowerCase()
           const emails = (c.emails || []).join(' ').toLowerCase()
@@ -191,619 +302,856 @@ export default function AddClientModal({
         })
         const normalized = normalizeSeedRecords(fallback)
         setSearchResults(normalized)
-        setSearchStatus(normalized.length ? 'ready' : 'error')
+
+        if (normalized.length === 0) {
+          setSearchStatus('empty')
+          setIsCreateMode(true)
+          setFormData(prev => ({ ...prev, name: searchQuery.trim() }))
+        } else {
+          setSearchStatus('error')
+          setIsCreateMode(false)
+        }
       }
     }, 350)
+
     return () => {
       clearTimeout(handle)
       controller.abort()
     }
-  }, [API, searchQuery, seedClients, showSearchSection])
+  }, [API, searchQuery, seedClients, isEditMode])
 
+  // When selecting existing client, populate form
   useEffect(() => {
-    if (!showSearchSection) return
-    if (!Array.isArray(searchResults) || searchResults.length === 0) {
-      return
-    }
-    if (
-      !selectedClient ||
-      !searchResults.some((item) => item.id === selectedClient.id)
-    ) {
-      setSelectedClient(searchResults[0])
-    }
-  }, [searchResults, selectedClient, showSearchSection])
-
-  useEffect(() => {
-    if (selectedClient) {
-      setClientDraft({
+    if (selectedClient && !isCreateMode) {
+      setFormData({
         name: selectedClient.name || '',
         emailsText: (selectedClient.emails || []).join(', '),
         phone: selectedClient.phone || '',
+        clientTypes: selectedClient.client_type || [],
+        stage: selectedClient.status || '',
         notes: selectedClient.notes || '',
-        status: selectedClient.status || '',
       })
-    } else {
-      setClientDraft(null)
     }
-  }, [selectedClient])
+  }, [selectedClient, isCreateMode])
 
-  useEffect(() => {
-    if (!selectedClient) {
-      setSummary(null)
-      setSummaryStatus('idle')
+  // ─────────────────────────────────────────────────────────────────────────
+  // Handlers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const updateForm = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const toggleClientType = (type) => {
+    setFormData(prev => ({
+      ...prev,
+      clientTypes: prev.clientTypes.includes(type)
+        ? prev.clientTypes.filter(t => t !== type)
+        : [...prev.clientTypes, type]
+    }))
+  }
+
+  const handleSelectClient = (client) => {
+    setSelectedClient(client)
+    setIsCreateMode(false)
+    setDuplicateWarning(null)
+  }
+
+  const handleSwitchToCreate = () => {
+    setSelectedClient(null)
+    setIsCreateMode(true)
+    setFormData(prev => ({ ...prev, name: searchQuery.trim() }))
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Contact Management Handlers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const resetContactForm = () => {
+    setContactForm({ name: '', role: '', email: '', phone: '', is_primary: false })
+    setEditingContact(null)
+    setShowContactForm(false)
+  }
+
+  const handleAddContact = () => {
+    setEditingContact(null)
+    setContactForm({ name: '', role: '', email: '', phone: '', is_primary: false })
+    setShowContactForm(true)
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setContactForm({
+      name: contact.name || '',
+      role: contact.role || contact.role_desc || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      is_primary: contact.is_primary || false,
+    })
+    setShowContactForm(true)
+  }
+
+  const handleDeleteContact = (contact) => {
+    if (contact.id) {
+      // Mark for deletion on save (if existing contact)
+      setPendingContactDeletes(prev => [...prev, contact.id])
+    }
+    // Remove from local state
+    setContacts(prev => prev.filter(c => c !== contact && c.id !== contact.id))
+  }
+
+  const handleSaveContact = () => {
+    if (!contactForm.name.trim()) return
+
+    const newContact = {
+      id: editingContact?.id || `temp_${Date.now()}`,
+      name: contactForm.name.trim(),
+      role: contactForm.role.trim(),
+      role_desc: contactForm.role.trim(), // Alias for compatibility
+      email: contactForm.email.trim(),
+      phone: contactForm.phone.trim(),
+      is_primary: contactForm.is_primary,
+      _isNew: !editingContact?.id || editingContact.id.startsWith('temp_'),
+      _isModified: editingContact?.id && !editingContact.id.startsWith('temp_'),
+    }
+
+    // If marking as primary, unmark others
+    if (newContact.is_primary) {
+      setContacts(prev => prev.map(c =>
+        c === editingContact || c.id === editingContact?.id
+          ? newContact
+          : { ...c, is_primary: false }
+      ))
+    }
+
+    if (editingContact) {
+      // Update existing
+      setContacts(prev => prev.map(c =>
+        c === editingContact || c.id === editingContact.id ? newContact : c
+      ))
+    } else {
+      // Add new
+      if (newContact.is_primary) {
+        // Unmark others when adding primary
+        setContacts(prev => [...prev.map(c => ({ ...c, is_primary: false })), newContact])
+      } else {
+        setContacts(prev => [...prev, newContact])
+      }
+    }
+
+    resetContactForm()
+  }
+
+  const handleSetPrimary = (contact) => {
+    setContacts(prev => prev.map(c => ({
+      ...c,
+      is_primary: c === contact || c.id === contact.id,
+      _isModified: c._isModified || (c.id && !c.id.startsWith('temp_')),
+    })))
+  }
+
+  const handleBrowseFolder = async () => {
+    if (!formData.name.trim()) {
+      setFolder({ path: '', status: 'error', message: 'הזן שם לקוח תחילה' })
       return
     }
-    const controller = new AbortController()
-    async function fetchSummary() {
-      setSummaryStatus('loading')
-      try {
-        const res = await fetch(
-          `${API}/api/client/summary?name=${encodeURIComponent(
-            selectedClient.name
-          )}&limit=10`,
-          { signal: controller.signal }
-        )
-        if (!res.ok) throw new Error('Summary not available')
-        const data = await res.json()
-        setSummary(data)
-        setSummaryStatus('ready')
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setSummaryStatus('error')
+
+    setFolder(s => ({ ...s, status: 'linking', message: '' }))
+    const clientName = formData.name.trim()
+
+    try {
+      // First, try to get existing client folder from summary
+      const sumRes = await fetch(`${API}/api/client/summary?name=${encodeURIComponent(clientName)}`)
+      if (sumRes.ok) {
+        const sumData = await sumRes.json()
+        const client = sumData?.client
+        if (client?.sharepoint_url) {
+          window.open(client.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({ path: client.sharepoint_url, status: 'linked', message: '' })
+          return
         }
       }
-    }
-    fetchSummary()
-    return () => controller.abort()
-  }, [API, selectedClient])
 
-  useEffect(() => {
-    if (initialQuery) {
-      setSearchQuery(initialQuery)
-    }
-  }, [initialQuery])
-
-  useEffect(() => {
-    if (!normalizedInitial?.folder) return
-    setFolder((prev) => {
-      if (prev.path) return prev
-      return {
-        path: normalizedInitial.folder,
-        status: 'linked',
-        message: '',
+      // Try to search and link existing SharePoint folder
+      const linkRes = await fetch(`${API}/api/sharepoint/link_client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clientName }),
+      })
+      if (linkRes.ok) {
+        const linkData = await linkRes.json()
+        if (linkData?.linked && linkData?.sharepoint_url) {
+          window.open(linkData.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({ path: linkData.sharepoint_url, status: 'linked', message: '' })
+          return
+        }
       }
-    })
-  }, [normalizedInitial])
 
-  function openUrlInNewTab(url) {
-    if (!url) return false
-    try {
-      const win = window.open(url, '_blank', 'noopener,noreferrer')
-      if (win) return true
-    } catch {}
-    try {
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.target = '_blank'
-      anchor.rel = 'noopener noreferrer'
-      anchor.style.display = 'none'
-      document.body.appendChild(anchor)
-      anchor.click()
-      anchor.remove()
-      return true
-    } catch {}
-    return false
-  }
+      // No folder found - CREATE a new one
+      setFolder(s => ({ ...s, status: 'linking', message: 'יוצר תיקייה חדשה...' }))
+      const createRes = await fetch(`${API}/api/sharepoint/create_folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clientName }),
+      })
 
-  async function fetchSharePointLink(clientName) {
-    try {
-      const res = await fetch(
-        `${API}/api/client/sharepoint_link?name=${encodeURIComponent(
-          clientName
-        )}`
-      )
-      if (!res.ok) return ''
-      const data = await res.json()
-      return typeof data?.webUrl === 'string' ? data.webUrl : ''
-    } catch {
-      return ''
-    }
-  }
+      if (createRes.ok) {
+        const createData = await createRes.json()
+        if (createData?.sharepoint_url) {
+          window.open(createData.sharepoint_url, '_blank', 'noopener,noreferrer')
+          setFolder({
+            path: createData.sharepoint_url,
+            status: 'linked',
+            message: createData.created ? 'תיקייה נוצרה!' : 'תיקייה קיימת'
+          })
+          return
+        }
+      } else {
+        const errData = await createRes.json().catch(() => ({}))
+        console.error('Create folder error:', errData)
+      }
 
-  async function handleBrowseFolder() {
-    if (!summaryClient) {
+      // If creation also failed, show error
       setFolder({
         path: '',
         status: 'error',
-        message: 'Select a client first',
+        message: 'לא ניתן ליצור תיקייה. בדוק הרשאות SharePoint.'
       })
-      return
-    }
-    setFolder((s) => ({ ...s, status: 'linking', message: '' }))
-    const fallbackToSharePoint = async (preferredLink) => {
-      const link =
-        preferredLink || (await fetchSharePointLink(summaryClient.name || ''))
-      if (!link) return false
-      const opened = openUrlInNewTab(link)
-      setFolder({
-        path: link,
-        status: 'linked',
-        message: opened
-          ? ''
-          : 'SharePoint link ready. Please open it in a new tab.',
-      })
-      return true
-    }
-
-    try {
-      let payload = null
-      const res = await fetch(
-        `${API}/dev/open_folder?name=${encodeURIComponent(
-          summaryClient.name || ''
-        )}`,
-        { method: 'POST' }
-      )
-      try {
-        payload = await res.json()
-      } catch {
-        payload = null
-      }
-      if (!res.ok) {
-        throw new Error(
-          (payload && (payload.detail || payload.message)) ||
-            'Folder picker failed'
-        )
-      }
-      const localPath =
-        typeof payload?.path === 'string' && payload.path.trim()
-          ? payload.path
-          : ''
-      const sharePointUrl =
-        typeof payload?.webUrl === 'string' && payload.webUrl.trim()
-          ? payload.webUrl
-          : ''
-      if (localPath) {
-        setFolder({
-          path: localPath,
-          status: 'linked',
-          message: '',
-        })
-        return
-      }
-      const usedSharePoint = await fallbackToSharePoint(sharePointUrl)
-      if (!usedSharePoint) {
-        throw new Error('Folder picker returned no path.')
-      }
     } catch (err) {
-      const linked = await fallbackToSharePoint()
-      if (!linked) {
-        setFolder({
-          path: '',
-          status: 'error',
-          message:
-            'Could not link folder. Please try again or contact support.',
-        })
-      }
+      console.error('handleBrowseFolder error:', err)
+      setFolder({ path: '', status: 'error', message: 'שגיאה בחיפוש/יצירת תיקייה' })
     }
   }
 
-  async function handleSubmit() {
-    if (!summaryClient) return
-    setAddStatus('submitting')
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+
+    setSubmitStatus('submitting')
     setSubmitError('')
-    const name = draftName
-    const primaryEmail = primaryEmailFromDraft
-    const emailList = parsedEmails.length
-      ? parsedEmails
-      : summaryClient?.emails || []
-    if (!name || !primaryEmail) {
-      setSubmitError('Selected record is missing name or email.')
-      setAddStatus('error')
-      return
+
+    const clientPayload = {
+      display_name: formData.name.trim(),
+      email: parsedEmails,
+      phone: formData.phone.trim(),
+      client_type: formData.clientTypes,
+      stage: formData.stage,
+      notes: formData.notes.trim(),
+      contacts: contacts.map(c => ({
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        role_desc: c.role || c.role_desc,
+        is_primary: c.is_primary,
+      })),
     }
-    const contacts = [
-      {
-        name: summaryClient.owner || 'Primary Contact',
-        email: primaryEmail,
-      },
-    ]
+
+    if (folder.path) {
+      clientPayload.folder = folder.path
+    }
+
+    if (selectedClient?.id && !isCreateMode) {
+      clientPayload.airtable_id = selectedClient.id
+      clientPayload.airtable_url = selectedClient.airtable_url || ''
+    }
+
     try {
-      const payloadBase = {
+      // Create SharePoint folder (if creating new)
+      if (!isEditMode && isCreateMode) {
+        await fetch(`${API}/sp/folder_create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: formData.name.trim() }),
+        }).catch(() => {}) // Non-blocking
+      }
+
+      // Upsert to Airtable
+      await fetch(`${API}/airtable/clients_upsert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      }
-      if (!isEditMode) {
-        await fetch(`${API}/sp/folder_create`, {
-          ...payloadBase,
-          body: JSON.stringify({ name }),
-        })
-      }
-      await fetch(`${API}/airtable/clients_upsert`, {
-        ...payloadBase,
         body: JSON.stringify({
-          name,
-          email: primaryEmail,
-          airtable_id: summaryClient.id,
-          phone: draftPhone || undefined,
+          name: formData.name.trim(),
+          email: parsedEmails[0],
+          airtable_id: selectedClient?.id || undefined,
+          phone: formData.phone.trim() || undefined,
         }),
+      }).catch(() => {}) // Non-blocking - will be synced later
+
+      // Save to local registry
+      const regRes = await fetch(`${API}/registry/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clientPayload),
       })
-      const registryPayload = {
-        display_name: name,
-        email: emailList,
-        phone: draftPhone || '',
-        client_type: summaryClient.client_type || [],
-        stage: draftStatus || summaryClient.status || '',
-        notes: draftNotes || '',
-        contacts:
-          summaryClient.contacts && summaryClient.contacts.length
-            ? summaryClient.contacts
-            : contacts,
-        airtable_id: summaryClient.id,
-        airtable_url: summaryClient.airtable_url || summaryClient.airtableUrl || '',
+
+      if (!regRes.ok) {
+        const errData = await regRes.json().catch(() => ({}))
+        if (regRes.status === 409) {
+          throw new Error('לקוח עם שם זה כבר קיים')
+        }
+        throw new Error(errData.detail || 'Failed to save client')
       }
-      if (folder.path) {
-        registryPayload.folder = folder.path
+
+      const savedClient = await regRes.json().catch(() => ({}))
+      const clientId = savedClient.id || selectedClient?.id || initialClient?.id
+
+      // Save contacts via API (if we have a client ID)
+      if (clientId) {
+        // Delete pending contacts
+        for (const contactId of pendingContactDeletes) {
+          if (!contactId.startsWith('temp_')) {
+            await fetch(`${API}/contacts/${contactId}`, { method: 'DELETE' }).catch(() => {})
+          }
+        }
+
+        // Save new/modified contacts
+        for (const contact of contacts) {
+          const contactPayload = {
+            client_id: clientId,
+            name: contact.name,
+            email: contact.email || '',
+            phone: contact.phone || '',
+            role_desc: contact.role || contact.role_desc || '',
+            is_primary: contact.is_primary || false,
+          }
+
+          if (contact._isNew || contact.id?.startsWith('temp_')) {
+            // Create new contact
+            await fetch(`${API}/contacts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(contactPayload),
+            }).catch(() => {})
+          } else if (contact._isModified && contact.id) {
+            // Update existing contact
+            await fetch(`${API}/contacts/${contact.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(contactPayload),
+            }).catch(() => {})
+          }
+        }
       }
-      await fetch(`${API}/registry/clients`, {
-        ...payloadBase,
-        body: JSON.stringify(registryPayload),
-      })
-      setAddStatus('success')
-      setClientDraft(null)
+
+      setSubmitStatus('success')
       onAdded?.()
       onClose?.()
+
     } catch (err) {
-      setSubmitError('Failed to add client. Please retry.')
-      setAddStatus('error')
+      setSubmitError(err.message || 'שגיאה בשמירת הלקוח')
+      setSubmitStatus('error')
     }
   }
 
-  const submitDisabled =
-    !summaryClient ||
-    !draftName ||
-    !primaryEmailFromDraft ||
-    addStatus === 'submitting' ||
-    (!isEditMode && folder.status === 'error')
-
-  const currentFolderPill =
-    folderPills[folder.status] || folderPills.not_linked || folderPills.idle
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
+      data-testid="add-client-modal"
+    >
       <div className="flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between bg-[#0B3B5A] px-8 py-5 text-white">
-          <h2 className="text-xl font-semibold">{modalTitle}</h2>
+
+        {/* Header */}
+        <div className="flex items-center justify-between bg-petrol px-6 py-4 text-white">
+          <h2 className="text-lg font-semibold">
+            {isEditMode ? LABELS.modalTitleEdit : LABELS.modalTitle}
+          </h2>
           <button
             onClick={onClose}
             className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
-            aria-label="Close dialog"
+            aria-label="סגור"
           >
             ✕
           </button>
         </div>
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto bg-white px-8 py-6 md:flex-row">
-          <div className="flex-1 space-y-6">
-            {showSearchSection ? (
-              <>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* Search Section */}
+          {!isEditMode && (
             <section>
-              <label
-                className="text-[12px] font-semibold uppercase tracking-wide text-[#0B3B5A]"
-                htmlFor="airtable-search"
-              >
-                Search Airtable
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                {LABELS.clientName} <span className="text-red-500">*</span>
               </label>
-              <div className="mt-2 flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-[#0B3B5A]">
-                <span className="mr-2 text-slate-400">🗄️</span>
+              <div className="relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
                 <input
-                  id="airtable-search"
-                  data-testid="clients.add.search"
+                  type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name or email"
-                  className="w-full border-none bg-transparent text-[16px] outline-none"
+                  placeholder={LABELS.searchPlaceholder}
+                  className="w-full pr-10 pl-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                  data-testid="client-search-input"
                 />
               </div>
-              <p className="mt-1 text-[13px] text-slate-500">
-                Results refresh automatically (300 ms debounce).
-              </p>
+              <p className="mt-1.5 text-xs text-slate-500">{LABELS.searchHint}</p>
             </section>
-              </>
-            ) : (
-              <section className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Editing client details sourced from Airtable/registry. Search is disabled in this mode.
-              </section>
-            )}
-            {summaryClient && (
-              <section className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                <div className="text-[12px] font-semibold uppercase tracking-wide text-[#0B3B5A]">
-                  Client Details
-                </div>
-                <div className="mt-3 space-y-3">
-                  <label className="block text-sm font-medium text-slate-600">
-                    Client name
-                    <input
-                      value={clientDraft?.name ?? ''}
-                      onChange={(e) => updateDraft('name', e.target.value)}
-                      className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-[#0B3B5A] focus:outline-none"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-slate-600">
-                    Emails (comma separated)
-                    <textarea
-                      value={clientDraft?.emailsText ?? ''}
-                      onChange={(e) => updateDraft('emailsText', e.target.value)}
-                      rows={2}
-                      className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-[#0B3B5A] focus:outline-none"
-                    />
-                  </label>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <label className="text-sm font-medium text-slate-600">
-                      Phone
-                      <input
-                        value={clientDraft?.phone ?? ''}
-                        onChange={(e) => updateDraft('phone', e.target.value)}
-                        className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-[#0B3B5A] focus:outline-none"
-                      />
-                    </label>
-                    <label className="text-sm font-medium text-slate-600">
-                      Status/Stage
-                      <input
-                        value={clientDraft?.status ?? ''}
-                        onChange={(e) => updateDraft('status', e.target.value)}
-                        className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-[#0B3B5A] focus:outline-none"
-                      />
-                    </label>
-                  </div>
-                  <label className="block text-sm font-medium text-slate-600">
-                    Notes
-                    <textarea
-                      value={clientDraft?.notes ?? ''}
-                      onChange={(e) => updateDraft('notes', e.target.value)}
-                      rows={3}
-                      className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-[#0B3B5A] focus:outline-none"
-                    />
-                  </label>
-                </div>
-              </section>
-            )}
+          )}
 
-            <section>
-              <div className="text-[12px] font-semibold uppercase tracking-wide text-[#0B3B5A]">
-                Results
-              </div>
-              <div className="mt-3 space-y-2">
-                {searchStatus === 'idle' && (
-                  <div
-                    data-testid="clients.add.search.empty"
-                    className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 px-4 py-10 text-center text-slate-500"
+          {/* Duplicate Warning */}
+          {duplicateWarning && !isCreateMode && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-600">⚠️</span>
+                <div>
+                  <div className="font-medium text-amber-800">{LABELS.duplicateWarning}</div>
+                  <div className="text-amber-700 mt-1">
+                    "{duplicateWarning.name}" - {duplicateWarning.emails?.[0] || 'ללא אימייל'}
+                  </div>
+                  <button
+                    onClick={() => handleSelectClient(duplicateWarning)}
+                    className="mt-2 text-xs text-petrol underline hover:no-underline"
                   >
-                    <span className="text-3xl">🗄️</span>
-                    <p className="mt-2 text-sm">
-                      Enter a search term to find clients
-                    </p>
+                    בחר לקוח זה
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search Results */}
+          {!isEditMode && searchStatus !== 'idle' && (
+            <section>
+              {searchStatus === 'searching' && (
+                <div className="rounded-lg border border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                  <span className="inline-block animate-spin mr-2">⏳</span>
+                  {LABELS.searching}
+                </div>
+              )}
+
+              {searchStatus === 'ready' && searchResults.length > 0 && !isCreateMode && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                    {LABELS.selectExisting}
                   </div>
-                )}
-                {searchStatus === 'searching' && (
-                  <div className="rounded-lg border border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
-                    Searching…
-                  </div>
-                )}
-                {searchStatus === 'empty' && (
-                  <div className="rounded-lg border border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
-                    No results found.
-                  </div>
-                )}
-                {searchStatus === 'error' && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-700">
-                    Airtable search failed, showing cached entries.
-                  </div>
-                )}
-                {searchStatus === 'ready' &&
-                  searchResults.map((client) => {
-                    const isSelected =
-                      selectedClient && selectedClient.id === client.id
-                    const primaryEmail =
-                      (client.emails && client.emails[0]) || client.email || ''
-                    return (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {searchResults.map((client) => (
                       <button
                         key={client.id}
-                        data-testid="clients.add.result.select"
-                        onClick={() => setSelectedClient(client)}
-                        className={`w-full rounded-lg border px-4 py-3 text-left shadow-sm transition ${
-                          isSelected
-                            ? 'border-[#0B3B5A] bg-[#F5F7FB]'
-                            : 'border-slate-200 hover:border-slate-300'
+                        onClick={() => handleSelectClient(client)}
+                        className={`w-full rounded-lg border px-4 py-3 text-right transition ${
+                          selectedClient?.id === client.id
+                            ? 'border-petrol bg-petrol/5'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="text-sm font-semibold text-[#0B3B5A]">
-                          {client.name}
-                        </div>
+                        <div className="font-medium text-slate-800">{client.name}</div>
                         <div className="text-sm text-slate-500">
-                          {primaryEmail || client.phone || 'No contact info'}
+                          {client.emails?.[0] || client.phone || 'ללא פרטי קשר'}
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-600">
-                          {(client.client_type || []).map((chip) => (
-                            <span
-                              key={chip}
-                              className="rounded-full bg-slate-100 px-2 py-0.5"
-                            >
-                              {chip}
-                            </span>
-                          ))}
-                          {client.status && (
-                            <span className="rounded-full bg-white px-2 py-0.5 border border-slate-200">
-                              {client.status}
-                            </span>
-                          )}
-                        </div>
+                        {client.client_type?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {client.client_type.map((type) => (
+                              <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </button>
-                    )
-                  })}
-              </div>
-            </section>
-
-            <section>
-              <div className="text-[12px] font-semibold uppercase tracking-wide text-[#0B3B5A]">
-                Local Folder
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex flex-1 items-center rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                  <span className="mr-2 text-slate-400">📁</span>
-                  <span className="block break-all whitespace-pre-wrap leading-tight">
-                    {folder.path || 'No folder selected'}
-                  </span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleSwitchToCreate}
+                    className="w-full text-sm text-petrol hover:underline py-2"
+                  >
+                    ✨ {LABELS.createNew} "{searchQuery}"
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  data-testid="clients.add.link-folder"
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-[#0B3B5A] hover:bg-slate-50 disabled:opacity-50"
-                  onClick={handleBrowseFolder}
-                  disabled={!selectedClient || folder.status === 'linking'}
-                >
-                  {folder.status === 'linking' ? 'Linking…' : 'Browse'}
-                </button>
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-xs">
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${currentFolderPill.className}`}
-                >
-                  {currentFolderPill.label}
-                </span>
-                <span className="text-slate-500">
-                  This calls <code>dev/open_folder</code> to reuse an existing
-                  folder.
-                </span>
-              </div>
-              {folder.status === 'error' && (
-                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {folder.message || 'Unable to link folder.'}
+              )}
+
+              {(searchStatus === 'empty' || isCreateMode) && (
+                <div className="rounded-lg border border-dashed border-petrol/30 bg-petrol/5 px-4 py-4 text-center">
+                  <div className="text-sm text-slate-700">
+                    {searchStatus === 'empty'
+                      ? `לא נמצא לקוח בשם "${searchQuery}"`
+                      : `יוצר לקוח חדש: "${searchQuery}"`
+                    }
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">{LABELS.createHint}</div>
+                </div>
+              )}
+
+              {searchStatus === 'error' && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 text-center">
+                  חיפוש Airtable נכשל, מציג תוצאות מקומיות
                 </div>
               )}
             </section>
-          </div>
+          )}
 
-          <aside className="w-full max-w-sm space-y-3 rounded-xl bg-[#F3F4F6] p-4">
-            <div className="text-[12px] font-semibold uppercase tracking-wide text-[#0B3B5A]">
-              Summary
-            </div>
-            {!summaryClient && (
-              <div className="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-                Select a client to view summary
+          {/* Form Fields - Show when creating or editing */}
+          {(isCreateMode || isEditMode || selectedClient) && (
+            <section className="space-y-4 border-t border-slate-100 pt-5">
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                פרטי לקוח
               </div>
-            )}
-                {summaryClient && (
-                  <div
-                    data-testid="clients.add.summary"
-                    className="space-y-3 rounded-lg border border-white/60 bg-white px-4 py-3 shadow-inner"
-                  >
+
+              {/* Name (read-only if selected from search) */}
+              {isEditMode && (
                 <div>
-                  <div className="text-sm font-semibold text-[#0B3B5A]">
-                    {summaryClient.name}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {(summaryClient.emails || []).join(', ') || 'No email'}
-                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {LABELS.clientName} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => updateForm('name', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                  />
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-700">
-                    {(summaryClient.emails || []).length} emails
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs ${currentFolderPill.className}`}
+              )}
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {LABELS.email} <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={formData.emailsText}
+                  onChange={(e) => updateForm('emailsText', e.target.value)}
+                  rows={2}
+                  placeholder="example@email.com, another@email.com"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol resize-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">{LABELS.emailHint}</p>
+              </div>
+
+              {/* Phone & Stage */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {LABELS.phone}
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => updateForm('phone', e.target.value)}
+                    placeholder="052-1234567"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {LABELS.stage}
+                  </label>
+                  <select
+                    value={formData.stage}
+                    onChange={(e) => updateForm('stage', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol bg-white"
                   >
+                    {STAGES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Client Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {LABELS.clientType}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {CLIENT_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => toggleClientType(type.value)}
+                      className={`px-3 py-1.5 rounded-full text-sm transition ${
+                        formData.clientTypes.includes(type.value)
+                          ? 'bg-petrol text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {LABELS.notes}
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => updateForm('notes', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol resize-none"
+                />
+              </div>
+
+              {/* Contacts Section */}
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-slate-700">
+                    {LABELS.contacts}
+                    {contacts.length > 0 && (
+                      <span className="text-xs text-slate-400 mr-2">({contacts.length})</span>
+                    )}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddContact}
+                    className="flex items-center gap-1 px-3 py-1.5 min-h-[44px] rounded-lg bg-petrol/10 text-petrol text-sm font-medium hover:bg-petrol/20 transition"
+                  >
+                    <span className="text-lg">+</span>
+                    {LABELS.addContact}
+                  </button>
+                </div>
+
+                {/* Contact Form (inline) */}
+                {showContactForm && (
+                  <div className="mb-4 p-4 rounded-lg border border-petrol/30 bg-petrol/5">
+                    <div className="text-sm font-medium text-slate-700 mb-3">
+                      {editingContact ? LABELS.editContact : LABELS.addContact}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">
+                          {LABELS.contactName} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={contactForm.name}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="שם מלא"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactRole}</label>
+                        <input
+                          type="text"
+                          value={contactForm.role}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, role: e.target.value }))}
+                          placeholder="תפקיד"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactEmail}</label>
+                        <input
+                          type="email"
+                          value={contactForm.email}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="email@example.com"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">{LABELS.contactPhone}</label>
+                        <input
+                          type="tel"
+                          value={contactForm.phone}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="052-1234567"
+                          className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-petrol/20 focus:border-petrol"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={contactForm.is_primary}
+                          onChange={(e) => setContactForm(prev => ({ ...prev, is_primary: e.target.checked }))}
+                          className="w-4 h-4 rounded border-slate-300 text-petrol focus:ring-petrol"
+                        />
+                        <span className="text-sm text-slate-700">{LABELS.contactPrimary}</span>
+                      </label>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={resetContactForm}
+                        className="px-4 py-2 min-h-[44px] rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
+                      >
+                        {LABELS.cancelContact}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveContact}
+                        disabled={!contactForm.name.trim()}
+                        className="px-4 py-2 min-h-[44px] rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover disabled:bg-slate-300 disabled:cursor-not-allowed"
+                      >
+                        {LABELS.saveContact}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contacts List */}
+                {contactsLoading ? (
+                  <div className="flex items-center justify-center py-4 text-sm text-slate-500">
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    טוען אנשי קשר...
+                  </div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-6 text-sm text-slate-500 border border-dashed border-slate-200 rounded-lg">
+                    {LABELS.noContacts}
+                  </div>
+                ) : (
+                  <div className="max-h-[200px] overflow-y-auto space-y-2">
+                    {contacts.map((contact, idx) => (
+                      <div
+                        key={contact.id || idx}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-slate-200 transition"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {contact.is_primary && (
+                              <span className="text-amber-500" title={LABELS.contactPrimary}>★</span>
+                            )}
+                            <span className="font-medium text-slate-800 truncate">{contact.name}</span>
+                            {(contact.role || contact.role_desc) && (
+                              <span className="text-slate-500 text-sm">({contact.role || contact.role_desc})</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3 mt-1 text-xs text-slate-600">
+                            {contact.email && (
+                              <span className="flex items-center gap-1">
+                                <span>✉</span>
+                                <span className="truncate max-w-[150px]">{contact.email}</span>
+                              </span>
+                            )}
+                            {contact.phone && (
+                              <span className="flex items-center gap-1">
+                                <span>📞</span>
+                                {contact.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 mr-2">
+                          {!contact.is_primary && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimary(contact)}
+                              className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
+                              title="הגדר כראשי"
+                            >
+                              ☆
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEditContact(contact)}
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-petrol hover:bg-petrol/10 transition"
+                            title="ערוך"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteContact(contact)}
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition"
+                            title={LABELS.deleteContact}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Folder Link (optional) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {LABELS.folder}
+                  <span className="text-xs text-slate-400 mr-2">(אופציונלי)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 bg-slate-50">
+                    <span className="ml-2">📁</span>
+                    <span className="truncate">
+                      {folder.path
+                        ? (folder.path.includes('sharepoint.com')
+                            ? `SharePoint: ${formData.name || 'לקוח'}`
+                            : folder.path)
+                        : 'לא נבחרה תיקייה'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBrowseFolder}
+                    disabled={folder.status === 'linking'}
+                    className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-petrol hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {folder.status === 'linking' ? LABELS.folderLinking : LABELS.folderBrowse}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${currentFolderPill.className}`}>
                     {currentFolderPill.label}
                   </span>
-                  {(summaryClient.client_type || []).map((type) => (
-                    <span
-                      key={type}
-                      className="rounded-full bg-white px-2 py-1 border border-slate-200 text-slate-600"
-                    >
-                      {type}
-                    </span>
-                  ))}
-                  {summaryClient.status && (
-                    <span className="rounded-full bg-[#0B3B5A]/10 px-2 py-1 text-[#0B3B5A]">
-                      {summaryClient.status}
-                    </span>
+                  {folder.message && (
+                    <span className="text-xs text-red-600">{folder.message}</span>
                   )}
                 </div>
-                <div className="text-[12px] text-slate-600">
-                  Airtable ID:{' '}
-                  <span className="font-mono">
-                    {summaryClient.id || 'N/A'}
-                  </span>
-                </div>
-                <div className="text-[12px] text-slate-500">
-                  Owner: {summaryClient.owner || 'Unassigned'}
-                </div>
-                {summaryStatus === 'loading' && (
-                  <div className="text-xs text-slate-500">Loading summary…</div>
-                )}
-                {summaryStatus === 'ready' && summary?.files && (
-                  <div className="text-xs text-slate-500">
-                    Files: {summary.files.length}
-                  </div>
-                )}
-                {summaryClient.notes && (
-                  <div className="text-xs text-slate-500 whitespace-pre-wrap border-t border-slate-100 pt-2">
-                    {summaryClient.notes}
-                  </div>
-                )}
-                {summaryClient.contacts && summaryClient.contacts.length > 0 && (
-                  <div className="border-t border-slate-100 pt-2">
-                    <div className="text-xs font-semibold text-slate-600">
-                      Contacts
-                    </div>
-                    <ul className="mt-1 space-y-1 text-xs text-slate-500 max-h-28 overflow-auto">
-                      {summaryClient.contacts.slice(0, 5).map((c) => (
-                        <li key={`${c.id}-${c.email || c.name}`}>
-                          <div className="font-medium text-slate-700">
-                            {c.name || c.email || 'Unnamed'}
-                          </div>
-                          <div>{c.email}</div>
-                          <div>{c.phone}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {summaryClient.airtable_url && (
-                  <a
-                    href={summaryClient.airtable_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#0B3B5A]"
-                  >
-                    Open in Airtable ↗
-                  </a>
-                )}
               </div>
-            )}
-          </aside>
+
+              {/* Summary / Airtable Info */}
+              {selectedClient && !isCreateMode && (
+                <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm">
+                  <div className="text-xs font-medium text-slate-500 mb-2">{LABELS.airtableId}</div>
+                  <code className="text-xs text-slate-600">{selectedClient.id || 'N/A'}</code>
+                  {selectedClient.airtable_url && (
+                    <a
+                      href={selectedClient.airtable_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block mt-2 text-xs text-petrol hover:underline"
+                    >
+                      פתח ב-Airtable ↗
+                    </a>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-200 bg-white px-8 py-4">
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
           <button
-            data-testid="clients.add.cancel"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="px-5 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            data-testid="client-modal-cancel"
           >
-            Cancel
+            {LABELS.cancel}
           </button>
           <button
-            data-testid="clients.add.submit"
             onClick={handleSubmit}
-            disabled={submitDisabled}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold text-white transition ${
-              submitDisabled
-                ? 'cursor-not-allowed bg-[#EAC2AF]'
-                : 'bg-[#D07655] hover:bg-[#bb6445]'
+            disabled={!canSubmit || submitStatus === 'submitting'}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold text-white transition flex items-center justify-center gap-2 min-w-[120px] ${
+              canSubmit && submitStatus !== 'submitting'
+                ? 'bg-petrol hover:bg-petrolHover active:bg-petrolActive'
+                : 'bg-slate-300 cursor-not-allowed'
             }`}
+            data-testid="client-modal-submit"
           >
-            {addStatus === 'submitting' ? 'Saving…' : submitLabel}
+            {submitStatus === 'submitting' && (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
+            {submitStatus === 'submitting'
+              ? LABELS.submitting
+              : isEditMode
+                ? LABELS.submitEdit
+                : LABELS.submit
+            }
           </button>
         </div>
+
+        {/* Error Message */}
         {submitError && (
-          <div className="border-t border-red-200 bg-red-50 px-8 py-3 text-sm text-red-700">
+          <div className="border-t border-red-200 bg-red-50 px-6 py-3 text-sm text-red-700">
             {submitError}
           </div>
         )}

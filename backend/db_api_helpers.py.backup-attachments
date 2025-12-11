@@ -1,0 +1,397 @@
+"""
+SQLite API Helpers for main.py
+
+This module provides wrapper functions that return data in the format
+expected by the frontend API, reading from SQLite instead of JSON files.
+"""
+import json
+from typing import Optional, List, Dict, Any
+
+try:
+    from backend import db as sqlite_db
+except ImportError:
+    import db as sqlite_db
+
+
+
+
+def _log_activity(event_type: str, entity_type: str, entity_id: str, details: dict = None):
+    """Log activity for audit trail."""
+    try:
+        db = sqlite_db.get_db()
+        sqlite_db.log_activity(db, event_type, entity_type, entity_id, details)
+    except Exception as e:
+        print(f"Warning: Failed to log activity: {e}")
+
+
+def load_clients_from_sqlite() -> List[Dict]:
+    """
+    Load clients from SQLite database.
+    Returns data in the same format as the original JSON-based API.
+    """
+    try:
+        db = sqlite_db.get_db()
+        clients_db = sqlite_db.ClientsDB(db)
+        contacts_db = sqlite_db.ContactsDB(db)
+
+        clients = clients_db.list(active_only=False, limit=1000)
+
+        result = []
+        for c in clients:
+            # Skip test clients
+            if c.get("name", "").startswith("ZZZ Test"):
+                continue
+
+            # Get contacts for this client
+            client_contacts = contacts_db.list_for_client(c.get("id", ""))
+            contacts_list = [
+                {
+                    "name": ct.get("name", ""),
+                    "email": ct.get("email", ""),
+                    "phone": ct.get("phone", ""),
+                    "role": ct.get("role", "")
+                }
+                for ct in client_contacts
+            ]
+
+            # Parse types if stored as JSON string
+            types = c.get("types", [])
+            if isinstance(types, str):
+                try:
+                    types = json.loads(types)
+                except:
+                    types = []
+
+            result.append({
+                "id": c.get("id"),
+                "name": c.get("name", ""),
+                "email": c.get("email", ""),
+                "phone": c.get("phone", ""),
+                "type": types,
+                "stage": c.get("stage", ""),
+                "notes": c.get("notes", ""),
+                "folderPath": c.get("local_folder", ""),
+                "airtableId": c.get("airtable_id", ""),
+                "contacts": contacts_list,
+                "createdAt": c.get("created_at"),
+                "active": bool(c.get("active", 1)),
+                "archivedAt": None if c.get("active", 1) else c.get("updated_at"),
+            })
+        return result
+    except Exception as e:
+        print(f"Error loading clients from SQLite: {e}")
+        return []
+
+
+def find_client_by_id(client_id: str) -> Optional[Dict]:
+    """Find a single client by ID from SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        clients_db = sqlite_db.ClientsDB(db)
+        contacts_db = sqlite_db.ContactsDB(db)
+
+        c = clients_db.get(client_id)
+        if not c:
+            return None
+
+        # Get contacts
+        client_contacts = contacts_db.list_for_client(client_id)
+        contacts_list = [
+            {"name": ct.get("name", ""), "email": ct.get("email", ""), "phone": ct.get("phone", "")}
+            for ct in client_contacts
+        ]
+
+        types = c.get("types", [])
+        if isinstance(types, str):
+            try:
+                types = json.loads(types)
+            except:
+                types = []
+
+        return {
+            "id": c.get("id"),
+            "name": c.get("name", ""),
+            "email": c.get("email", ""),
+            "phone": c.get("phone", ""),
+            "type": types,
+            "stage": c.get("stage", ""),
+            "notes": c.get("notes", ""),
+            "folderPath": c.get("local_folder", ""),
+            "airtableId": c.get("airtable_id", ""),
+            "contacts": contacts_list,
+            "createdAt": c.get("created_at"),
+            "active": bool(c.get("active", 1)),
+            "archivedAt": None,
+        }
+    except Exception as e:
+        print(f"Error finding client in SQLite: {e}")
+        return None
+
+
+def find_client_by_name(name: str) -> Optional[Dict]:
+    """Find a client by name from SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        clients_db = sqlite_db.ClientsDB(db)
+        contacts_db = sqlite_db.ContactsDB(db)
+
+        c = clients_db.get_by_name(name)
+        if not c:
+            return None
+
+        client_id = c.get("id")
+        client_contacts = contacts_db.list_for_client(client_id)
+        contacts_list = [
+            {"name": ct.get("name", ""), "email": ct.get("email", ""), "phone": ct.get("phone", "")}
+            for ct in client_contacts
+        ]
+
+        types = c.get("types", [])
+        if isinstance(types, str):
+            try:
+                types = json.loads(types)
+            except:
+                types = []
+
+        emails = [c.get("email", "")] if c.get("email") else []
+
+        return {
+            "id": c.get("id"),
+            "name": c.get("name", ""),
+            "emails": emails,
+            "phone": c.get("phone", ""),
+            "client_type": types,
+            "stage": c.get("stage", ""),
+            "notes": c.get("notes", ""),
+            "folder": c.get("local_folder", ""),
+            "airtable_id": c.get("airtable_id", ""),
+            "airtable_url": c.get("airtable_url", ""),
+            "sharepoint_url": c.get("sharepoint_url", ""),
+            "sharepoint_id": "",
+            "contacts": contacts_list,
+            "created_at": c.get("created_at"),
+            "active": bool(c.get("active", 1)),
+            "archived_at": None,
+        }
+    except Exception as e:
+        print(f"Error finding client by name in SQLite: {e}")
+        return None
+
+
+def archive_client(client_name: str) -> bool:
+    """Archive a client (set active=0) in SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        clients_db = sqlite_db.ClientsDB(db)
+
+        client = clients_db.get_by_name(client_name)
+        if not client:
+            return False
+
+        clients_db.archive(client["id"])
+        _log_activity("client_archived", "client", client["id"], {"name": client_name})
+        return True
+    except Exception as e:
+        print(f"Error archiving client in SQLite: {e}")
+        return False
+
+
+def restore_client(client_name: str) -> bool:
+    """Restore a client (set active=1) in SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        clients_db = sqlite_db.ClientsDB(db)
+
+        client = clients_db.get_by_name(client_name)
+        if not client:
+            return False
+
+        clients_db.restore(client["id"])
+        _log_activity("client_restored", "client", client["id"], {"name": client_name})
+        return True
+    except Exception as e:
+        print(f"Error restoring client in SQLite: {e}")
+        return False
+
+
+def load_tasks_from_sqlite() -> List[Dict]:
+    """Load tasks from SQLite database."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+
+        sqlite_tasks = tasks_db.list(limit=1000)
+
+        result = []
+        for t in sqlite_tasks:
+            # Map SQLite status to JSON status
+            status_map = {"todo": "new", "doing": "in_progress", "done": "done", "cancelled": "cancelled"}
+            status = status_map.get(t.get("status", "todo"), t.get("status", "new"))
+
+            result.append({
+                "id": t.get("id"),
+                "title": t.get("title", ""),
+                "desc": t.get("description", ""),
+                "status": status,
+                "dueAt": (t.get("due_date") + "T00:00:00Z") if t.get("due_date") else None,
+                "priority": t.get("priority"),
+                "clientName": t.get("client_name"),
+                "clientFolderPath": None,
+                "ownerId": t.get("assigned_to"),
+                "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
+                "comments": [],
+                "attachments": [],
+                "templateRef": None,
+                "source": t.get("source_type") or "manual",
+                "createdAt": t.get("created_at") + "Z" if t.get("created_at") else None,
+                "updatedAt": t.get("updated_at") + "Z" if t.get("updated_at") else None,
+                "doneAt": t.get("completed_at") + "Z" if t.get("completed_at") else None,
+                "deletedAt": None,
+            })
+        return result
+    except Exception as e:
+        print(f"Error loading tasks from SQLite: {e}")
+        return []
+
+
+def find_task_by_id(task_id: str) -> Optional[Dict]:
+    """Find a task by ID from SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+
+        t = tasks_db.get(task_id)
+        if not t:
+            return None
+
+        status_map = {"todo": "new", "doing": "in_progress", "done": "done", "cancelled": "cancelled"}
+        status = status_map.get(t.get("status", "todo"), t.get("status", "new"))
+
+        return {
+            "id": t.get("id"),
+            "title": t.get("title", ""),
+            "desc": t.get("description", ""),
+            "status": status,
+            "dueAt": (t.get("due_date") + "T00:00:00Z") if t.get("due_date") else None,
+            "priority": t.get("priority"),
+            "clientName": t.get("client_name"),
+            "clientFolderPath": None,
+            "ownerId": t.get("assigned_to"),
+            "parentId": t.get("source_id") if t.get("source_type") == "subtask" else None,
+            "comments": [],
+            "attachments": [],
+            "templateRef": None,
+            "source": t.get("source_type") or "manual",
+            "createdAt": t.get("created_at") + "Z" if t.get("created_at") else None,
+            "updatedAt": t.get("updated_at") + "Z" if t.get("updated_at") else None,
+            "doneAt": t.get("completed_at") + "Z" if t.get("completed_at") else None,
+            "deletedAt": None,
+        }
+    except Exception as e:
+        print(f"Error finding task in SQLite: {e}")
+        return None
+
+
+def create_task_in_sqlite(task_data: Dict) -> str:
+    """Create a task in SQLite. Returns task ID."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+
+        # Map status
+        status_map = {"new": "todo", "in_progress": "doing", "done": "done", "cancelled": "cancelled"}
+        status = status_map.get(task_data.get("status", "new"), "todo")
+
+        # Extract due date without time
+        due_at = task_data.get("dueAt")
+        due_date = due_at.split("T")[0] if due_at else None
+
+        sqlite_data = {
+            "id": task_data.get("id"),
+            "title": task_data.get("title", ""),
+            "description": task_data.get("desc", ""),
+            "status": status,
+            "priority": task_data.get("priority") or "medium",
+            "due_date": due_date,
+            "client_name": task_data.get("clientName"),
+            "assigned_to": task_data.get("ownerId"),
+            "source_type": task_data.get("source", "manual"),
+            "source_id": task_data.get("parentId"),
+        }
+
+        task_id = tasks_db.save(sqlite_data)
+        _log_activity("task_created", "task", task_id, {"title": task_data.get("title", "")})
+        return task_id
+    except Exception as e:
+        print(f"Error creating task in SQLite: {e}")
+        raise
+
+
+def update_task_in_sqlite(task_id: str, updates: Dict) -> bool:
+    """Update a task in SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+
+        # Map status
+        status_map = {"new": "todo", "in_progress": "doing", "done": "done", "cancelled": "cancelled"}
+
+        sqlite_updates = {"id": task_id}
+
+        if "title" in updates:
+            sqlite_updates["title"] = updates["title"]
+        if "desc" in updates:
+            sqlite_updates["description"] = updates["desc"]
+        if "status" in updates:
+            sqlite_updates["status"] = status_map.get(updates["status"], updates["status"])
+            if updates["status"] == "done":
+                sqlite_updates["done"] = 1
+            else:
+                sqlite_updates["done"] = 0
+        if "dueAt" in updates:
+            due_at = updates["dueAt"]
+            sqlite_updates["due_date"] = due_at.split("T")[0] if due_at else None
+        if "priority" in updates:
+            sqlite_updates["priority"] = updates["priority"]
+        if "clientName" in updates:
+            sqlite_updates["client_name"] = updates["clientName"]
+        if "ownerId" in updates:
+            sqlite_updates["assigned_to"] = updates["ownerId"]
+
+        tasks_db.save(sqlite_updates)
+        _log_activity("task_updated", "task", task_id, updates)
+        return True
+    except Exception as e:
+        print(f"Error updating task in SQLite: {e}")
+        return False
+
+
+def delete_task_from_sqlite(task_id: str) -> bool:
+    """Delete a task from SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+        tasks_db.delete(task_id)
+        _log_activity("task_deleted", "task", task_id)
+        return True
+    except Exception as e:
+        print(f"Error deleting task from SQLite: {e}")
+        return False
+
+
+def mark_task_done_in_sqlite(task_id: str, done: bool = True) -> bool:
+    """Mark task as done/undone in SQLite."""
+    try:
+        db = sqlite_db.get_db()
+        tasks_db = sqlite_db.TasksDB(db)
+
+        if done:
+            tasks_db.complete(task_id)
+            _log_activity("task_completed", "task", task_id)
+        else:
+            tasks_db.save({"id": task_id, "done": 0, "status": "todo"})
+            _log_activity("task_reopened", "task", task_id)
+        return True
+    except Exception as e:
+        print(f"Error marking task done in SQLite: {e}")
+        return False

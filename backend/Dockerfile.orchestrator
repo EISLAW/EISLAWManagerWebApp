@@ -1,0 +1,32 @@
+# EISLAW Agent Orchestrator Service
+# POC Implementation per PRD_AGENT_FRAMEWORK_LANGSMITH.md Section 7.6
+#
+# This service runs the Microsoft Agent Framework + LangSmith integration
+# for orchestrating EISLAW development agents (Joseph, Alex, Maya, Jacob, etc.)
+#
+# Build: docker build -f backend/Dockerfile.orchestrator -t eislaw-orchestrator .
+# Run: docker-compose-v2 up orchestrator
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY backend/requirements-orchestrator.txt /app/requirements-orchestrator.txt
+RUN pip install --no-cache-dir -r requirements-orchestrator.txt
+
+# Copy orchestrator code
+# Note: Minimal scaffold created by Jane (AOS-019/020/021)
+# Full implementation will be done by Alex in AOS-023
+COPY backend/orchestrator/ ./orchestrator/
+
+# Health check endpoint port
+EXPOSE 8801
+
+# Run the orchestrator service
+CMD ["python", "-m", "orchestrator.main"]

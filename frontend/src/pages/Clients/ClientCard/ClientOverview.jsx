@@ -10,9 +10,13 @@ import TasksWidget from '../../../components/TasksWidget.jsx'
 import EmailsWidget from '../../../components/EmailsWidget.jsx'
 import AddClientModal from '../../../components/AddClientModal.jsx'
 import LinkAirtableModal from '../../../components/LinkAirtableModal.jsx'
+import QuickActions from '../../../components/QuickActions.jsx'
+import TemplatePicker from '../../../components/TemplatePicker.jsx'
+import DeliveryEmailModal from '../../../components/DeliveryEmailModal.jsx'
 import { addClientTask, updateTaskFields } from '../../../features/tasksNew/TaskAdapter.js'
-import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight } from 'lucide-react'
+import { Loader2, RefreshCcw, Paperclip, MoreVertical, Mail, FolderOpen, FileText, ExternalLink, Phone, MessageCircle, ArrowRight, Receipt } from 'lucide-react'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from '../../../utils/apiBase.js'
+import QuoteGenerator from '../../../components/QuoteGenerator.jsx'
 
 // Simple in-memory cache for client summaries during the session to avoid re-fetch on tab switches
 const summaryCache = new Map()
@@ -37,7 +41,6 @@ export default function ClientOverview(){
   const [syncingEmails, setSyncingEmails] = useState(false)
   const [syncStatus, setSyncStatus] = useState('')
   const [syncResult, setSyncResult] = useState(null)
-  const [spBusy, setSpBusy] = useState(false)
   const [locations, setLocations] = useState(null)
   const [edit, setEdit] = useState(false)
   const [editForm, setEditForm] = useState({ email: '', phone: '' })
@@ -56,13 +59,17 @@ export default function ClientOverview(){
   const [syncingClientCard, setSyncingClientCard] = useState(false)
   const [airtableLinkModal, setAirtableLinkModal] = useState({ open: false, afterSync: false })
   const [creatingTaskId, setCreatingTaskId] = useState(null)
+  const [savingAttachmentsId, setSavingAttachmentsId] = useState(null)
   const pendingSyncAfterLinkRef = useRef(false)
-  const sharepointLinked = Boolean(summary.client?.sharepoint_url)
+  const sharepointLinked = Boolean(summary.client?.sharepoint_url || summary.client?.folder)
   const airtableLinked = Boolean(summary.client?.airtable_id)
   const [emailSinceDays, setEmailSinceDays] = useState(90)
   const [lastAutoSync, setLastAutoSync] = useState(null)
   const autoSyncAttemptedRef = useRef(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showQuoteGenerator, setShowQuoteGenerator] = useState(false)
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type })
@@ -596,19 +603,6 @@ export default function ClientOverview(){
     alert('עדיין אין מיפוי תיקייה')
   }
 
-  async function openSharePoint(){
-    try{
-      setSpBusy(true)
-      const loc = await ensureLocations()
-      if(loc.sharepointUrl){ window.open(loc.sharepointUrl, '_blank', 'noopener,noreferrer') }
-      else { throw new Error('not found') }
-    }catch(err){
-      alert('לא ניתן למצוא את תיקיית SharePoint. ניתן להגדיר מיפוי אם צריך.')
-    }finally{
-      setSpBusy(false)
-    }
-  }
-
   async function fetchOnlinePreview(){
     setOnline(s => ({...s, loading:true}))
     try{
@@ -667,7 +661,7 @@ export default function ClientOverview(){
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/clients')}
-            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-full hover:bg-slate-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             title="חזרה לרשימת הלקוחות"
           >
             <ArrowRight className="w-5 h-5 text-slate-600" />
@@ -681,7 +675,7 @@ export default function ClientOverview(){
             <a
               href={`mailto:${primaryEmail}`}
               data-testid="send-email"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-petrol text-white text-sm font-medium hover:bg-petrolHover transition-colors min-h-[44px]"
             >
               <Mail className="w-4 h-4" />
               שלח מייל
@@ -691,7 +685,7 @@ export default function ClientOverview(){
           <button
             data-testid="open-client-card"
             onClick={openClientCardModal}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors min-h-[44px]"
           >
             <FileText className="w-4 h-4" />
             כרטיס לקוח
@@ -701,7 +695,7 @@ export default function ClientOverview(){
           <div className="relative" ref={moreMenuRef}>
             <button
               onClick={() => setShowMoreMenu(v => !v)}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
               aria-label="פעולות נוספות"
             >
               <MoreVertical className="w-5 h-5" />
@@ -712,7 +706,7 @@ export default function ClientOverview(){
                 <button
                   data-testid="edit-client"
                   onClick={() => { setEdit(v => !v); setShowMoreMenu(false) }}
-                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                 >
                   <FileText className="w-4 h-4" />
                   {edit ? 'סגור עריכה' : 'ערוך לקוח'}
@@ -729,7 +723,7 @@ export default function ClientOverview(){
                     }
                     syncClientCard(modalClient)
                   }}
-                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 min-h-[44px]"
                 >
                   <RefreshCcw className="w-4 h-4" />
                   {syncingClientCard ? 'מסנכרן...' : 'סנכרן Airtable'}
@@ -738,7 +732,7 @@ export default function ClientOverview(){
                 {summary.client?.folder && (
                   <button
                     onClick={() => { openFolderKpi(); setShowMoreMenu(false) }}
-                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                   >
                     <FolderOpen className="w-4 h-4" />
                     פתח תיקייה
@@ -749,7 +743,7 @@ export default function ClientOverview(){
                   <button
                     data-testid="open-emails"
                     onClick={() => { openOutlookFor(primaryEmail); setShowMoreMenu(false) }}
-                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                   >
                     <ExternalLink className="w-4 h-4" />
                     פתח ב-Outlook
@@ -763,25 +757,33 @@ export default function ClientOverview(){
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => setShowMoreMenu(false)}
-                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                   >
                     <MessageCircle className="w-4 h-4" />
                     WhatsApp
                   </a>
                 )}
 
+                <button
+                  onClick={() => { setShowQuoteGenerator(true); setShowMoreMenu(false) }}
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
+                >
+                  <Receipt className="w-4 h-4" />
+                  צור הצעת מחיר
+                </button>
+
                 <div className="border-t border-slate-100 my-1" />
 
                 <button
                   onClick={() => { window.location.assign(`/clients/${encodedName}?tab=tasks`); setShowMoreMenu(false) }}
-                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                 >
                   הצג משימות
                 </button>
 
                 <button
                   onClick={() => { gotoIndexedEmails(); setShowMoreMenu(false) }}
-                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
                 >
                   הצג אימיילים
                 </button>
@@ -802,6 +804,15 @@ export default function ClientOverview(){
         ]}/>
       </div>
 
+      {/* Quick Actions - Phase 1: Three action buttons */}
+      {tab === 'overview' && (
+        <QuickActions
+          onQuote={() => setShowQuoteGenerator(true)}
+          onDocuments={() => setTemplatePickerOpen(true)}
+          onDelivery={() => setDeliveryModalOpen(true)}
+        />
+      )}
+
             {tab==='overview' && (
         <div className="space-y-6">
           {/* Edit panel - only shown when edit mode is active */}
@@ -812,7 +823,7 @@ export default function ClientOverview(){
                 <label className="text-sm">טלפון<input value={editForm.phone} onChange={e=>setEditForm({...editForm, phone:e.target.value})} className="mt-1 w-full border rounded px-2 py-1"/></label>
               </div>
               <div className="mt-3">
-                <button data-testid="save-client" className="px-3 py-1 rounded bg-success text-white" onClick={async ()=>{
+                <button data-testid="save-client" className="px-3 py-1 rounded bg-success text-white min-h-[44px]" onClick={async ()=>{
                   const nm = decodedName
                   const email = editForm.email.trim(); const phone = editForm.phone.trim()
                   try{
@@ -912,7 +923,7 @@ export default function ClientOverview(){
             ) : (
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100 min-h-[44px]"
                 onClick={() => openLinkModal(false)}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -951,7 +962,7 @@ export default function ClientOverview(){
               data-testid="emails-sync"
               onClick={syncEmails}
               disabled={syncingEmails}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg border border-slate-300 text-sm bg-white hover:bg-slate-50 disabled:opacity-60"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg border border-slate-300 text-sm bg-white hover:bg-slate-50 disabled:opacity-60 min-h-[44px]"
             >
               {syncingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4 text-petrol" />}
               <span>משוך מיילים</span>
@@ -1042,7 +1053,7 @@ export default function ClientOverview(){
               </select>
               <button
                 type="button"
-                className="text-xs text-petrol underline"
+                className="text-xs text-petrol underline min-h-[44px]"
                 onClick={()=>setEmailFilters({ query:'', sender:'', receiver:'', dateFrom:'', dateTo:'', attachments:'any' })}
               >
                 Clear filters
@@ -1111,26 +1122,38 @@ export default function ClientOverview(){
                           </div>
                         )}
                         <div className="mt-2 flex gap-3 flex-wrap items-center">
-                          <button className="text-petrol underline" onClick={() => showEmailInline(it)}>
+                          <button className="text-petrol underline min-h-[44px]" onClick={() => showEmailInline(it)}>
                             Open in Viewer
                           </button>
                           {!HIDE_OUTLOOK && (
                             <>
-                              <button className="text-petrol underline" onClick={() => openEmailInOutlook(it)}>
+                              <button className="text-petrol underline min-h-[44px]" onClick={() => openEmailInOutlook(it)}>
                                 Open in Outlook
                               </button>
-                            <button className="text-petrol underline" onClick={() => copyOutlookLink(it)}>
-                              Copy Outlook Link
-                            </button>
-                          </>
+                              <button className="text-petrol underline min-h-[44px]" onClick={() => replyInOutlook(it)}>
+                                Reply
+                              </button>
+                              <button className="text-petrol underline min-h-[44px]" onClick={() => copyOutlookLink(it)}>
+                                Copy Link
+                              </button>
+                            </>
                           )}
                           <button
-                            className="text-petrol underline"
+                            className="text-petrol underline min-h-[44px]"
                             onClick={() => createTaskFromEmail(it)}
                             disabled={creatingTaskId === it.id}
                           >
                             {creatingTaskId === it.id ? 'Creating…' : 'Create task'}
                           </button>
+                          {it.has_attachments && sharepointLinked && (
+                            <button
+                              className="text-petrol underline min-h-[44px]"
+                              onClick={() => saveAttachmentsToSharePoint(it)}
+                              disabled={savingAttachmentsId === it.id}
+                            >
+                              {savingAttachmentsId === it.id ? 'שומר...' : 'שמור קבצים ל-SharePoint'}
+                            </button>
+                          )}
                         </div>
                       </div>
                   )}
@@ -1174,7 +1197,7 @@ export default function ClientOverview(){
               </div>
               <div className="flex gap-2">
                 <button
-                  className="text-sm text-petrol underline"
+                  className="text-sm text-petrol underline min-h-[44px]"
                   onClick={() => {
                     if(viewer.meta.id){
                       const match = idx.items.find(m => m.id === viewer.meta.id)
@@ -1186,7 +1209,29 @@ export default function ClientOverview(){
                 >
                   פתח ב-Outlook
                 </button>
-                <button className="rounded-full bg-slate-100 px-3 py-1 text-sm" onClick={closeViewer}>סגור</button>
+                <button
+                  className="text-sm text-petrol underline min-h-[44px]"
+                  onClick={() => {
+                    if(viewer.meta.id){
+                      replyInOutlook({ id: viewer.meta.id })
+                    }
+                  }}
+                >
+                  השב
+                </button>
+                {(() => {
+                  const match = viewer.meta.id ? idx.items.find(m => m.id === viewer.meta.id) : null
+                  return match?.has_attachments && sharepointLinked ? (
+                    <button
+                      className="text-sm text-petrol underline min-h-[44px]"
+                      onClick={() => saveAttachmentsToSharePoint(match)}
+                      disabled={savingAttachmentsId === match.id}
+                    >
+                      {savingAttachmentsId === match.id ? 'שומר...' : 'שמור קבצים ל-SharePoint'}
+                    </button>
+                  ) : null
+                })()}
+                <button className="rounded-full bg-slate-100 px-3 py-1 text-sm min-h-[44px]" onClick={closeViewer}>סגור</button>
               </div>
             </div>
             <div className="p-4 min-h-[400px]">
@@ -1230,7 +1275,35 @@ export default function ClientOverview(){
           onLinked={handleLinkCompleted}
         />
       )}
-      
+      {showQuoteGenerator && (
+        <QuoteGenerator
+          client={modalClient}
+          onClose={() => setShowQuoteGenerator(false)}
+          onGenerate={(quoteData) => {
+            console.log('Quote generated:', quoteData)
+            showToast('הצעת מחיר נוצרה בהצלחה', 'success')
+          }}
+        />
+      )}
+
+      {templatePickerOpen && (
+        <TemplatePicker
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          clientName={decodedName}
+          apiBase={API}
+        />
+      )}
+      {deliveryModalOpen && (
+        <DeliveryEmailModal
+          open={deliveryModalOpen}
+          onClose={() => setDeliveryModalOpen(false)}
+          clientName={decodedName}
+          clientEmail={summary.client?.emails?.[0] || ''}
+          sharepointUrl={summary.client?.sharepoint_url}
+        />
+      )}
+
       {/* Toast notification */}
       {toast.show && (
         <div className={"fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all " +
@@ -1248,7 +1321,8 @@ export default function ClientOverview(){
         return
       }
       if(data?.link){
-        showToast('פתיחה ישירה ב-Outlook נחסמה', 'error')
+        // Open in new browser tab
+        window.open(data.link, '_blank')
       }else{
         showToast('לא ניתן למצוא קישור Outlook', 'error')
       }
@@ -1256,6 +1330,13 @@ export default function ClientOverview(){
       console.error('openEmailInOutlook', err)
       showToast('נכשל ביצירת קשר עם השרת', 'error')
     }
+  }
+
+  function replyInOutlook(item){
+    if(!item?.id) return
+    // OWA reply deeplink format
+    const replyUrl = `https://outlook.office365.com/mail/deeplink/compose?itemId=${encodeURIComponent(item.id)}&action=reply`
+    window.open(replyUrl, '_blank')
   }
 
   async function copyOutlookLink(item){
@@ -1353,8 +1434,6 @@ export default function ClientOverview(){
     return res.json()
   }
 
-}
-
   function buildTaskTitle(item){
     const subject = (item?.subject || '').trim()
     if(subject) return subject.length > 80 ? `${subject.slice(0,77)}…` : subject
@@ -1398,6 +1477,22 @@ export default function ClientOverview(){
       }catch(err){
         console.error('tasks/create_or_get_folder', err)
       }
+      // Attach the source email as an asset so it shows in נכסים
+      try{
+        await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/emails/attach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: item.id,
+            client_name: decodedName,
+            task_title: displayTitle,
+            save_pdf: false,
+            save_attachments: true
+          }),
+        })
+      }catch(err){
+        console.error('tasks/emails/attach', err)
+      }
       window.dispatchEvent(new CustomEvent('tasks:refresh', { detail: { client: decodedName } }))
       alert('משימה נוצרה מהאימייל. עבור לטאב המשימות כדי להמשיך לעבוד עליה.')
     }catch(err){
@@ -1407,6 +1502,41 @@ export default function ClientOverview(){
       setCreatingTaskId(null)
     }
   }
+
+  // Save email attachments to client's SharePoint folder
+  async function saveAttachmentsToSharePoint(item) {
+    if (!item?.id) return
+    if (!sharepointLinked) {
+      alert('לא הוגדרה תיקיית SharePoint ללקוח זה.')
+      return
+    }
+    setSavingAttachmentsId(item.id)
+    try {
+      const res = await fetch(`${API}/api/email/attachments/save-to-sharepoint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_id: item.id, client_name: decodedName }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        const count = data.count || data.saved_files?.length || 0
+        if (count > 0) {
+          alert(`נשמרו ${count} קבצים ל-SharePoint בהצלחה.`)
+        } else {
+          alert('לאימייל זה אין קבצים מצורפים.')
+        }
+      } else {
+        alert(data.message || 'שמירת הקבצים נכשלה.')
+      }
+    } catch (err) {
+      console.error('saveAttachmentsToSharePoint', err)
+      alert('שמירת הקבצים נכשלה.')
+    } finally {
+      setSavingAttachmentsId(null)
+    }
+  }
+
+}
 
 async function copyEmailLinkToClipboard(link){
   if(!link) return false

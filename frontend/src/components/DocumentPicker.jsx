@@ -1,0 +1,383 @@
+import React, { useState, useMemo, useEffect } from "react"
+import { X, Search, FileText, Loader2, Check, FolderOpen, Settings } from "lucide-react"
+
+// Mock data for testing until backend is ready
+const MOCK_TEMPLATES = [
+  { name: "template_פרטיות_הצהרה.dotx", display_name: "פרטיות - הצהרה", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_הצהרה.dotx", folder: "פרטיות" },
+  { name: "template_פרטיות_מדיניות.dotx", display_name: "פרטיות - מדיניות", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_מדיניות.dotx", folder: "פרטיות" },
+  { name: "template_פרטיות_הסכם_עיבוד.dotx", display_name: "פרטיות - הסכם עיבוד", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_הסכם_עיבוד.dotx", folder: "פרטיות" },
+  { name: "template_פרטיות_נספח_אבטחה.dotx", display_name: "פרטיות - נספח אבטחה", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_נספח_אבטחה.dotx", folder: "פרטיות" },
+  { name: "template_פרטיות_הודעה_לעובדים.dotx", display_name: "פרטיות - הודעה לעובדים", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_הודעה_לעובדים.dotx", folder: "פרטיות" },
+  { name: "template_פרטיות_רישום_פעולות.dotx", display_name: "פרטיות - רישום פעולות", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/פרטיות/template_פרטיות_רישום_פעולות.dotx", folder: "פרטיות" },
+  { name: "template_הסכם_שירותים.dotx", display_name: "הסכם שירותים", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_הסכם_שירותים.dotx", folder: "" },
+  { name: "template_הסכם_ייעוץ.dotx", display_name: "הסכם ייעוץ", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_הסכם_ייעוץ.dotx", folder: "" },
+  { name: "template_מכתב_התראה.dotx", display_name: "מכתב התראה", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_מכתב_התראה.dotx", folder: "" },
+  { name: "template_ייפוי_כח.dotx", display_name: "ייפוי כח", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_ייפוי_כח.dotx", folder: "" },
+  { name: "template_תצהיר.dotx", display_name: "תצהיר", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_תצהיר.dotx", folder: "" },
+  { name: "template_הודעה_לרשם.dotx", display_name: "הודעה לרשם", path: "לקוחות משרד/לקוחות משרד_טמפלייטים/template_הודעה_לרשם.dotx", folder: "" },
+]
+
+export default function DocumentPicker({ open, onClose, clientName, apiBase }) {
+  const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState([])
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [templatesFolder, setTemplatesFolder] = useState("")
+  const [newFolder, setNewFolder] = useState("")
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  // Load templates folder setting
+  const loadSettings = async () => {
+    try {
+      const res = await fetch(`${apiBase}/word/settings/templates_folder`)
+      if (res.ok) {
+        const data = await res.json()
+        setTemplatesFolder(data.templates_folder || "")
+        setNewFolder(data.templates_folder || "")
+      }
+    } catch (err) {
+      console.error("Error loading settings:", err)
+    }
+  }
+
+  // Save templates folder setting
+  const saveSettings = async () => {
+    if (!newFolder.trim()) return
+    setSavingSettings(true)
+    try {
+      const res = await fetch(`${apiBase}/word/settings/templates_folder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templates_folder: newFolder.trim() })
+      })
+      if (res.ok) {
+        setTemplatesFolder(newFolder.trim())
+        setShowSettings(false)
+        // Reload templates with new folder
+        setTemplates([])
+        setLoading(true)
+        const tRes = await fetch(`${apiBase}/word/templates`)
+        if (tRes.ok) {
+          const data = await tRes.json()
+          setTemplates(data.templates || [])
+        }
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err)
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  // Load templates when modal opens
+  useEffect(() => {
+    if (!open) {
+      // Reset state when closing
+      setSearch("")
+      setSelected([])
+      setError("")
+      setSuccess(null)
+      setShowSettings(false)
+      return
+    }
+
+    loadSettings()
+
+    const loadTemplates = async () => {
+      setLoading(true)
+      setError("")
+      try {
+        const res = await fetch(`${apiBase}/word/templates`)
+        if (res.ok) {
+          const data = await res.json()
+          setTemplates(data.templates || [])
+        } else {
+          // Fallback to mock data if backend not ready
+          console.warn("Templates API not available, using mock data")
+          setTemplates(MOCK_TEMPLATES)
+        }
+      } catch (err) {
+        console.warn("Templates API error, using mock data:", err)
+        setTemplates(MOCK_TEMPLATES)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTemplates()
+  }, [open, apiBase])
+
+  // Filter templates by search
+  const filteredTemplates = useMemo(() => {
+    if (!search.trim()) return templates
+    const q = search.toLowerCase()
+    return templates.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      (t.display_name || "").toLowerCase().includes(q) ||
+      (t.folder || "").toLowerCase().includes(q)
+    )
+  }, [templates, search])
+
+  const toggleSelect = (template) => {
+    setSelected(prev => {
+      const exists = prev.find(t => t.path === template.path)
+      if (exists) {
+        return prev.filter(t => t.path !== template.path)
+      }
+      return [...prev, template]
+    })
+  }
+
+  const isSelected = (template) => selected.some(t => t.path === template.path)
+
+  const handleGenerate = async () => {
+    if (selected.length === 0) return
+
+    setGenerating(true)
+    setError("")
+
+    try {
+      const res = await fetch(`${apiBase}/word/generate_multiple`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_name: clientName,
+          template_paths: selected.map(t => t.path)
+        })
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || "Generation failed")
+      }
+
+      const data = await res.json()
+      setSuccess({
+        files: data.files_created || [],
+        folderUrl: data.folder_url
+      })
+
+      // Auto-open SharePoint folder after success
+      if (data.folder_url) {
+        window.open(data.folder_url, "_blank", "noopener,noreferrer")
+      }
+    } catch (err) {
+      console.error("Document generation error:", err)
+      setError(err.message || "שגיאה ביצירת המסמכים")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        dir="rtl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2 className="text-lg font-semibold text-slate-800">בחר טמפלטים ליצירת מסמכים</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${showSettings ? 'bg-petrol/10 text-petrol' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'}`}
+              title="הגדרות תיקיית טמפלטים"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+            <div className="text-sm font-medium text-slate-700 mb-2">תיקיית טמפלטים בשרפוינט:</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newFolder}
+                onChange={e => setNewFolder(e.target.value)}
+                placeholder="לקוחות משרד/לקוחות משרד_טמפלייטים"
+                className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-petrol focus:ring-1 focus:ring-petrol outline-none transition-colors"
+                dir="ltr"
+              />
+              <button
+                onClick={saveSettings}
+                disabled={savingSettings || newFolder.trim() === templatesFolder}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px] ${savingSettings || newFolder.trim() === templatesFolder ? 'bg-slate-100 text-slate-400' : 'bg-petrol text-white hover:bg-petrolHover'}`}
+              >
+                {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-slate-500">
+              הנתיב יחסית לאתר SharePoint: {templatesFolder || "(ברירת מחדל)"}
+            </div>
+          </div>
+        )}
+
+        {/* Success State */}
+        {success ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+              <Check className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">המסמכים נוצרו בהצלחה!</h3>
+            <p className="text-sm text-slate-600 mb-4">נוצרו {success.files.length} מסמכים בתיקיית הלקוח</p>
+            {success.folderUrl && (
+              <a
+                href={success.folderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-petrol text-white hover:bg-petrolHover transition-colors min-h-[44px]"
+              >
+                <FolderOpen className="w-4 h-4" />
+                פתח תיקיית לקוח
+              </a>
+            )}
+            <button
+              onClick={onClose}
+              className="mt-4 text-sm text-slate-500 hover:text-slate-700"
+            >
+              סגור
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div className="px-6 py-3 border-b border-slate-100">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="חיפוש טמפלטים..."
+                  className="w-full pr-10 pl-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:border-petrol focus:ring-1 focus:ring-petrol outline-none transition-colors"
+                  autoFocus
+                />
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                מציג {filteredTemplates.length} מתוך {templates.length} טמפלטים
+              </div>
+            </div>
+
+            {/* Template List */}
+            <div className="flex-1 overflow-y-auto px-6 py-3 min-h-[200px] max-h-[300px]">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-petrol" />
+                  <span className="mr-2 text-sm text-slate-600">טוען טמפלטים...</span>
+                </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div className="text-center py-8 text-sm text-slate-500">
+                  {search ? "לא נמצאו טמפלטים התואמים לחיפוש" : "אין טמפלטים זמינים"}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredTemplates.map(template => (
+                    <label
+                      key={template.path}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors min-h-[44px] ${isSelected(template) ? "bg-petrol/10 border border-petrol/20" : "hover:bg-slate-50 border border-transparent"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected(template)}
+                        onChange={() => toggleSelect(template)}
+                        className="w-4 h-4 rounded border-slate-300 text-petrol focus:ring-petrol"
+                      />
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-700 truncate">
+                          {template.name}
+                        </div>
+                        {template.folder && (
+                          <div className="text-xs text-slate-500">תיקייה: {template.folder}</div>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Summary */}
+            {selected.length > 0 && (
+              <div className="px-6 py-3 border-t border-slate-100 bg-slate-50">
+                <div className="text-sm font-medium text-slate-700 mb-2">נבחרו {selected.length}:</div>
+                <div className="flex flex-wrap gap-2">
+                  {selected.slice(0, 5).map(t => (
+                    <span
+                      key={t.path}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white border border-slate-200 text-xs text-slate-600"
+                    >
+                      <FileText className="w-3 h-3" />
+                      {t.name}
+                      <button
+                        onClick={() => toggleSelect(t)}
+                        className="mr-1 hover:text-red-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {selected.length > 5 && (
+                    <span className="text-xs text-slate-500">+{selected.length - 5} נוספים</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="px-6 py-3 bg-red-50 border-t border-red-100">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors min-h-[44px]"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={selected.length === 0 || generating}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${selected.length === 0 || generating ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-petrol text-white hover:bg-petrolHover"}`}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    יוצר מסמכים...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    צור {selected.length > 0 ? selected.length : ""} מסמכים
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,792 @@
+"""
+Unified Database Module for EISLAW
+Provides consistent interface for all database operations.
+
+This module is Phase 1 of the SQLite migration. It creates the foundation
+for clients, tasks, and contacts storage without migrating existing data.
+"""
+import sqlite3
+import json
+import os
+from pathlib import Path
+from datetime import datetime
+from contextlib import contextmanager
+from typing import Optional, List, Dict, Any
+import uuid
+
+# Database path - use Docker-friendly path in container, home path otherwise
+if os.path.exists("/app"):
+    # Running in Docker container
+    DB_PATH = Path("/app/data/eislaw.db")
+    BACKUP_DIR = Path("/app/data/backups")
+else:
+    # Running locally or in tests
+    DB_PATH = Path.home() / ".eislaw" / "store" / "eislaw.db"
+    BACKUP_DIR = Path.home() / ".eislaw" / "backups"
+
+# Schema definition
+SCHEMA = """
+-- Enable WAL mode for better concurrency
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+
+-- CLIENTS TABLE
+CREATE TABLE IF NOT EXISTS clients (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    name TEXT NOT NULL UNIQUE,
+    email TEXT,
+    phone TEXT,
+    stage TEXT DEFAULT 'new' CHECK (stage IN ('new', 'active', 'pending', 'completed', 'archived')),
+    types TEXT DEFAULT '[]',
+    airtable_id TEXT,
+    airtable_url TEXT,
+    sharepoint_url TEXT,
+    sharepoint_id TEXT,
+    slug TEXT,
+    local_folder TEXT,
+    active INTEGER DEFAULT 1,
+    notes TEXT,
+    is_primary INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    last_synced_at TEXT,
+    sync_source TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+CREATE INDEX IF NOT EXISTS idx_clients_active ON clients(active);
+
+-- CONTACTS TABLE
+CREATE TABLE IF NOT EXISTS contacts (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    role TEXT,
+    notes TEXT,
+    is_primary INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_contacts_client ON contacts(client_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email);
+
+-- TASKS TABLE
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+    client_name TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    done INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done', 'cancelled')),
+    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    due_date TEXT,
+    assigned_to TEXT,
+    source_type TEXT,
+    source_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT,
+    attachments TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_client ON tasks(client_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_done ON tasks(done);
+CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
+
+-- ACTIVITY LOG
+CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    event_type TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    details TEXT,
+    duration_ms INTEGER,
+    success INTEGER DEFAULT 1,
+    user_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type);
+
+-- SYNC STATE
+CREATE TABLE IF NOT EXISTS sync_state (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    last_sync_at TEXT,
+    last_sync_cursor TEXT,
+    status TEXT DEFAULT 'idle',
+    error_message TEXT,
+    records_synced INTEGER DEFAULT 0
+);
+
+-- QUOTE TEMPLATES TABLE
+CREATE TABLE IF NOT EXISTS quote_templates (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    name TEXT NOT NULL,
+    category TEXT DEFAULT 'general',
+    content TEXT NOT NULL,
+    variables TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    created_by TEXT,
+    version INTEGER DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_category ON quote_templates(category);
+CREATE INDEX IF NOT EXISTS idx_templates_name ON quote_templates(name);
+"""
+
+
+class Database:
+    """Main database class with connection management."""
+
+    def __init__(self, db_path: Path = None):
+        self.db_path = db_path or DB_PATH
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    @contextmanager
+    def connection(self):
+        """Context manager for database connections."""
+        conn = sqlite3.connect(str(self.db_path), timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def _init_db(self):
+        """Initialize database schema."""
+        with self.connection() as conn:
+            conn.executescript(SCHEMA)
+
+    def execute(self, sql: str, params: tuple = ()) -> List[Dict]:
+        """Execute SQL and return results as list of dicts."""
+        with self.connection() as conn:
+            cursor = conn.execute(sql, params)
+            if cursor.description:
+                return [dict(row) for row in cursor.fetchall()]
+            return []
+
+    def execute_one(self, sql: str, params: tuple = ()) -> Optional[Dict]:
+        """Execute SQL and return single result."""
+        results = self.execute(sql, params)
+        return results[0] if results else None
+
+    def execute_many(self, sql: str, params_list: List[tuple]) -> int:
+        """Execute SQL with multiple parameter sets. Returns affected rows."""
+        with self.connection() as conn:
+            cursor = conn.executemany(sql, params_list)
+            return cursor.rowcount
+
+
+class ClientsDB:
+    """Client operations namespace."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -> Optional[Dict]:
+        """Get client by ID."""
+        return self.db.execute_one(
+            "SELECT * FROM clients WHERE id = ?", (id,)
+        )
+
+    def get_by_name(self, name: str) -> Optional[Dict]:
+        """Get client by name (case-insensitive)."""
+        return self.db.execute_one(
+            "SELECT * FROM clients WHERE LOWER(name) = LOWER(?)", (name,)
+        )
+
+    def list(self, active_only: bool = True, limit: int = 100, offset: int = 0) -> List[Dict]:
+        """List clients with optional filter."""
+        if active_only:
+            sql = "SELECT * FROM clients WHERE active = 1 ORDER BY created_at DESC, name LIMIT ? OFFSET ?"
+        else:
+            sql = "SELECT * FROM clients ORDER BY created_at DESC, name LIMIT ? OFFSET ?"
+        return self.db.execute(sql, (limit, offset))
+
+    def search(self, query: str, limit: int = 20) -> List[Dict]:
+        """Search clients by name or email."""
+        pattern = f"%{query}%"
+        return self.db.execute(
+            """SELECT * FROM clients
+               WHERE name LIKE ? OR email LIKE ?
+               ORDER BY created_at DESC, name LIMIT ?""",
+            (pattern, pattern, limit)
+        )
+
+    def save(self, data: Dict) -> str:
+        """Insert or update client. Returns ID."""
+        client_id = data.get("id") or str(uuid.uuid4())[:16]
+
+        # Check if exists
+        existing = self.get(client_id) if data.get("id") else None
+
+        if existing:
+            # Update
+            fields = []
+            values = []
+            for key in ["name", "email", "phone", "stage", "types",
+                       "airtable_id", "airtable_url", "sharepoint_url",
+                       "local_folder", "active", "notes"]:
+                if key in data:
+                    fields.append(f"{key} = ?")
+                    value = data[key]
+                    if key == "types" and isinstance(value, list):
+                        value = json.dumps(value)
+                    values.append(value)
+
+            if fields:
+                fields.append("updated_at = datetime('now')")
+                values.append(client_id)
+                sql = f"UPDATE clients SET {', '.join(fields)} WHERE id = ?"
+                self.db.execute(sql, tuple(values))
+        else:
+            # Insert
+            types_value = data.get("types", [])
+            if isinstance(types_value, list):
+                types_value = json.dumps(types_value)
+
+            self.db.execute(
+                """INSERT INTO clients (id, name, email, phone, stage, types,
+                   airtable_id, airtable_url, sharepoint_url, local_folder,
+                   active, notes, sync_source)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (client_id, data.get("name"), data.get("email"),
+                 data.get("phone"), data.get("stage", "new"), types_value,
+                 data.get("airtable_id"), data.get("airtable_url"),
+                 data.get("sharepoint_url"), data.get("local_folder"),
+                 data.get("active", 1), data.get("notes"), data.get("sync_source"))
+            )
+
+        return client_id
+
+    def archive(self, id: str) -> bool:
+        """Archive client (set active=0)."""
+        self.db.execute(
+            "UPDATE clients SET active = 0, updated_at = datetime('now') WHERE id = ?",
+            (id,)
+        )
+        return True
+
+    def restore(self, id: str) -> bool:
+        """Restore archived client (set active=1)."""
+        self.db.execute(
+            "UPDATE clients SET active = 1, updated_at = datetime('now') WHERE id = ?",
+            (id,)
+        )
+        return True
+
+    def count(self, active_only: bool = True) -> int:
+        """Count clients."""
+        if active_only:
+            result = self.db.execute_one("SELECT COUNT(*) as count FROM clients WHERE active = 1")
+        else:
+            result = self.db.execute_one("SELECT COUNT(*) as count FROM clients")
+        return result["count"] if result else 0
+
+
+class TasksDB:
+    """Task operations namespace."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -> Optional[Dict]:
+        """Get task by ID."""
+        return self.db.execute_one("SELECT * FROM tasks WHERE id = ?", (id,))
+
+    def list(self, client_id: Optional[str] = None, done: Optional[bool] = None,
+             limit: int = 100) -> List[Dict]:
+        """List tasks with filters."""
+        conditions = []
+        params = []
+
+        if client_id:
+            conditions.append("client_id = ?")
+            params.append(client_id)
+        if done is not None:
+            conditions.append("done = ?")
+            params.append(1 if done else 0)
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.append(limit)
+
+        return self.db.execute(
+            f"SELECT * FROM tasks {where} ORDER BY due_date ASC NULLS LAST, created_at DESC LIMIT ?",
+            tuple(params)
+        )
+
+    def save(self, data: Dict) -> str:
+        """Insert or update task. Returns ID."""
+        task_id = data.get("id") or str(uuid.uuid4())[:16]
+
+        existing = self.get(task_id) if data.get("id") else None
+
+        if existing:
+            # Update
+            fields = []
+            values = []
+            for key in ["title", "description", "done", "status", "priority",
+                       "due_date", "assigned_to", "client_id", "client_name", "attachments"]:
+                if key in data:
+                    fields.append(f"{key} = ?")
+                    values.append(data[key])
+
+            if fields:
+                fields.append("updated_at = datetime('now')")
+                if data.get("done") == True or data.get("done") == 1:
+                    fields.append("completed_at = datetime('now')")
+                values.append(task_id)
+                sql = f"UPDATE tasks SET {', '.join(fields)} WHERE id = ?"
+                self.db.execute(sql, tuple(values))
+        else:
+            # Insert
+            self.db.execute(
+                """INSERT INTO tasks (id, client_id, client_name, title, description,
+                   done, status, priority, due_date, assigned_to, source_type, source_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (task_id, data.get("client_id"), data.get("client_name"),
+                 data.get("title"), data.get("description"),
+                 data.get("done", 0), data.get("status", "todo"),
+                 data.get("priority", "medium"), data.get("due_date"),
+                 data.get("assigned_to"), data.get("source_type"), data.get("source_id"))
+            )
+
+        return task_id
+
+    def complete(self, id: str) -> bool:
+        """Mark task as done."""
+        self.db.execute(
+            """UPDATE tasks SET done = 1, status = 'done',
+               completed_at = datetime('now'), updated_at = datetime('now')
+               WHERE id = ?""",
+            (id,)
+        )
+        return True
+
+    def delete(self, id: str) -> bool:
+        """Delete task."""
+        self.db.execute("DELETE FROM tasks WHERE id = ?", (id,))
+        return True
+
+    def count(self, done: Optional[bool] = None) -> int:
+        """Count tasks."""
+        if done is None:
+            result = self.db.execute_one("SELECT COUNT(*) as count FROM tasks")
+        else:
+            result = self.db.execute_one(
+                "SELECT COUNT(*) as count FROM tasks WHERE done = ?",
+                (1 if done else 0,)
+            )
+        return result["count"] if result else 0
+
+
+class ContactsDB:
+    """Contact operations namespace."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -> Optional[Dict]:
+        """Get contact by ID."""
+        return self.db.execute_one("SELECT * FROM contacts WHERE id = ?", (id,))
+
+    def list_for_client(self, client_id: str) -> List[Dict]:
+        """Get all contacts for a client."""
+        return self.db.execute(
+            "SELECT * FROM contacts WHERE client_id = ? ORDER BY name",
+            (client_id,)
+        )
+
+    def save(self, data: Dict) -> str:
+        """Insert or update contact. Returns ID."""
+        contact_id = data.get("id") or str(uuid.uuid4())[:16]
+
+        existing = self.get(contact_id) if data.get("id") else None
+
+        if existing:
+            fields = []
+            values = []
+            for key in ["name", "email", "phone", "role", "notes", "is_primary"]:
+                if key in data:
+                    fields.append(f"{key} = ?")
+                    values.append(data[key])
+
+            if fields:
+                fields.append("updated_at = datetime('now')")
+                values.append(contact_id)
+                sql = f"UPDATE contacts SET {', '.join(fields)} WHERE id = ?"
+                self.db.execute(sql, tuple(values))
+        else:
+            self.db.execute(
+                """INSERT INTO contacts (id, client_id, name, email, phone, role, notes, is_primary)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (contact_id, data.get("client_id"), data.get("name"),
+                 data.get("email"), data.get("phone"), data.get("role"),
+                 data.get("notes"), data.get("is_primary", 0))
+            )
+
+        return contact_id
+
+    def delete(self, id: str) -> bool:
+        """Delete contact."""
+        self.db.execute("DELETE FROM contacts WHERE id = ?", (id,))
+        return True
+
+
+def log_activity(db: Database, event_type: str, entity_type: str = None,
+                 entity_id: str = None, details: Dict = None,
+                 duration_ms: int = None, success: bool = True):
+    """Log activity for audit trail."""
+    db.execute(
+        """INSERT INTO activity_log (event_type, entity_type, entity_id,
+           details, duration_ms, success)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (event_type, entity_type, entity_id,
+         json.dumps(details) if details else None,
+         duration_ms, 1 if success else 0)
+    )
+
+
+def get_stats(db: Database) -> Dict:
+    """Get database statistics."""
+    stats = {}
+
+    # Clients
+    result = db.execute_one("SELECT COUNT(*) as total, SUM(active) as active FROM clients")
+    stats["clients"] = {
+        "total": result["total"] if result else 0,
+        "active": result["active"] if result else 0
+    }
+
+    # Tasks
+    result = db.execute_one("SELECT COUNT(*) as total, SUM(done) as done FROM tasks")
+    stats["tasks"] = {
+        "total": result["total"] if result else 0,
+        "done": result["done"] if result else 0,
+        "open": (result["total"] or 0) - (result["done"] or 0)
+    }
+
+    # Contacts
+    result = db.execute_one("SELECT COUNT(*) as total FROM contacts")
+    stats["contacts"] = {"total": result["total"] if result else 0}
+
+    # Database file size
+    if DB_PATH.exists():
+        stats["db_size_mb"] = round(DB_PATH.stat().st_size / 1024 / 1024, 2)
+    else:
+        stats["db_size_mb"] = 0
+
+    return stats
+
+
+
+
+# =========================================
+# Agent System Database Helpers
+# =========================================
+
+class AgentApprovalsDB:
+    """Database operations for agent approvals."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def create(self, data):
+        """Create a new approval request."""
+        approval_id = data.get("id") or str(uuid.uuid4())
+
+        self.db.execute(
+            """INSERT INTO agent_approvals
+               (id, agent_id, tool_id, action_name, action_name_he, description,
+                context, parameters, risk_level, status, expires_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (approval_id, data["agent_id"], data["tool_id"], data["action_name"],
+             data.get("action_name_he"), data.get("description"), data.get("context"),
+             json.dumps(data.get("parameters")) if data.get("parameters") else None,
+             data.get("risk_level", "medium"), data.get("status", "pending"),
+             data.get("expires_at"))
+        )
+        return approval_id
+
+    def get(self, id):
+        """Get approval by ID."""
+        return self.db.execute_one("SELECT * FROM agent_approvals WHERE id = ?", (id,))
+
+    def list_pending(self, limit=50):
+        """Get pending approvals."""
+        return self.db.execute_many(
+            "SELECT * FROM agent_approvals WHERE status = 'pending' ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        )
+
+    def approve(self, id, resolved_by=None):
+        """Approve an action."""
+        self.db.execute(
+            """UPDATE agent_approvals
+               SET status = 'approved', resolved_at = datetime('now'), resolved_by = ?
+               WHERE id = ? AND status = 'pending'""",
+            (resolved_by, id)
+        )
+        return True
+
+    def reject(self, id, reason=None, resolved_by=None):
+        """Reject an action."""
+        self.db.execute(
+            """UPDATE agent_approvals
+               SET status = 'rejected', resolved_at = datetime('now'), resolved_by = ?, reject_reason = ?
+               WHERE id = ? AND status = 'pending'""",
+            (resolved_by, reason, id)
+        )
+        return True
+
+    def set_execution_result(self, id, result):
+        """Set the execution result after approval."""
+        self.db.execute(
+            "UPDATE agent_approvals SET execution_result = ? WHERE id = ?",
+            (json.dumps(result), id)
+        )
+        return True
+
+
+class AgentAuditDB:
+    """Database operations for agent audit logging."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def log(self, agent_id, action, action_type,
+            input_data=None, output_data=None,
+            tokens_used=None, duration_ms=None,
+            success=True, error_message=None,
+            user_id=None, client_id=None, tool_id=None):
+        """Log an agent action."""
+        log_id = str(uuid.uuid4())
+
+        self.db.execute(
+            """INSERT INTO agent_audit_log
+               (id, agent_id, tool_id, action, action_type, input_data, output_data,
+                tokens_used, duration_ms, success, error_message, user_id, client_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (log_id, agent_id, tool_id, action, action_type,
+             json.dumps(input_data) if input_data else None,
+             json.dumps(output_data) if output_data else None,
+             tokens_used, duration_ms, 1 if success else 0,
+             error_message, user_id, client_id)
+        )
+        return log_id
+
+    def list(self, agent_id=None, limit=100):
+        """List audit logs, optionally filtered by agent."""
+        if agent_id:
+            return self.db.execute_many(
+                "SELECT * FROM agent_audit_log WHERE agent_id = ? ORDER BY timestamp DESC LIMIT ?",
+                (agent_id, limit)
+            )
+        return self.db.execute_many(
+            "SELECT * FROM agent_audit_log ORDER BY timestamp DESC LIMIT ?",
+            (limit,)
+        )
+
+    def get_for_client(self, client_id, limit=50):
+        """Get audit logs for a specific client."""
+        return self.db.execute_many(
+            "SELECT * FROM agent_audit_log WHERE client_id = ? ORDER BY timestamp DESC LIMIT ?",
+            (client_id, limit)
+        )
+
+
+class AgentSettingsDB:
+    """Database operations for agent settings."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def get(self, agent_id):
+        """Get agent settings or return defaults."""
+        result = self.db.execute_one(
+            "SELECT * FROM agent_settings WHERE agent_id = ?", (agent_id,)
+        )
+        if result:
+            return dict(result)
+        return {
+            "agent_id": agent_id,
+            "enabled": True,
+            "auto_trigger": False,
+            "approval_required": True,
+            "max_actions_per_hour": 100,
+            "allowed_tools": None,
+            "blocked_tools": None
+        }
+
+    def save(self, agent_id, settings):
+        """Save agent settings (upsert)."""
+        existing = self.db.execute_one(
+            "SELECT agent_id FROM agent_settings WHERE agent_id = ?", (agent_id,)
+        )
+
+        if existing:
+            fields = []
+            values = []
+            for key in ["enabled", "auto_trigger", "approval_required",
+                        "max_actions_per_hour", "allowed_tools", "blocked_tools",
+                        "custom_prompt", "settings_json", "updated_by"]:
+                if key in settings:
+                    fields.append(f"{key} = ?")
+                    val = settings[key]
+                    if key in ("allowed_tools", "blocked_tools", "settings_json") and isinstance(val, (list, dict)):
+                        val = json.dumps(val)
+                    values.append(val)
+
+            if fields:
+                fields.append("updated_at = datetime('now')")
+                values.append(agent_id)
+                sql = f"UPDATE agent_settings SET {', '.join(fields)} WHERE agent_id = ?"
+                self.db.execute(sql, tuple(values))
+        else:
+            self.db.execute(
+                """INSERT INTO agent_settings
+                   (agent_id, enabled, auto_trigger, approval_required, max_actions_per_hour,
+                    allowed_tools, blocked_tools, custom_prompt, settings_json, updated_by)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (agent_id, settings.get("enabled", 1), settings.get("auto_trigger", 0),
+                 settings.get("approval_required", 1), settings.get("max_actions_per_hour", 100),
+                 json.dumps(settings.get("allowed_tools")) if settings.get("allowed_tools") else None,
+                 json.dumps(settings.get("blocked_tools")) if settings.get("blocked_tools") else None,
+                 settings.get("custom_prompt"),
+                 json.dumps(settings.get("settings_json")) if settings.get("settings_json") else None,
+                 settings.get("updated_by"))
+            )
+        return True
+
+    def list_all(self):
+        """List all agent settings."""
+        return self.db.execute_many("SELECT * FROM agent_settings")
+
+
+class AgentMetricsDB:
+    """Database operations for agent metrics."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def increment(self, agent_id, **metrics):
+        """Increment daily metrics for an agent."""
+        from datetime import date
+        today = date.today().isoformat()
+
+        existing = self.db.execute_one(
+            "SELECT id FROM agent_metrics WHERE agent_id = ? AND date = ?",
+            (agent_id, today)
+        )
+
+        if not existing:
+            self.db.execute(
+                "INSERT INTO agent_metrics (id, agent_id, date) VALUES (?, ?, ?)",
+                (str(uuid.uuid4()), agent_id, today)
+            )
+
+        valid_fields = ("invocations", "tool_calls", "approvals_requested",
+                        "approvals_granted", "approvals_rejected", "errors", "total_tokens")
+        for key, value in metrics.items():
+            if key in valid_fields and value:
+                self.db.execute(
+                    f"UPDATE agent_metrics SET {key} = {key} + ? WHERE agent_id = ? AND date = ?",
+                    (value, agent_id, today)
+                )
+
+        return True
+
+    def get_daily(self, agent_id, date_str):
+        """Get metrics for a specific day."""
+        return self.db.execute_one(
+            "SELECT * FROM agent_metrics WHERE agent_id = ? AND date = ?",
+            (agent_id, date_str)
+        )
+
+    def get_range(self, agent_id, start_date, end_date):
+        """Get metrics for a date range."""
+        return self.db.execute_many(
+            """SELECT * FROM agent_metrics
+               WHERE agent_id = ? AND date >= ? AND date <= ?
+               ORDER BY date DESC""",
+            (agent_id, start_date, end_date)
+        )
+
+    def get_totals(self, agent_id):
+        """Get total metrics for an agent."""
+        result = self.db.execute_one(
+            """SELECT
+                SUM(invocations) as total_invocations,
+                SUM(tool_calls) as total_tool_calls,
+                SUM(approvals_requested) as total_approvals_requested,
+                SUM(approvals_granted) as total_approvals_granted,
+                SUM(approvals_rejected) as total_approvals_rejected,
+                SUM(errors) as total_errors,
+                SUM(total_tokens) as total_tokens
+               FROM agent_metrics WHERE agent_id = ?""",
+            (agent_id,)
+        )
+        return dict(result) if result else {}
+
+
+# Global agent DB instances
+agent_approvals: AgentApprovalsDB = None
+agent_audit: AgentAuditDB = None
+agent_settings: AgentSettingsDB = None
+agent_metrics: AgentMetricsDB = None
+
+
+def init_agent_db():
+    """Initialize agent database helpers."""
+    global agent_approvals, agent_audit, agent_settings, agent_metrics
+    db = get_db()
+    agent_approvals = AgentApprovalsDB(db)
+    agent_audit = AgentAuditDB(db)
+    agent_settings = AgentSettingsDB(db)
+    agent_metrics = AgentMetricsDB(db)
+# Global instance - created on first import
+_db: Database = None
+clients: ClientsDB = None
+tasks: TasksDB = None
+contacts: ContactsDB = None
+
+
+def init_global_db(db_path: Path = None):
+    """Initialize or reinitialize global database instance."""
+    global _db, clients, tasks, contacts
+    _db = Database(db_path)
+    clients = ClientsDB(_db)
+    tasks = TasksDB(_db)
+    contacts = ContactsDB(_db)
+    return _db
+
+
+def get_db() -> Database:
+    """Get database instance. Initializes if needed."""
+    global _db
+    if _db is None:
+        init_global_db()
+    return _db
+
+
+# Auto-initialize on import (but don't fail if directory not writable)
+try:
+    init_global_db()
+except Exception:
+    pass  # Will be initialized on first use

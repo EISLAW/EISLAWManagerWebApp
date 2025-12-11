@@ -1,7 +1,9 @@
 import React from 'react'
+import ErrorBoundary from './components/ErrorBoundary'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import RoutesRoot from './routes.jsx'
 import { detectApiBase, getStoredApiBase, setStoredApiBase } from './utils/apiBase.js'
+import PublicReport from './pages/PublicReport/index.jsx'
 
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard' },
@@ -9,11 +11,24 @@ const NAV_LINKS = [
   { to: '/rag', label: 'RAG' },
   { to: '/marketing', label: 'Marketing' },
   { to: '/prompts', label: 'Prompts' },
+  { to: '/ai-studio', label: 'AI Studio' },
   { to: '/privacy', label: 'Privacy' },
+  { to: '/reports', label: 'דוחות' },
   { to: '/settings', label: 'Settings' },
+  { to: '/settings/quotes', label: 'תבניות הצעות' },
 ]
 
 export default function App(){
+  // Check window.location for public pages (works with any router type)
+  // This allows /report/:token to work as a direct URL (not hash-based)
+  const windowPath = typeof window !== 'undefined' ? window.location.pathname : ''
+
+  // Public report page - render standalone without sidebar/layout
+  if (windowPath.startsWith('/report/')) {
+    const token = windowPath.replace('/report/', '')
+    return <PublicReport tokenProp={token} />
+  }
+
   const initialBase = React.useMemo(() => {
     const envBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/,'')
     return getStoredApiBase() || envBase

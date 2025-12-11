@@ -1,4 +1,4 @@
-import { listTasks, createTask, updateTask, addSubtask, attach, setDone, allTasks } from '../../lib/tasks'
+import { listTasks, createTask, createTaskAsync, updateTask, addSubtask, attach, setDone, allTasks } from '../../lib/tasks'
 import { listOwners } from '../../lib/owners'
 
 export function useOwners() {
@@ -19,6 +19,10 @@ export function getClientTasks(clientName) {
 
 export function addClientTask(clientName, title) {
   return createTask({ title: title || 'New Task', clientName })
+}
+
+export async function addClientTaskAsync(clientName, title) {
+  return createTaskAsync({ title: title || 'New Task', clientName })
 }
 
 export function setTaskDone(id, done) { return setDone(id, done) }

@@ -1,0 +1,67 @@
+groups:
+  - name: eislaw_api_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(eislaw_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(eislaw_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      - alert: APIDown
+        expr: up{job="eis_backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EISLAW API is down"
+          description: "The API endpoint has been unreachable for more than 1 minute"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(eislaw_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile latency is {{ $value | humanizeDuration }}"
+
+      - alert: ExternalAPIFailures
+        expr: |
+          sum(rate(eislaw_external_api_calls_total{status="error"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "External API failures detected"
+          description: "External API calls are failing at {{ $value }} per second"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes > 500000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Process is using {{ $value | humanize1024 }}B of memory"
+
+  - name: eislaw_business_alerts
+    rules:
+      - alert: NoActiveClients
+        expr: eislaw_active_clients == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No active clients"
+          description: "The system reports zero active clients"

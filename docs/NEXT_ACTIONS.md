@@ -1,80 +1,180 @@
-<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
+<!-- Project: EISLAW | Full Context: docs/System_Definition.md -->
 # Next Actions (Short Queue)
 
 Working copy: use the clean clone at `/mnt/c/Coding Projects/EISLAW System Clean` (origin `github.com/EISLAW/EISLAWManagerWebApp`). Older `EISLAW System` tree is archive/reference only.
 
-## Current Focus (2025-11-20)
-- **State**: CI deploy workflow now builds/pushes the backend image, deploys to a staging slot, runs /health + smoke tests, and can swap into production. App Insights connection string is applied when present and a heartbeat is emitted during deploy. Frontend still ships to Azure Storage static site.
-- **Next fixes**:
-  1. Validate App Insights ingestion in Azure (traces/logs) and add alerts for health failures/container restarts.
-  2. Tune smoke test cadence (count/timeout) and ensure Fillout/Airtable quotas are respected; add a dry-run toggle if secrets are missing.
-  3. Containerized frontend path added (Dockerfile.web + optional Web App input) — decide target Web App/slot and cut over from static if desired.
-  4. Enforce tagging discipline: every deploy should set `release_tag` in the workflow and update `docs/CHANGELOG.md` with the tag/image references.
-- **Notes**: Kudu credentials stored under `azure_kudu` in `secrets.local.json`. Deployment history lives in `docs/DEPLOY_RUNBOOK.md`.
+## Current Focus (2025-12-05)
 
-Owner: You
-Last updated: 2025-11-04
+### Active Sprint: SQLite Database Migration
+**PRD:** `docs/PRD_SQLITE_MIGRATION.md`
+**Status:** Phase 0 Complete (Privacy), Phase 1 Ready to Start
 
-- Clients module parity and UX fixes (done)
-  - Named Outlook window (EISLAW-OWA) for all opens.
-  - “Open Files” now uses server helper first; protocol removed to avoid prompts.
-  - “Word Templates…” modal and DOCX generation wired.
-  - SharePoint link resolves exact client folder from registry.
+**Completed:**
+- ✅ Privacy SQLite backend (`backend/privacy_db.py`) - Fully implemented
+- ✅ Privacy API endpoints live: `/api/privacy/submissions`, `/api/privacy/stats`, `/api/privacy/webhook`
+- ✅ 18 submissions synced from Fillout to SQLite
+- ✅ PRD created with 5-week timeline
 
-- New: Airtable buttons (added)
-  - “Airtable Search” opens the matching record or Clients view in Airtable.
-  - “Sync Airtable” upserts the client (name/email) via API.
+**Next Steps (Week 1):**
+- [ ] Phase 0: Audit privacy_db.py (file size, growth rate, issues)
+- [ ] Phase 1: Create unified `db.py` module for clients/tasks
+- [ ] Phase 1: Add backup automation to Azure Blob
 
-- Owner workflow (in progress)
-  - Await Figma delivery for owner pill + popover + modal (prompt issued 2025-11-15).
-  - Implement shared owners store (backend + Airtable Clients view) and refactor TaskCard/TaskModal to use the new UX.
-  - Extend Playwright coverage: assign owner, verify chip updates across Dashboard, Clients tab, and Task Modal.
+**Timeline:**
+```
+Week 1 (Dec 9-13): Foundation + Audit existing
+Week 2 (Dec 16-20): Clients migration
+Week 3 (Dec 23-27): Tasks migration
+Week 4 (Dec 30-Jan 3): Airtable import
+Week 5 (Jan 6-10): Meilisearch integration
+Week 6+: Marketing module merge (optional)
+```
 
-- Azure platform hardening (in progress)
-  - Backend now runs as custom container. Next up: wire automated builds (GitHub Action) that runs `az acr build` + deploy, so we don’t copy contexts manually.
-  - Re-enable reliable log streaming (Kudu log tail intermittently 502s) so we can trace startup errors in the container.
-  - Once CI is live, run Fillout→Airtable E2E against Azure and switch the Fillout webhook URL to the production endpoint.
-  - Keep using `python tools/azure_log_stream.py --site eislaw-api-01 --channel application --output build/kudu-app.log` (pass Kudu creds via env or flags) to monitor containers during each deploy.
+---
 
-- Create Airtable table `Security_Submissions` per `docs/airtable_schema.json` (manual UI or enable Metadata API for script).
-- Add Outlook COM sender script (`tools/send_outlook.ps1`) for AutomailerBridge (optional).
-- Optional: add PDF export in the Word compose step and attach.
-- Author final production texts in `docs/security_texts.he-IL.json`.
-- Update `docs/Testing_Episodic_Log.md` after each test round.
+## Clients Module
 
-Insights RAG — near‑term tasks (per PRD v2.0 "Inbox First")
+### UX Sprint (2025-12-03)
+**Audit:** `docs/reports/CLIENTS_SECTION_COMPREHENSIVE_AUDIT_2025-12-03.md`
+**Status:** Ready for implementation
 
-**UI/UX Audit (2024-11-30)** — Full report: `docs/reports/RAG_TAB_UI_UX_AUDIT_2024-11-30.md`
+| Task | Priority | Status |
+|------|----------|--------|
+| Hebrew labels in TaskBoard | CRITICAL | ☐ Pending |
+| Unify TaskBoard/TasksWidget styling | HIGH | ☐ Pending |
+| Hide placeholder tabs (RAG, Privacy) | MEDIUM | ☐ Pending |
+| Add ARIA roles to TabNav | MEDIUM | ☐ Pending |
+| Add empty state to Files tab | LOW | ☐ Pending |
+| Replace alert() with toast | LOW | ☐ Pending |
 
-Critical fixes (must do):
-- [x] Add `data-testid` attributes to all interactive elements per COMPONENT_LIBRARY.md (30+ testids added)
-- [x] Implement chat-style bubbles for transcript reviewer (ChatBubble component with WhatsApp-style layout)
-- [x] Add audio timestamp sync — click segment to play from that timestamp (audioRef linked, parseTime helper)
+**Files to modify:**
+- `frontend/src/features/tasksNew/TaskBoard.jsx`
+- `frontend/src/components/TabNav.jsx`
+- `frontend/src/pages/Clients/ClientCard/ClientOverview.jsx`
 
-Major fixes:
-- [x] Implement "Select All" checkbox and bulk action dropdown for inbox items
-- [x] Add "Apply to All" buttons for bulk date/domain/client application
-- [ ] Implement client-scoped tag filtering (Global + This Client tags only)
-- [x] Increase button touch targets to 44px minimum (min-h-[44px] on all buttons)
-- [ ] Add right-click context menu for speaker rename (currently input-based)
-- [ ] Implement conversational memory for assistant (currently single Q&A)
+### Archive Feature ✅ COMPLETE
+- Status filters working (active/archived/all)
+- Toast notifications instead of alerts
+- Open tasks warning before archive
+- E2E tests passing (16/16)
 
-Minor fixes:
-- [ ] Extract SectionCard, StatusPill, LabeledField to shared components
-- [ ] Align font sizes with design tokens (text-lg→20pt, text-sm→15pt)
-- [ ] Add upload progress percentage
-- [ ] Implement keyboard shortcuts (/ to focus search)
-- [x] Add ARIA labels to tab navigation, drop zone, action buttons
+### Quote Templates ✅ COMPLETE
+- Full CRUD at /settings/quotes
+- Category management
+- Template preview with client substitution
 
-Backend tasks (unchanged):
-- Backend ingest/reviewer: `/api/rag/ingest|inbox|publish|file/{id}|reviewer/{id}` — integrate Gemini (latest key) for transcription, Whisper fallback, real status transitions (transcribing→ready/error), Meilisearch index/reindex on publish/save, hard delete removes index.
-- Secrets: replace Gemini key with the new "Gemini 3" key in `secrets.local.json`, then validate model list and content generation; pick target model (e.g., `gemini-2.0-flash-001` or Gemini 3 equivalent) for transcription.
-- Auto-extraction: date from file creation/filename; client regex against registry; tag safety filtering to Global_Tags + Client_Tags.
-- QA/logging: log deletions/transcription failures; add smoke path (sample audio/text) to verify Inbox → Reviewer → Library; add tests for duplicate hash rejection and publish/delete flows.
+---
 
-Local‑first parity tasks (up next)
-- Clients list: multi‑address email search (done).
-- UI tests: fix strict selector in `tests/client_update.spec.ts` per new chips.
-- Optional: add Edge app‑window launcher endpoint for Outlook (local convenience).
+## Privacy Module
 
+### SQLite Backend ✅ COMPLETE
+**File:** `backend/privacy_db.py`
 
+Endpoints live:
+- GET `/api/privacy/submissions` - List with optional Fillout sync
+- GET `/api/privacy/submissions/{id}` - Single submission details
+- POST `/api/privacy/webhook` - Fillout webhook receiver
+- POST `/api/privacy/review` - Save QA review status
+- GET `/api/privacy/activity` - Activity log for monitoring
+- GET `/api/privacy/stats` - Dashboard statistics
+- GET `/api/privacy/public-results/{id}` - Public results for WordPress
+
+### QA Redesign (Pending)
+**PRD:** `docs/PRD_PRIVACY_QA_REDESIGN.md`
+
+| Phase | Task | Status |
+|-------|------|--------|
+| 1 | RTL layout fix | ☐ Pending |
+| 2 | Algorithm Decision Card | ☐ Pending |
+| 3 | Key Inputs Display | ☐ Pending |
+| 4 | Collapsible Override Section | ☐ Pending |
+| 5 | List status icons (○/✓/✗) | ☐ Pending |
+| 6 | Polish + data-testid | ☐ Pending |
+
+### Purchase Flow (Blocked)
+**PRD:** `docs/PRD_PRIVACY_PURCHASE_FLOW.md`
+**Blocked by:** QA validation must confirm >90% accuracy first
+
+---
+
+## RAG Module
+
+### Completed Features
+- ✅ Zoom Cloud Recordings sync (32+ recordings)
+- ✅ Audio/Video filter buttons
+- ✅ Bulk download with queue status
+- ✅ Transcript editing with speaker names (chat-bubble format)
+- ✅ Meilisearch integration
+- ✅ Inbox/Published workflow
+
+### Pending
+- [ ] Conversational memory for assistant
+- [ ] Client-scoped tag filtering
+- [ ] Whisper fallback for transcription
+
+---
+
+## Infrastructure
+
+### Azure VM (20.217.86.4)
+- ✅ Docker containers running (api, web-dev, meili)
+- ✅ Hot-reload enabled (backend + frontend)
+- ✅ Monitoring stack (Grafana/Prometheus/Loki)
+
+### Pending
+- [ ] Automated GitHub Actions deploy
+- [ ] App Insights integration validation
+- [ ] Reliable log streaming (Kudu 502 issues)
+
+---
+
+## Documentation Updates (2025-12-05)
+
+**Updated today:**
+- ✅ README.md - Quick start with VM details
+- ✅ PROJECT_STATUS.md - December 2025 status
+- ✅ WORKING_MEMORY.md - Current context
+- ✅ TECHNICAL_OVERVIEW.md - Full technical docs
+- ✅ PROJECTS_COMPENDIUM.md - Project index
+- ✅ PRD_SQLITE_MIGRATION.md - NEW: Database migration plan
+
+**Pending updates:**
+- [ ] CHANGELOG.md - Add SQLite migration entry
+- [ ] DEV_SETUP.md - Review for accuracy
+- [ ] DEPLOY_RUNBOOK.md - Review for accuracy
+
+---
+
+## Deferred / Out of Scope
+
+- Mobile responsiveness
+- SFU/Stage workflow
+- Matter/Case hierarchy
+- Reply to email from app
+- PDF export for privacy reports
+- Outlook COM sender script
+
+---
+
+## Quick Reference
+
+### VM Connection
+```bash
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+```
+
+### Start Dev Services
+```bash
+cd ~/EISLAWManagerWebApp
+/usr/local/bin/docker-compose-v2 up -d api web-dev meili
+```
+
+### View Logs
+```bash
+/usr/local/bin/docker-compose-v2 logs -f api
+```
+
+### Access URLs
+- Frontend dev: http://20.217.86.4:5173
+- API: http://20.217.86.4:8799
+- API docs: http://20.217.86.4:8799/docs

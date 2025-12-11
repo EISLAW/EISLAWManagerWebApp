@@ -21,10 +21,10 @@ def coerce_inputs(d: dict) -> dict:
     for k, v in d.items():
         if isinstance(v, str):
             vl = v.strip().lower()
-            if vl in {"true", "yes", "1"}:
+            if vl in {"true", "yes", "כן"}:
                 out[k] = True
                 continue
-            if vl in {"false", "no", "0", ""}:
+            if vl in {"false", "no", "0", "", "לא"}:
                 out[k] = False
                 continue
             # try number
@@ -76,6 +76,7 @@ def evaluate(rules: dict, answers: dict) -> dict:
 
     level = None
     level_min = None
+    matched_rules = []  # Track which rules matched
     dpo = answers.get("dpo")
     reg = answers.get("reg")
     report = answers.get("report")
@@ -94,14 +95,18 @@ def evaluate(rules: dict, answers: dict) -> dict:
             # choose higher severity using precedence order
             prec = rules.get("precedence", ["high", "mid", "basic", "lone"])  # high best
             new_level = st["level"]
+            rule_name = r.get("name", "Unknown rule")
             if level is None:
                 level = new_level
+                matched_rules.append({"name": rule_name, "level": new_level})
             else:
                 try:
                     if prec.index(new_level) < prec.index(level):
                         level = new_level
+                        matched_rules.append({"name": rule_name, "level": new_level})
                 except Exception:
                     level = new_level
+                    matched_rules.append({"name": rule_name, "level": new_level})
         if "level_min" in st:
             level_min = st["level_min"]
         if "dpo" in st:
@@ -215,6 +220,7 @@ def evaluate(rules: dict, answers: dict) -> dict:
         "reg": bool(reg) if reg is not None else False,
         "report": bool(report) if report is not None else False,
         "requirements": requirements,
+        "level_reasons": [r["name"] for r in matched_rules if r["level"] == level],
     }
 
 

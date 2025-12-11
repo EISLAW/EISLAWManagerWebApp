@@ -1,0 +1,742 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { FileText, Link as LinkIcon, Folder, Mail, ExternalLink, Edit2, CheckCircle2, Search, X, Loader2, Trash2, Paperclip, ChevronDown, ChevronRight } from 'lucide-react';
+import { ensureTaskFolder } from './TaskAdapter';
+import { pickApiBase } from '../../lib/openers'
+
+const kindMap = {
+  folder: { icon: <Folder className="w-5 h-5 text-yellow-600" />, label: 'תיקייה' },
+  link: { icon: <LinkIcon className="w-5 h-5 text-blue-600" />, label: 'לינק' },
+  email: { icon: <Mail className="w-5 h-5 text-purple-600" />, label: 'אימייל' },
+  file: { icon: <FileText className="w-5 h-5 text-petrol" />, label: 'קובץ' }
+};
+
+export default function TaskFiles({ task }) {
+  const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const [rows, setRows] = useState([]);
+  const [folder, setFolder] = useState({ id: null, web_url: null });
+  const [primary, setPrimary] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [linkForm, setLinkForm] = useState({ title: '', url: '' });
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  const [emailModal, setEmailModal] = useState(false);
+  const [emailQuery, setEmailQuery] = useState('');
+  const [emailHits, setEmailHits] = useState([]);
+  const [searchingEmails, setSearchingEmails] = useState(false);
+  const [clientEmails, setClientEmails] = useState([]);
+  const [loadingClientEmails, setLoadingClientEmails] = useState(false);
+  const [expandedEmailId, setExpandedEmailId] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [editLink, setEditLink] = useState(null); // { current_web_url, new_web_url, user_title }
+  const [toast, setToast] = useState(null);
+  const [emailViewer, setEmailViewer] = useState({ open: false, loading: false, error: '', html: '', meta: {} })
+  const [emailActionState, setEmailActionState] = useState({ outlook: null, copy: null })
+  const fileInputRef = useRef(null);
+  const clientName = task.clientName || '';
+  const taskTitle = task.title || '';
+
+  async function refresh() {
+    try {
+      const r = await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/files`);
+      if (!r.ok) return;
+      const j = await r.json();
+      setRows(j.files || []);
+      setFolder(j.folder || { id: null, web_url: null });
+      setPrimary(j.primary_output_drive_id || null);
+    } catch {}
+  }
+
+  useEffect(() => { refresh(); }, [task.id]);
+
+  async function doUpload(ev) {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', f, f.name);
+      fd.append('client_name', clientName);
+      fd.append('task_title', taskTitle);
+      const r = await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/files/upload`, { method: 'POST', body: fd });
+      if (r.ok) await refresh();
+    } finally {
+      setUploading(false);
+      ev.target.value = '';
+    }
+  }
+
+  async function rename(driveId, userTitle) {
+    if (!driveId) return;
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/files/${encodeURIComponent(driveId)}/title`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_title: userTitle, client_name: clientName, task_title: taskTitle })
+    });
+    await refresh();
+  }
+
+  async function updateLink(current_web_url, new_web_url, user_title) {
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/links/update`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_web_url, new_web_url, user_title })
+    });
+    await refresh();
+  }
+
+  async function removeAsset(rec) {
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/assets/remove`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ drive_id: rec.drive_id || null, web_url: rec.web_url || null, local_path: rec.local_path || null })
+    });
+    await refresh();
+  }
+
+  async function setCurrent(driveId) {
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/deliverable/set_current`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ drive_id: driveId })
+    });
+    await refresh();
+  }
+
+  const showToast = (msg, duration = 3000) => {
+    setToast(msg)
+    if (duration > 0) {
+      setTimeout(() => setToast(null), duration)
+    }
+  }
+
+  async function handleEnsureFolder() {
+    showToast('מייצר תיקיית משימה...', 0);
+    const created = await ensureTaskFolder(clientName, task.id);
+    if (created?.web_url) {
+      setFolder(created);
+      showToast('תיקיית משימה הוכנה בהצלחה');
+    } else {
+      showToast('אירעה שגיאה ביצירת התיקייה');
+    }
+  }
+
+  async function pickAndLinkFolder() {
+    // Desktop: open OS folder picker and save a local-path folder link.
+    const apiBase = await pickApiBase()
+    if (apiBase && (apiBase.startsWith('http://127.0.0.1') || apiBase.startsWith('http://localhost'))) {
+      try {
+        const r = await fetch(`${apiBase}/dev/desktop/pick_folder`, { method: 'POST' })
+        if (r.ok) {
+          const j = await r.json()
+          const p = j.path || ''
+          if (p) {
+            const title = p.split(/[/\\]/).filter(Boolean).pop() || 'תיקייה'
+            await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/folder_link_add`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local_path: p, user_title: title })
+            })
+            await refresh()
+            showToast('תיקייה נוספה למשימה', 2000)
+            return
+          }
+        }
+      } catch {}
+    }
+    // Non‑desktop or fallback: open link form to paste SharePoint URL
+    setLinkOpen(true)
+  }
+
+  const handleMissingEmailMeta = () => {
+    showToast('נתוני האימייל חסרים לפעולה זו', 2500)
+  }
+
+  async function openLocalFolderPath(localPath) {
+    if (!localPath) return
+    try {
+      await fetch(`${API}/dev/desktop/open_path`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: localPath })
+      })
+    } catch {}
+  }
+
+  function triggerUpload() {
+    fileInputRef.current?.click();
+  }
+
+  async function addLink(e) {
+    e.preventDefault();
+    const url = (linkForm.url || '').trim();
+    if (!/^https?:\/\//i.test(url)) {
+      setLinkError('כתובת לא תקינה');
+      return;
+    }
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/links/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, user_title: (linkForm.title || '').trim() })
+    });
+    setLinkForm({ title: '', url: '' });
+    setLinkError('');
+    setLinkOpen(false);
+    await refresh();
+  }
+
+  async function searchEmails() {
+    if (!emailQuery.trim()) return;
+    setSearchingEmails(true);
+    const r = await fetch(`${API}/email/search?q=${encodeURIComponent(emailQuery)}`);
+    if (r.ok) {
+      const j = await r.json();
+      setEmailHits(j.items || []);
+    }
+    setSearchingEmails(false);
+  }
+
+  async function fetchClientEmails() {
+    if (!clientName) return;
+    setLoadingClientEmails(true);
+    try {
+      const encodedName = encodeURIComponent(clientName);
+      const r = await fetch(`${API}/email/by_client?name=${encodedName}&limit=25&offset=0`);
+      if (r.ok) {
+        const j = await r.json();
+        setClientEmails(j.items || []);
+      }
+    } catch (err) {
+      console.error('fetchClientEmails', err);
+    }
+    setLoadingClientEmails(false);
+  }
+
+  function openEmailModal() {
+    setEmailModal(true);
+    setEmailHits([]);
+    setEmailQuery('');
+    fetchClientEmails();
+  }
+
+  async function attachEmail(hit) {
+    await fetch(`${API}/tasks/${encodeURIComponent(task.id)}/emails/attach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: hit.id,
+        subject: hit.subject || '',
+        from: hit.from || '',
+        received: hit.received || '',
+        has_attachments: hit.has_attachments || false,
+        attachments_count: hit.attachments_count || 0,
+        preview: hit.preview || '',
+        client_name: clientName,
+        task_title: taskTitle,
+      })
+    });
+    setClientEmails([]);
+    setEmailHits([]);
+    setEmailQuery('');
+    setEmailModal(false);
+    await refresh();
+  }
+
+  const resolveEmailClient = (row) => row?.email_meta?.client || clientName
+
+  async function openEmailViewer(row) {
+    const emailId = row?.email_meta?.id
+    if(!emailId) return
+    setEmailViewer({
+      open: true,
+      loading: true,
+      error: '',
+      html: '',
+      meta: {
+        id: emailId,
+        subject: row.email_meta?.subject || row.source_name || 'Email',
+        from: row.email_meta?.from || '',
+        received: row.email_meta?.received || '',
+      },
+    })
+    try{
+      const params = new URLSearchParams({ id: emailId, client: resolveEmailClient(row) })
+      const res = await fetch(`${API}/email/content?${params.toString()}`)
+      if(!res.ok){
+        const msg = await res.text()
+        throw new Error(msg || 'Failed to fetch email')
+      }
+      const data = await res.json()
+      setEmailViewer({
+        open: true,
+        loading: false,
+        error: '',
+        html: data.html || '',
+        meta: {
+          id: emailId,
+          subject: data.subject || row.email_meta?.subject || 'Email',
+          from: data.from || row.email_meta?.from || '',
+          received: data.received || row.email_meta?.received || '',
+        },
+      })
+    }catch(err){
+      setEmailViewer((prev) => ({
+        ...prev,
+        loading: false,
+        error: 'Unable to load email. ' + (err?.message || ''),
+      }))
+    }
+  }
+
+  const closeEmailViewer = () => setEmailViewer({ open: false, loading: false, error: '', html: '', meta: {} })
+
+  async function openEmailOutlook(row){
+    const emailId = row?.email_meta?.id
+    if(!emailId) return
+    const key = emailId
+    setEmailActionState((prev) => ({ ...prev, outlook: key }))
+    try{
+      const data = await fetchEmailOpenData(row, { launchOutlook: true })
+      if(data?.desktop_launched){
+        return
+      }
+      if(data?.link){
+        alert('Opening Outlook directly was blocked. Use “Copy email link” instead.')
+      }else{
+        alert('Unable to resolve the Outlook link yet.')
+      }
+    }catch(err){
+      console.error('openEmailOutlook', err)
+      alert('Failed to contact the server to open this email.')
+    }finally{
+      setEmailActionState((prev) => ({ ...prev, outlook: prev.outlook === key ? null : prev.outlook }))
+    }
+  }
+
+  async function copyEmailLink(row){
+    const emailId = row?.email_meta?.id
+    if(!emailId) return
+    const key = emailId
+    setEmailActionState((prev) => ({ ...prev, copy: key }))
+    try{
+      const data = await fetchEmailOpenData(row, { launchOutlook: false })
+      const link = data?.link || ''
+      if(link){
+        const ok = await copyEmailLinkToClipboard(link)
+        alert(ok ? 'Email link copied to clipboard.' : 'Copy blocked by browser. Please allow clipboard access.')
+      }else{
+        alert('No Outlook link available yet. Try again after syncing emails.')
+      }
+    }catch(err){
+      console.error('copyEmailLink', err)
+      alert('Failed to copy the Outlook link.')
+    }finally{
+      setEmailActionState((prev) => ({ ...prev, copy: prev.copy === key ? null : prev.copy }))
+    }
+  }
+
+  async function fetchEmailOpenData(row, opts = {}) {
+    const launch = opts.launchOutlook !== undefined ? opts.launchOutlook : true
+    const emailId = row?.email_meta?.id
+    if(!emailId) throw new Error('email id missing')
+    const res = await fetch(`${API}/email/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: emailId, client: resolveEmailClient(row), launch_outlook: launch })
+    })
+    if(!res.ok){
+      const msg = await res.text()
+      throw new Error(msg || 'email/open failed')
+    }
+    return res.json()
+  }
+
+
+  const toolbarButton = (testid, action, label, icon, handler, disabled=false) => (
+    <button
+      key={testid}
+      className="flex items-center gap-1 px-3 py-1 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm disabled:opacity-50"
+      data-testid={testid}
+      data-action={action}
+      onClick={handler}
+      disabled={disabled}
+    >
+      {icon}{label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-4" data-testid="task-files">
+      <div className="flex flex-wrap gap-2">
+        {toolbarButton('tm.assets.add.file', 'assets.add.file', 'קובץ', <FileText className="w-4 h-4" />, triggerUpload, uploading)}
+        {toolbarButton('tm.assets.add.link', 'assets.add.link', 'לינק', <LinkIcon className="w-4 h-4" />, () => setLinkOpen(true))}
+        {toolbarButton('tm.assets.add.folder', 'assets.add.folder', 'תיקייה', <Folder className="w-4 h-4" />, pickAndLinkFolder)}
+        {toolbarButton('tm.assets.add.email', 'assets.add.email', 'אימייל', <Mail className="w-4 h-4" />, openEmailModal)}
+        {toast && <span className="text-xs text-slate-500">{toast}</span>}
+      </div>
+
+      <div className="card space-y-2">
+        {rows.length === 0 && <div className="text-sm text-slate-500 p-3">אין נכסים משויכים עדיין.</div>}
+        {rows.map((row) => (
+          <AssetRow
+            key={(row.drive_id || row.web_url || row.local_path || Math.random()).toString()}
+            row={row}
+            primary={primary}
+            onRename={(id, label) => { setRenameTarget(id); setRenameValue(label || ''); setEditLink(null); }}
+            onSetCurrent={setCurrent}
+            onDelete={removeAsset}
+            onEditLink={(r)=>{ setRenameTarget(r.web_url || 'link'); setEditLink({ current_web_url: r.web_url || '', new_web_url: r.web_url || '', user_title: r.user_title || '' }) }}
+            onOpenLocalFolder={openLocalFolderPath}
+            onOpenEmailViewer={() => openEmailViewer(row)}
+            onOpenEmailOutlook={() => openEmailOutlook(row)}
+            onCopyEmailLink={() => copyEmailLink(row)}
+            onMissingEmailMeta={handleMissingEmailMeta}
+            emailActionState={emailActionState}
+          />
+        ))}
+      </div>
+
+      {folder?.web_url && (
+        <a href={folder.web_url} target="_blank" rel="noreferrer" className="text-sm text-petrol flex items-center gap-2 underline">
+          <ExternalLink className="w-4 h-4" /> פתח תיקיית משימה
+        </a>
+      )}
+
+      {linkOpen && (
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="subheading">הוסף לינק</div>
+            <button className="text-slate-500 hover:text-slate-700" onClick={() => setLinkOpen(false)}><X className="w-4 h-4" /></button>
+          </div>
+          <form className="space-y-3" onSubmit={addLink}>
+            <label className="text-sm">כותרת
+              <input className="mt-1 w-full border border-slate-300 rounded px-3 py-2" value={linkForm.title} onChange={e => setLinkForm({ ...linkForm, title: e.target.value })} />
+            </label>
+            <label className="text-sm">כתובת
+              <input className="mt-1 w-full border border-slate-300 rounded px-3 py-2" value={linkForm.url} onChange={e => setLinkForm({ ...linkForm, url: e.target.value })} placeholder="https://example.com" />
+            </label>
+            {linkError && <div className="text-xs text-red-500">{linkError}</div>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="text-sm text-slate-500" onClick={() => setLinkOpen(false)}>בטל</button>
+              <button type="submit" className="px-3 py-1 rounded bg-petrol text-white text-sm">שמור</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {renameTarget && editLink && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-md space-y-3">
+            <div className="subheading">עריכת לינק</div>
+            <label className="text-xs block">כותרת
+              <input className="w-full border border-slate-300 rounded px-3 py-2 mt-1" value={editLink.user_title} onChange={e=>setEditLink({...editLink, user_title:e.target.value})} />
+            </label>
+            <label className="text-xs block">כתובת
+              <input className="w-full border border-slate-300 rounded px-3 py-2 mt-1" value={editLink.new_web_url} onChange={e=>setEditLink({...editLink, new_web_url:e.target.value})} />
+            </label>
+            <div className="flex justify-end gap-2 text-sm">
+              <button onClick={() => { setRenameTarget(null); setEditLink(null) }} className="text-slate-500">בטל</button>
+              <button onClick={async () => { await updateLink(editLink.current_web_url, editLink.new_web_url, editLink.user_title); setRenameTarget(null); setEditLink(null) }} className="px-3 py-1 rounded bg-petrol text-white">שמור</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renameTarget && !editLink && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-md space-y-3">
+            <div className="subheading">שנה שם נכס</div>
+            <input className="w-full border border-slate-300 rounded px-3 py-2" value={renameValue} onChange={e => setRenameValue(e.target.value)} />
+            <div className="flex justify-end gap-2 text-sm">
+              <button onClick={() => setRenameTarget(null)} className="text-slate-500">בטל</button>
+              <button onClick={async () => { await rename(renameTarget, renameValue); setRenameTarget(null); }} className="px-3 py-1 rounded bg-petrol text-white">שמור</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emailModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" data-testid="tm.attach-email" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="bg-petrol text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div className="font-semibold">צרף אימייל</div>
+              <button onClick={() => setEmailModal(false)} className="hover:text-copper"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-auto flex-1">
+              {/* Client's recent emails - shown automatically */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700">אימיילים אחרונים של {clientName || 'הלקוח'}</div>
+                {loadingClientEmails && (
+                  <div className="flex items-center justify-center py-6 text-slate-500 gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> טוען אימיילים...
+                  </div>
+                )}
+                {!loadingClientEmails && clientEmails.length === 0 && (
+                  <div className="text-center text-slate-400 text-sm py-4">לא נמצאו אימיילים</div>
+                )}
+                <div className="space-y-2 max-h-80 overflow-auto">
+                  {clientEmails.map(email => {
+                    const isExpanded = expandedEmailId === email.id;
+                    const hasAttachments = email.has_attachments || email.attachments_count > 0;
+                    return (
+                      <div key={email.id} className="border border-slate-200 rounded-lg text-sm hover:border-petrol/40 transition-colors">
+                        <div className="p-3 flex items-center gap-2">
+                          <button
+                            className="text-slate-400 hover:text-petrol flex-shrink-0"
+                            onClick={() => setExpandedEmailId(isExpanded ? null : email.id)}
+                            title={isExpanded ? 'סגור תצוגה מקדימה' : 'הצג תצוגה מקדימה'}
+                          >
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-slate-900 truncate flex items-center gap-2">
+                              {email.subject || '(ללא נושא)'}
+                              {hasAttachments && (
+                                <span className="text-slate-400 flex items-center gap-0.5" title={email.attachments_count ? `${email.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}>
+                                  <Paperclip className="w-3.5 h-3.5" />
+                                  {email.attachments_count > 0 && <span className="text-xs">{email.attachments_count}</span>}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-slate-500 text-xs truncate">{email.from} · {email.received ? new Date(email.received).toLocaleDateString('he-IL') : ''}</div>
+                          </div>
+                          <button className="px-3 py-1 rounded bg-petrol text-white text-xs flex-shrink-0" data-testid="tm.email.attach" data-action="email.attach" onClick={() => attachEmail(email)}>צרף</button>
+                        </div>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-0 mr-6 text-xs text-slate-600 border-t border-slate-100">
+                            <div className="pt-2 whitespace-pre-wrap line-clamp-4">{email.preview || 'אין תצוגה מקדימה זמינה'}</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Search for other emails */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="text-sm font-medium text-slate-700">חיפוש אימיילים נוספים</div>
+                <label className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2">
+                  <Search className="w-4 h-4 text-slate-500" />
+                  <input className="flex-1 focus:outline-none" placeholder="Subject או כתובת" value={emailQuery} onChange={e => setEmailQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchEmails()} />
+                  <button type="button" className="text-sm text-petrol" onClick={searchEmails} data-testid="tm.email.search" data-action="email.search">
+                    {searchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : 'חפש'}
+                  </button>
+                </label>
+                {emailHits.length > 0 && (
+                  <div className="space-y-2 max-h-56 overflow-auto">
+                    {emailHits.map(hit => {
+                      const isExpanded = expandedEmailId === hit.id;
+                      const hasAttachments = hit.has_attachments || hit.attachments_count > 0;
+                      return (
+                        <div key={hit.id} className="border border-slate-200 rounded-lg text-sm hover:border-petrol/40 transition-colors">
+                          <div className="p-3 flex items-center gap-2">
+                            <button
+                              className="text-slate-400 hover:text-petrol flex-shrink-0"
+                              onClick={() => setExpandedEmailId(isExpanded ? null : hit.id)}
+                              title={isExpanded ? 'סגור תצוגה מקדימה' : 'הצג תצוגה מקדימה'}
+                            >
+                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-slate-900 truncate flex items-center gap-2">
+                                {hit.subject || '(ללא נושא)'}
+                                {hasAttachments && (
+                                  <span className="text-slate-400 flex items-center gap-0.5" title={hit.attachments_count ? `${hit.attachments_count} קבצים מצורפים` : 'קבצים מצורפים'}>
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                    {hit.attachments_count > 0 && <span className="text-xs">{hit.attachments_count}</span>}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-slate-500 text-xs truncate">{hit.from}</div>
+                            </div>
+                            <button className="px-3 py-1 rounded bg-petrol text-white text-xs flex-shrink-0" data-testid="tm.email.attach" data-action="email.attach" onClick={() => attachEmail(hit)}>צרף</button>
+                          </div>
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-0 mr-6 text-xs text-slate-600 border-t border-slate-100">
+                              <div className="pt-2 whitespace-pre-wrap line-clamp-4">{hit.preview || 'אין תצוגה מקדימה זמינה'}</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emailViewer.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-[60] px-4 py-8 overflow-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-slate-200">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <div className="text-base font-semibold text-petrol">{emailViewer.meta.subject || 'Email'}</div>
+                <div className="text-xs text-slate-500">
+                  {emailViewer.meta.from && <span>From: {emailViewer.meta.from}</span>}
+                  {emailViewer.meta.received && <span className="ml-2">Received: {emailViewer.meta.received}</span>}
+                </div>
+              </div>
+              <button className="rounded-full bg-slate-100 px-3 py-1 text-sm" onClick={closeEmailViewer}>Close</button>
+            </div>
+            <div className="p-4 min-h-[320px]">
+              {emailViewer.loading && (
+                <div className="flex items-center justify-center text-slate-500 gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading email…
+                </div>
+              )}
+              {!emailViewer.loading && emailViewer.error && (
+                <div className="rounded bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{emailViewer.error}</div>
+              )}
+              {!emailViewer.loading && !emailViewer.error && (
+                <iframe
+                  title="Task email"
+                  className="w-full h-[60vh] border rounded"
+                  sandbox=""
+                  srcDoc={emailViewer.html}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <input ref={fileInputRef} type="file" className="hidden" onChange={doUpload} />
+    </div>
+  );
+}
+
+async function copyEmailLinkToClipboard(link){
+  if(!link) return false
+  try{
+    if(navigator?.clipboard?.writeText){
+      await navigator.clipboard.writeText(link)
+      return true
+    }
+  }catch{
+    // ignore fallthrough
+  }
+  try{
+    const textarea = document.createElement('textarea')
+    textarea.value = link
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  }catch{
+    return false
+  }
+}
+
+function AssetRow({
+  row,
+  primary,
+  onRename,
+  onSetCurrent,
+  onDelete,
+  onEditLink,
+  onOpenLocalFolder = () => {},
+  onOpenEmailViewer = () => {},
+  onOpenEmailOutlook = () => {},
+  onCopyEmailLink = () => {},
+  onMissingEmailMeta = () => {},
+  emailActionState = {},
+}) {
+  const icon = kindMap[row.kind]?.icon || kindMap.file.icon;
+  const label = row.user_title || row.source_name || row.display_name || 'Asset';
+  const isDeliverable = row.kind === 'out';
+  const isEmail = row.kind === 'email';
+  const emailMeta = row.email_meta || {};
+  const emailKey = emailMeta.id || row.drive_id || row.web_url || row.local_path || label;
+  const opening = emailActionState.outlook === emailKey;
+  const copying = emailActionState.copy === emailKey;
+  const canEmailActions = Boolean(emailMeta.id);
+
+  const guardEmailAction = (fn) => {
+    if (!canEmailActions) {
+      onMissingEmailMeta()
+      return
+    }
+    fn()
+  }
+  return (
+    <div className="group flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-petrol/40 transition-shadow" data-testid="tm.asset.row" data-asset-id={row.drive_id}>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">{icon}</div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="font-medium text-slate-900 truncate">{isEmail ? (emailMeta.subject || label) : label}</div>
+          <div className="text-xs text-slate-500 truncate">{row.effective_name || row.kind}</div>
+          {isEmail && (
+            <div className="space-y-1 text-xs text-slate-600">
+              {emailMeta.from && <div className="truncate">From: {emailMeta.from}</div>}
+              {emailMeta.received && <div className="truncate">Received: {emailMeta.received}</div>}
+              {emailMeta.has_attachments && (
+                <div className="flex items-center gap-1 text-slate-500" aria-label={emailMeta.attachments_count ? `${emailMeta.attachments_count} attachments` : 'Attachments present'}>
+                  <Paperclip className="w-3 h-3" />
+                  <span>{emailMeta.attachments_count ? `${emailMeta.attachments_count} קבצים` : 'קבצים מצורפים'}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 items-end text-xs text-slate-500">
+          {row.web_url && (
+            <a href={row.web_url} target="_blank" rel="noreferrer" className="text-sm text-petrol underline flex items-center gap-1">
+              <ExternalLink className="w-4 h-4" /> פתח
+            </a>
+          )}
+          {row.kind === 'folder' && row.local_path && (
+            <button className="text-sm text-petrol underline flex items-center gap-1"
+              onClick={() => onOpenLocalFolder(row.local_path)}>
+              <ExternalLink className="w-4 h-4" /> פתח באקספלורר
+            </button>
+          )}
+        </div>
+      </div>
+      {isEmail && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          <button
+            className="px-3 py-1 rounded border border-slate-300 text-petrol hover:bg-petrol/10"
+            onClick={() => guardEmailAction(onOpenEmailViewer)}
+            disabled={!canEmailActions}
+            data-testid="tm.asset.email.viewer"
+          >
+            Open in viewer
+          </button>
+          <button
+            className="px-3 py-1 rounded border border-slate-300 text-petrol hover:bg-petrol/10 disabled:opacity-50"
+            onClick={() => guardEmailAction(onOpenEmailOutlook)}
+            disabled={opening || !canEmailActions}
+            data-testid="tm.asset.email.open_outlook"
+          >
+            {opening ? 'Opening…' : 'Open in Outlook'}
+          </button>
+          <button
+            className="px-3 py-1 rounded border border-slate-300 text-petrol hover:bg-petrol/10 disabled:opacity-50"
+            onClick={() => guardEmailAction(onCopyEmailLink)}
+            disabled={copying || !canEmailActions}
+            data-testid="tm.asset.email.copy_link"
+          >
+            {copying ? 'Copying…' : 'Copy link'}
+          </button>
+          {!canEmailActions && (
+            <span className="text-xs text-slate-500">
+              (אי-אפשר לפתוח אימייל זה – חסר מזהה)
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <button className="text-slate-500 hover:text-petrol flex items-center gap-1" onClick={() => (row.kind==='link' ? onEditLink(row) : onRename(row.drive_id, label))} data-testid="tm.asset.rename" data-action="asset.rename">
+          <Edit2 className="w-3 h-3" /> שנה
+        </button>
+        <button className="text-slate-500 hover:text-copper flex items-center gap-1" onClick={() => onDelete(row)} data-testid="tm.asset.delete" title="מחק">
+          <Trash2 className="w-3 h-3" /> מחק
+        </button>
+        {isDeliverable && (
+          <button className="flex items-center gap-1 text-petrol" onClick={() => onSetCurrent(row.drive_id)} data-testid="tm.asset.set_current" data-action="deliverable.set_current">
+            <CheckCircle2 className="w-3 h-3" /> {primary === row.drive_id ? 'מסמך נוכחי' : 'סמן כנוכחי'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

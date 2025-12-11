@@ -152,7 +152,7 @@ function SearchResultCard({ result }) {
 export default function RAG() {
   const ENV_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
   const [apiBase, setApiBase] = useState(() => getStoredApiBase())
-  const [activeTab, setActiveTab] = useState('assistant')
+  const [activeTab, setActiveTab] = useState('ingest')
   const ingestRef = useRef(null)
   const assistantRef = useRef(null)
 
@@ -169,6 +169,7 @@ export default function RAG() {
   const [renameTo, setRenameTo] = useState('')
   const [selectedItems, setSelectedItems] = useState(new Set())
   const audioRef = useRef(null)
+  const reviewerRef = useRef(null)
   const [assistantQ, setAssistantQ] = useState('')
   const [assistantClient, setAssistantClient] = useState('')
   const [assistantDomain, setAssistantDomain] = useState('all')
@@ -179,6 +180,42 @@ export default function RAG() {
   const [assistantStatus, setAssistantStatus] = useState('idle')
   const [assistantError, setAssistantError] = useState('')
 
+  // Zoom transcripts state
+  const [zoomTranscripts, setZoomTranscripts] = useState([])
+  const [zoomStatus, setZoomStatus] = useState("idle")
+  const [zoomPreview, setZoomPreview] = useState(null)
+  const [zoomImporting, setZoomImporting] = useState(false)
+  const [importedZoomIds, setImportedZoomIds] = useState(new Set())
+  const [zoomImportMeta, setZoomImportMeta] = useState({ client: "", date: "", domain: "Client_Work" })
+
+  // Zoom Cloud Recordings state
+  const [zoomCloudRecordings, setZoomCloudRecordings] = useState([])
+  const [zoomCloudLoading, setZoomCloudLoading] = useState(false)
+  const [downloadingId, setDownloadingId] = useState(null)
+  const [transcribingId, setTranscribingId] = useState(null)
+  const [zoomCloudLog, setZoomCloudLog] = useState([])
+  const [zoomCloudFilter, setZoomCloudFilter] = useState('')
+  const [availableClients, setAvailableClients] = useState([])
+  const [clientsLoading, setClientsLoading] = useState(false)
+  const loadAvailableClients = async () => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      setClientsLoading(true)
+      const res = await fetch()
+      if (!res.ok) throw new Error("Failed")
+      const list = await res.json()
+      const names = Array.isArray(list) ? list.map(c => ({id: c.id, name: c.name || c.display_name || ""})).filter(c => c.name) : []
+      setAvailableClients(names)
+    } catch (e) {
+      console.error("Failed to load clients:", e)
+      setAvailableClients([])
+    } finally {
+      setClientsLoading(false)
+    }
+  }
+
+
   useEffect(() => {
     const init = async () => {
       const detected = await detectApiBase([ENV_API])
@@ -186,6 +223,7 @@ export default function RAG() {
     }
     init()
     refreshInbox()
+    loadAvailableClients()
     const t = setInterval(refreshInbox, 15000)
     return () => clearInterval(t)
   }, [ENV_API])
@@ -206,6 +244,13 @@ export default function RAG() {
     }
     if (activeTab === 'assistant' && assistantRef.current) {
       assistantRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab])
+
+  // Load Zoom transcripts when ingest tab is active
+  useEffect(() => {
+    if (activeTab === 'ingest') {
+      refreshZoomTranscripts()
     }
   }, [activeTab])
 
@@ -281,6 +326,243 @@ export default function RAG() {
       setInboxStatus('idle')
       setInboxError('טעינת האינבוקס נכשלה. ודא שה-API פועל.')
       console.error(err)
+    }
+  }
+
+  // Zoom transcripts functions
+  // ===== Zoom Cloud Recording Functions =====
+  const syncFromZoomCloud = async () => {
+    const base = await ensureApiBase()
+    if (!base) return
+    setZoomCloudLoading(true)
+    try {
+      const resp = await fetch(base + '/api/zoom/sync', { method: 'POST' })
+      if (!resp.ok) throw new Error('Sync failed')
+      addLog('success', 'Transcription completed successfully!')
+      await refreshZoomCloud()
+    } catch (err) {
+      console.error('Zoom sync error:', err)
+    } finally {
+      setZoomCloudLoading(false)
+    }
+  }
+
+  const refreshZoomCloud = async () => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const resp = await fetch(base + '/api/zoom/recordings')
+      if (resp.ok) {
+        const data = await resp.json()
+        setZoomCloudRecordings(data.recordings || [])
+      }
+    } catch (err) {
+      console.error('Refresh zoom cloud error:', err)
+    }
+  }
+
+  const downloadZoomRecording = async (recording) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    setDownloadingId(recording.zoom_id)
+    setZoomCloudLog([])
+    addLog('info', 'Downloading from Zoom: ' + recording.topic)
+    try {
+      const resp = await fetch(base + '/api/zoom/download/' + recording.zoom_id, { method: 'POST' })
+      if (!resp.ok) {
+        let errorDetail = 'Download failed'
+        try {
+          const errorJson = await resp.json()
+          if (errorJson.detail) errorDetail = errorJson.detail
+        } catch (e) {}
+        throw new Error(errorDetail)
+      }
+      addLog('success', 'Download completed! Ready to transcribe.')
+      await refreshZoomCloud()
+    } catch (err) {
+      addLog('error', 'Error: ' + err.message)
+      console.error('Download error:', err)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  const addLog = (type, msg) => setZoomCloudLog(prev => [...prev, { time: new Date().toLocaleTimeString(), type, msg }])
+
+  const transcribeZoomRecording = async (recording) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    setTranscribingId(recording.zoom_id)
+    setZoomCloudLog([])
+    addLog('info', 'Starting transcription: ' + recording.topic)
+    addLog('info', 'Downloading audio from Azure...')
+    try {
+      const resp = await fetch(base + '/api/zoom/transcribe/' + recording.zoom_id, { method: 'POST' })
+      if (!resp.ok) {
+        // Try to get detailed error message from API response
+        let errorDetail = 'Transcription failed'
+        try {
+          const errorJson = await resp.json()
+          if (errorJson.detail) errorDetail = errorJson.detail
+        } catch (e) {}
+        throw new Error(errorDetail)
+      }
+      addLog('info', 'Sending to Gemini for transcription...')
+      addLog('success', 'Transcription completed successfully!')
+      await refreshZoomCloud()
+    } catch (err) {
+      addLog('error', 'Error: ' + err.message)
+      console.error('Transcribe error:', err)
+    } finally {
+      setTranscribingId(null)
+    }
+  }
+
+  const skipZoomRecording = async (recording) => {
+    if (!window.confirm('Skip "' + recording.topic + '"?')) return
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const resp = await fetch(base + '/api/zoom/skip/' + recording.zoom_id, { method: 'POST' })
+      if (!resp.ok) throw new Error('Skip failed')
+      addLog('success', 'Transcription completed successfully!')
+      await refreshZoomCloud()
+    } catch (err) {
+      console.error('Skip error:', err)
+    }
+  }
+
+  const getZoomStatusBadge = (status) => {
+    const badges = {
+      'in_zoom': { tone: 'info', label: 'In Zoom' },
+      'downloading': { tone: 'warning', label: 'Downloading...' },
+      'pending': { tone: 'warning', label: 'Pending' },
+      'completed': { tone: 'success', label: 'Completed' },
+      'skipped': { tone: 'neutral', label: 'Skipped' },
+      'failed': { tone: 'danger', label: 'Failed' }
+    }
+    return badges[status] || { tone: 'info', label: status }
+  }
+
+  const refreshZoomTranscripts = async () => {
+    setZoomStatus("loading")
+    const base = await ensureApiBase()
+    if (!base) {
+      setZoomStatus("idle")
+      return
+    }
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      setZoomTranscripts(Array.isArray(data.transcripts) ? data.transcripts : [])
+      setZoomStatus("ready")
+    } catch (err) {
+      setZoomStatus("idle")
+      console.error("Failed to fetch Zoom transcripts:", err)
+    }
+  }
+
+  const previewZoomTranscript = async (transcript) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    loadAvailableClients()
+
+    const titleStr = transcript.title || "Zoom Recording"
+    const dateStr = transcript.date || ""
+    setZoomImportMeta({ client: titleStr, date: dateStr, domain: "Client_Work" })
+
+    // If transcript already has content, use it directly
+    if (transcript.transcript) {
+      let contentText = ""
+      if (Array.isArray(transcript.transcript)) {
+        contentText = transcript.transcript.map(seg => seg.text || seg).join("\n\n")
+      } else if (typeof transcript.transcript === "string") {
+        contentText = transcript.transcript
+      }
+      setZoomPreview({ ...transcript, content: contentText, title: titleStr })
+      return
+    }
+
+    // Otherwise try to fetch from API
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      setZoomPreview({ ...transcript, content: data.content, title: data.title || titleStr })
+    } catch (err) {
+      console.error("Failed to preview transcript:", err)
+      setZoomPreview({ ...transcript, content: "תמלול לא זמין. נסה לתמלל את ההקלטה תחילה.", title: titleStr })
+    }
+  }
+
+  const importZoomToRag = async (transcript) => {
+    setZoomImporting(true)
+    const base = await ensureApiBase()
+    if (!base) {
+      setZoomImporting(false)
+      return
+    }
+    try {
+      // Extract client name from filename (format: date_clientname_uuid.txt)
+      const parts = transcript.filename.replace(".txt", "").split("_")
+      const clientName = parts.length > 2 ? parts.slice(1, -1).join(" ") : ""
+      const dateStr = parts[0] || ""
+      
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: zoomImportMeta.client,
+          domain: zoomImportMeta.domain,
+          date: zoomImportMeta.date
+        })
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      await refreshInbox()
+    loadAvailableClients()
+      setZoomPreview(null)
+      setImportedZoomIds(prev => new Set([...prev, transcript.id]))
+    } catch (err) {
+      console.error("Failed to import transcript:", err)
+      alert("שגיאה בייבוא התמלול")
+    } finally {
+      setZoomImporting(false)
+    }
+  }
+
+  const downloadZoomTranscript = async (transcript) => {
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`)
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      const data = await res.json()
+      const blob = new Blob([data.content], { type: "text/plain;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = transcript.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to download transcript:", err)
+      alert("שגיאה בהורדת התמלול")
+    }
+  }
+const deleteZoomTranscript = async (transcript) => {
+    if (!window.confirm(`למחוק את התמלול ${transcript.title || transcript.filename || "Zoom Recording"}?`)) return
+    const base = await ensureApiBase()
+    if (!base) return
+    try {
+      const res = await fetch(`${base}/api/zoom/transcripts/${encodeURIComponent(transcript.id)}`, { method: "DELETE" })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+      setZoomTranscripts(prev => prev.filter(t => t.id !== transcript.id))
+    } catch (err) {
+      console.error("Failed to delete transcript:", err)
+      alert("שגיאה במחיקת התמלול")
     }
   }
 
@@ -384,6 +666,7 @@ export default function RAG() {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -400,6 +683,7 @@ export default function RAG() {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -415,6 +699,7 @@ export default function RAG() {
       }
     }
     refreshInbox()
+    loadAvailableClients()
     clearSelection()
   }
 
@@ -425,9 +710,11 @@ export default function RAG() {
     try {
       await fetch(`${base}/api/rag/file/${item.id || item.hash}`, { method: 'DELETE' })
       refreshInbox()
+    loadAvailableClients()
     } catch (err) {
       console.error(err)
       refreshInbox()
+    loadAvailableClients()
     }
   }
 
@@ -491,6 +778,10 @@ export default function RAG() {
             ? data.transcript
             : parsedFromRaw(),
       })
+      // Auto-scroll to reviewer panel
+      setTimeout(() => {
+        reviewerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     } catch (err) {
       console.error(err)
       setInboxError('טעינת סוקר נכשלה.')
@@ -521,6 +812,7 @@ export default function RAG() {
       const data = await res.json()
       setReviewItem(data)
       refreshInbox()
+    loadAvailableClients()
     } catch (err) {
       console.error(err)
       setInboxError('שמירת שינויים נכשלה.')
@@ -867,9 +1159,10 @@ export default function RAG() {
                         {item.fileName || item.name || 'ללא שם'}
                       </div>
                       <div className="text-xs text-slate-500 flex flex-wrap gap-2 mt-1">
+                        {item.recording_date && <span>📅 {item.recording_date}</span>}
                         <StatusBadge status={item.status} />
                         {item.note && <span>{item.note}</span>}
-                        {item.client && <span>Client: {item.client}</span>}
+                        {item.client_name && <span>👤 {item.client_name}</span>}
                         {item.domain && <span>Domain: {item.domain}</span>}
                         {item.hash && <span className="text-slate-400">hash: {item.hash.slice(0, 8)}…</span>}
                       </div>
@@ -930,10 +1223,241 @@ export default function RAG() {
                 ))}
               </div>
             </div>
+
+              {/* Zoom Cloud Recordings Section */}
+              <SectionCard title="Zoom Cloud Recordings" testId="rag.zoomCloud">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setZoomCloudFilter('')} className={'px-3 py-1 rounded text-sm ' + (!zoomCloudFilter ? 'bg-petrol text-white' : 'bg-slate-100 text-slate-700')}>All</button>
+                      <button type="button" onClick={() => setZoomCloudFilter('audio')} className={'px-3 py-1 rounded text-sm ' + (zoomCloudFilter === 'audio' ? 'bg-petrol text-white' : 'bg-slate-100 text-slate-700')}>Audio</button>
+                      <button type="button" onClick={() => setZoomCloudFilter('video')} className={'px-3 py-1 rounded text-sm ' + (zoomCloudFilter === 'video' ? 'bg-petrol text-white' : 'bg-slate-100 text-slate-700')}>Video</button>
+                    </div>
+                    <button type="button" onClick={syncFromZoomCloud} className="px-4 py-2 rounded bg-petrol text-white hover:bg-petrol/90 text-sm font-medium" disabled={zoomCloudLoading} data-testid="rag.zoomCloud.sync">{zoomCloudLoading ? 'Syncing...' : 'Sync from Zoom'}</button>
+                  </div>
+                  {zoomCloudRecordings.length === 0 && !zoomCloudLoading && (<div className="text-xs text-slate-500">Click "Sync from Zoom" to load recordings.</div>)}
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {zoomCloudRecordings.filter(rec => {
+                      if (!zoomCloudFilter) return true
+                      if (zoomCloudFilter === 'audio') return rec.file_type === 'M4A'
+                      if (zoomCloudFilter === 'video') return rec.file_type === 'MP4'
+                      return true
+                    }).map((recording) => {
+                      const badge = getZoomStatusBadge(recording.status)
+                      const isAudio = recording.file_type === 'M4A'
+                      return (
+                        <div key={recording.zoom_id} className={'flex items-center justify-between text-sm border rounded-lg px-3 py-2 ' + (recording.status === 'completed' ? 'bg-emerald-50 border-emerald-200' : recording.status === 'failed' ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200')} data-testid={'rag.zoomCloud.item.' + recording.zoom_id}>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className={'px-2 py-0.5 rounded text-xs font-medium ' + (isAudio ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700')}>{isAudio ? 'Audio' : 'Video'}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-slate-800 truncate">{recording.topic || 'No title'}</div>
+                              <div className="text-xs text-slate-500">{recording.date} | {recording.duration} min</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <StatusPill tone={badge.tone}>{badge.label}</StatusPill>
+                            {recording.status === 'in_zoom' && (
+                              <>
+                                <button onClick={() => downloadZoomRecording(recording)} className="px-3 py-1 bg-petrol text-white rounded text-sm hover:bg-petrol/90" disabled={downloadingId === recording.zoom_id} data-testid={'rag.zoomCloud.item.' + recording.zoom_id + '.download'}>{downloadingId === recording.zoom_id ? 'מוריד...' : 'הורד'}</button>
+                                <button onClick={() => skipZoomRecording(recording)} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-sm hover:bg-slate-200" data-testid={'rag.zoomCloud.item.' + recording.zoom_id + '.skip'}>דלג</button>
+                              </>
+                            )}
+                            {recording.status === 'completed' && (
+                              <button onClick={() => transcribeZoomRecording(recording)} className="px-3 py-1 bg-amber-500 text-white rounded text-sm hover:bg-amber-600" disabled={transcribingId === recording.zoom_id} data-testid={'rag.zoomCloud.item.' + recording.zoom_id + '.transcribe'}>{transcribingId === recording.zoom_id ? 'מתמלל...' : 'תמלל'}</button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {/* Activity Log Panel */}
+                  {zoomCloudLog.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-600">Activity Log</span>
+                        <button onClick={() => setZoomCloudLog([])} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-3 font-mono text-xs max-h-32 overflow-y-auto">
+                        {zoomCloudLog.map((log, i) => (
+                          <div key={i} className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : 'text-blue-400'}>
+                            [{log.time}] {log.msg}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+
+              {/* Zoom Transcripts Section */}
+              <div className="pt-4 border-t border-slate-200 space-y-2" data-testid="rag.zoomTranscripts">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-slate-800">תמלולי זום אחרונים</div>
+                  <button
+                    type="button"
+                    onClick={refreshZoomTranscripts}
+                    className="px-3 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs"
+                    disabled={zoomStatus === "loading"}
+                    data-testid="rag.zoomTranscripts.refresh"
+                  >
+                    {zoomStatus === "loading" ? "טוען..." : "רענן"}
+                  </button>
+                </div>
+                {zoomStatus === "loading" && (
+                  <div className="text-xs text-slate-500">טוען תמלולי זום...</div>
+                )}
+                {zoomTranscripts.length === 0 && zoomStatus !== "loading" && (
+                  <div className="text-xs text-slate-500">לא נמצאו תמלולי זום.</div>
+                )}
+                {zoomTranscripts.map((transcript) => (
+                  <div
+                    key={transcript.id}
+                    className="flex items-center justify-between text-sm border border-blue-200 rounded-lg px-3 py-2 bg-blue-50/50"
+                    data-testid={`rag.zoomTranscripts.item.${transcript.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-800 flex items-center gap-2 truncate">
+                        {importedZoomIds.has(transcript.id) && <span className="text-green-600">✓</span>}<span role="img" aria-label="zoom">📹</span>
+                        {transcript.title || transcript.filename || "Zoom Recording"}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {transcript.date || transcript.modified && new Date(transcript.date || transcript.modified).toLocaleDateString("he-IL")}
+                        {transcript.size && ` · ${Math.round(transcript.size / 1024)} KB`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-sm"
+                        onClick={() => downloadZoomTranscript(transcript)}
+                        title="הורד קובץ"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-rose-200 rounded-lg hover:bg-rose-50 text-rose-600 text-sm"
+                        onClick={() => deleteZoomTranscript(transcript)}
+                        title="מחק תמלול"
+                      >
+                        🗑️
+                      </button>
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-sm"
+                        onClick={() => previewZoomTranscript(transcript)}
+                        data-testid={`rag.zoomTranscripts.item.${transcript.id}.preview`}
+                      >
+                        תצוגה מקדימה
+                      </button>
+                      <button
+                        className="px-3 py-2 min-h-[36px] bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
+                        onClick={() => importZoomToRag(transcript)}
+                        disabled={zoomImporting}
+                        data-testid={`rag.zoomTranscripts.item.${transcript.id}.import`}
+                      >
+                        {zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Zoom Preview Modal */}
+              {zoomPreview && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setZoomPreview(null)}>
+                  <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                      <div className="font-semibold text-slate-800">{zoomPreview.filename}</div>
+                      <button
+                        className="text-slate-500 hover:text-slate-700 text-xl"
+                        onClick={() => setZoomPreview(null)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="grid md:grid-cols-[250px_1fr] gap-4 p-4">
+                      {/* Metadata fields */}
+                      <div className="space-y-3 border-l border-slate-200 pl-4" dir="rtl">
+                        <div className="text-sm font-semibold text-slate-700">פרטי ייבוא</div>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">לקוח:</span>
+                          <div className="mt-1 relative">
+                            <input
+                              type="text"
+                              list="clients-list"
+                              className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                              value={zoomImportMeta.client}
+                              onChange={(e) => setZoomImportMeta(prev => ({...prev, client: e.target.value}))}
+                              placeholder={clientsLoading ? "טוען לקוחות..." : "בחר או הקלד שם לקוח"}
+                            />
+                            <datalist id="clients-list">
+                              {availableClients.map((name, idx) => (
+                                <option key={idx} value={name} />
+                              ))}
+                            </datalist>
+                          </div>
+                          {availableClients.length > 0 && (
+                            <span className="text-xs text-slate-400">{availableClients.length} לקוחות זמינים</span>
+                          )}
+                        </label>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">תאריך:</span>
+                          <input
+                            type="date"
+                            className="mt-1 w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                            value={zoomImportMeta.date}
+                            onChange={(e) => setZoomImportMeta(prev => ({...prev, date: e.target.value}))}
+                          />
+                        </label>
+                        <label className="block text-sm">
+                          <span className="text-slate-600">דומיין:</span>
+                          <select
+                            className="mt-1 w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                            value={zoomImportMeta.domain}
+                            onChange={(e) => setZoomImportMeta(prev => ({...prev, domain: e.target.value}))}
+                          >
+                            <option value="Client_Work">Client_Work</option>
+                            <option value="Business_Ops">Business_Ops</option>
+                            <option value="Personal">Personal</option>
+                          </select>
+                        </label>
+                      </div>
+                      {/* Transcript content */}
+                      <div className="overflow-y-auto max-h-[50vh]">
+                        <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed" dir="rtl">
+                          {zoomPreview.content}
+                        </pre>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200">
+                      <button
+                        className="px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
+                        onClick={() => downloadZoomTranscript(zoomPreview)}
+                      >
+                        הורד קובץ
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          className="px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-sm"
+                          onClick={() => setZoomPreview(null)}
+                        >
+                          סגור
+                        </button>
+                        <button
+                          className="px-4 py-2 bg-petrol text-white rounded-lg hover:bg-petrol/90 text-sm"
+                          onClick={() => importZoomToRag(zoomPreview)}
+                          disabled={zoomImporting || importedZoomIds.has(zoomPreview.id)}
+                        >
+                          {importedZoomIds.has(zoomPreview.id) ? "✓ יובא" : zoomImporting ? "מייבא..." : "ייבא ל-RAG"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
           </SectionCard>
 
           {reviewItem && (
             <SectionCard
+              ref={reviewerRef}
               testId="rag.reviewer"
               title={`Reviewer — ${reviewItem.fileName || reviewItem.id}`}
               subtitle="Click any chat bubble to play audio from that timestamp"
@@ -986,12 +1510,24 @@ export default function RAG() {
                     />
                   </LabeledField>
                   <LabeledField label="Client">
-                    <input
+                    <select
                       className="w-full border border-slate-200 rounded px-3 py-2 text-sm min-h-[44px]"
-                      value={reviewItem.client || ''}
-                      onChange={(e) => setReviewItem((prev) => ({ ...prev, client: e.target.value }))}
+                      value={reviewItem.client_id || ''}
+                      onChange={(e) => {
+                        const selected = availableClients.find(c => c.id === e.target.value)
+                        setReviewItem((prev) => ({
+                          ...prev,
+                          client_id: e.target.value,
+                          client_name: selected?.name || ''
+                        }))
+                      }}
                       data-testid="rag.reviewer.client"
-                    />
+                    >
+                      <option value="">-- Select Client --</option>
+                      {availableClients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </LabeledField>
                   <LabeledField label="Tags">
                     <input

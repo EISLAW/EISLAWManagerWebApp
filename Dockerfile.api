@@ -3,12 +3,16 @@ FROM python:3.12-slim AS api
 
 WORKDIR /app
 
-# System deps
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+# System deps - including ffmpeg for audio processing
+RUN apt-get update && apt-get install -y --no-install-recommends     build-essential     ffmpeg     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies from backend
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# Install zoom-import dependencies (Gemini transcription)
+RUN pip install --no-cache-dir google-generativeai>=0.8.0 azure-storage-blob>=12.14.0
+
 # Also install scoring_service deps for compatibility
 COPY scoring_service/requirements.txt /app/scoring_service/requirements.txt
 RUN pip install --no-cache-dir -r scoring_service/requirements.txt
@@ -22,8 +26,7 @@ COPY tools /app/tools
 # Privacy mapping (Fillout)
 COPY docs/fillout_field_mapping.json /app/docs/fillout_field_mapping.json
 
-ENV PORT=8799 \
-    HOST=0.0.0.0
+ENV PORT=8799     HOST=0.0.0.0
 
 EXPOSE 8799
 

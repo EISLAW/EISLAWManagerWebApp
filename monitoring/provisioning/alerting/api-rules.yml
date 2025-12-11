@@ -1,0 +1,83 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: EISLAW API
+    folder: EISLAW Alerts
+    interval: 1m
+    rules:
+      - uid: eislaw-high-error-rate
+        title: High API Error Rate
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: |
+                (sum(rate(eislaw_http_requests_total{status=~"5.."}[5m]))
+                / sum(rate(eislaw_http_requests_total[5m]))) * 100 > 5
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: API error rate is above 5%
+          description: The EISLAW API is experiencing elevated error rates. Current error rate exceeds 5% of total requests.
+        labels:
+          severity: warning
+
+      - uid: eislaw-high-latency
+        title: High API Latency
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: |
+                histogram_quantile(0.95, sum(rate(eislaw_http_request_duration_seconds_bucket[5m])) by (le)) > 2
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: API p95 latency is above 2 seconds
+          description: The EISLAW API p95 latency has exceeded 2 seconds for 5 minutes.
+        labels:
+          severity: warning
+
+      - uid: eislaw-no-requests
+        title: No API Requests
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: |
+                sum(rate(eislaw_http_requests_total[5m])) == 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+        noDataState: Alerting
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: No API requests received
+          description: The EISLAW API has not received any requests in the last 10 minutes. This may indicate the API is down or unreachable.
+        labels:
+          severity: critical
