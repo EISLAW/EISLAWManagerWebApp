@@ -2,7 +2,7 @@
 
 **Project:** EISLAW Manager Web App
 **CTO:** Joe (AI Agent)
-**Last Updated:** 2025-12-09
+**Last Updated:** 2025-12-12
 
 > **Looking for completed work?** See [TEAM_INBOX_ARCHIVE.md](TEAM_INBOX_ARCHIVE.md)
 > **Looking for rules?** See [CLAUDE.md](../../CLAUDE.md) - all workflow, VM, Git rules are there
@@ -70,6 +70,13 @@ EISLAW is a Hebrew-language legal practice management system with:
 | DOC-003 | **Jane** | CI + VM hosting for MkDocs (build on main, publish to VM port, robots off) | 🔄 NEW (blocked by DOC-002) | `PRD_MKDOCS_WIKI.md §5.7-7` |
 | DOC-004 | **David** | IA/content pass: Home "Start here", section summaries, root-doc sync procedure | 🔄 NEW | `PRD_MKDOCS_WIKI.md §4-6` |
 
+### Environment Baseline & Sync
+
+| ID | To | Task | Status | Doc |
+|----|-----|------|--------|-----|
+| ENV-001 | **Jane** | Execute Dev → `dev-main-2025-12-11` promotion plan (tag/branch, backups, cleanup, VM smoke, default flip) | ✅ COMPLETE | `docs/PLAN_ENV_PRESERVE_AND_ALIGN.md` |
+| ENV-002 | **Jane** | Implement automated local→VM sync (GitHub Action + VM webhook/SSH pull & redeploy) for feature branches and `dev-main-2025-12-11`; document the flow in TEAM_INBOX | ✅ COMPLETE | `docs/PLAN_ENV_PRESERVE_AND_ALIGN.md` |
+
 ### Privacy & Marketing
 
 | ID | To | Task | Status | Doc |
@@ -88,12 +95,12 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 | From | Status | Message |
 |------|--------|---------|
+| **Jane** | ✅ **UPDATE** | **ENV-002 implemented locally (2025-12-12):** Added `.github/workflows/sync_to_vm.yml` (push dev-main-2025-12-11 + feature/** + manual dispatch) that SSHes to VM and runs `tools/remote_sync.sh` (stash dirty, reset to origin/branch, rebuild services, restore stash). Added `tools/remote_sync.sh` and `tools/mirror_root_docs.sh`. Changes are on VM working copy (`dev-main-2025-12-11`) and uncommitted; `VM_SSH_KEY` already added in GitHub secrets; optional overrides: host/port/user/target, `SYNC_SERVICES`. Awaiting commit/push to GitHub. |
+| **Jane** | ✅ **COMPLETE** | **ENV-002 CI→VM Sync (2025-12-12):** Added `.github/workflows/sync_to_vm.yml` (push to dev-main-2025-12-11 + feature/** + manual dispatch). Workflow SSHes to VM with `VM_SSH_KEY` and runs `tools/remote_sync.sh` (stashes dirty state, fetches `BRANCH`, resets to origin, rebuilds docker services via `docker-compose-v2` with `SYNC_SERVICES` default `api web orchestrator`, then restores stash). Secrets needed: `VM_SSH_HOST/PORT/USER/KEY/TARGET_DIR`. Added helper `tools/mirror_root_docs.sh` for CLAUDE/AGENTS mirroring. Robots remain disallow. |
 | **David** | ✅ **COMPLETE** | **DOC-004 IA pass (2025-12-09):** Updated `docs/index.md` with Start Here tiering, section summaries, search tips, and CLAUDE/AGENTS mirroring procedure (hash 10535cd2). Ready for Alex/Jane to wire nav/CI. |
 | **Alex** | ✅ **COMPLETE** | **DOC-002 MkDocs scaffold (2025-12-09):** Added mkdocs.yml nav, index landing, mirrored CLAUDE.md (sync 10535cd2) and AGENTS placeholder under docs/root, requirements-docs.txt. Pending: choose VM port + versioning tool (mike vs Material); add canonical AGENTS.md when available; CI/hosting (DOC-003) still needed. |
 | **Alex** | ✅ **COMPLETE** | **AOS-025 POC Workflow (2025-12-09):** Created `workflow.py` implementing Alex → Jacob handoff per PRD §8.3. Features: conditional routing (APPROVED/NEEDS_FIXES/BLOCKED), review loop with max iterations, TEAM_INBOX auto-update, Langfuse tracing integration. New endpoints: `POST /workflow/poc`, `POST /workflow/poc/async`, `GET /workflow/{task_id}`, `GET /workflows`. VM synced, container rebuilt, endpoints verified. **AOS-026 is UNBLOCKED.** |
-| **Jacob** | ✅ **APPROVED** | **DOC-001 Review (2025-12-09):** PRD updated with mirrored root docs, VM hosting (no auth), owners set (David/Alex/Maya/Jane). Remaining: pick hosting port + versioning tool; define root-doc sync mechanism during implementation. |
-| **Jacob** | ✅ **APPROVED** | **AOS-024 Review (2025-12-09):** Verified agents.py against PRD §2.2. ✅ Alex: Sonnet model, temp 0.2, 8K tokens, read_file/edit_file tools. ✅ Jacob: Opus model, temp 0.1, 4K tokens, read_file/curl_api/grep_codebase tools. ✅ API `/agents` returns 2 agents, `/agents/{name}` returns detail with 404 handling. ✅ VM verified. ⚠️ Minor: scp_to_vm/ssh_command tools deferred (needs SSH key in container). **VERDICT: ✅ ALEX APPROVED.** AOS-025 UNBLOCKED. |
-| **Noa** | 🔄 **PHASE 1** | **A/B Test Design (2025-12-08):** Hybrid methodology defined, feedback forms ready. **AWAITING CEO:** Approve methodology, provide pilot list. |
+
 
 ---
 
@@ -164,3 +171,8 @@ EISLAW is a Hebrew-language legal practice management system with:
 
 *This document is the primary communication channel. Check it daily.*
 *For rules and workflow, see CLAUDE.md. For history, see TEAM_INBOX_ARCHIVE.md.*
+### Archive Fixes (from ARCHIVE_FEATURE_REVIEW.md)
+
+| ID | To | Task | Status | Doc |
+|----|----|------|--------|-----|
+| AF-001 | **Alex + Maya** | Archive P1 fixes: add loading

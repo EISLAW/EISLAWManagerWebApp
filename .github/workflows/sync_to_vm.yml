@@ -1,0 +1,48 @@
+name: Sync to VM
+
+on:
+  push:
+    branches:
+      - dev-main-2025-12-11
+      - feature/**
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: false
+      services:
+        description: "Space-separated services to rebuild (optional)"
+        required: false
+
+concurrency:
+  group: sync-to-vm-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  SSH_HOST: ${{ secrets.VM_SSH_HOST || 20.217.86.4 }}
+  SSH_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+  SSH_USER: ${{ secrets.VM_SSH_USER || azureuser }}
+  SSH_TARGET_DIR: ${{ secrets.VM_SSH_TARGET_DIR || ~/EISLAWManagerWebApp }}
+  SYNC_SERVICES: ${{ github.event.inputs.services || vars.SYNC_SERVICES || api web orchestrator }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VM_SSH_KEY" | tr -d r > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+
+      - name: Run remote sync
+        env:
+          BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $SSH_TARGET_DIR && BRANCH=$BRANCH SERVICES=\"$SYNC_SERVICES\" bash tools/remote_sync.sh"
