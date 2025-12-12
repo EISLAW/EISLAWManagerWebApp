@@ -32,7 +32,7 @@
 | 12 Memory Architecture (working/episodic/semantic); integrity rules | Procedural | **Skill: `memory/episodic-log-update`**, `memory/working-memory-refresh` | Standardizes how to append incidents and refresh sprint status. |
 | 14 Testing & Validation Discipline | Checklist | **Skill: `quality/testing-checklist`** | Enforces pytest/build/playwright smoke before completion. |
 | 15 Operational Discipline; 16 Failure Patterns; 17 Self-Healing | Runbook | **Skill: `quality/self-heal`** | Guided recovery steps and anti-patterns. |
-| Spawn templates (from Testing_Episodic_Log) | Procedural | **Skill: `core/spawn-template`** | Guarantees start/completion posts use Python helper, not bash. |
+| Spawn templates (from CLAUDE.md §1b) | Procedural | **Skill: `core/spawn-template`** | Provides CLI patterns for Joe's auto-spawn via Bash tool (`wt -w 0 new-tab`). Joe executes spawn commands directly—no copy/paste for CEO. |
 | Visual Language Baseline (DesignSystem refs) | Reference | **Skill: `domain/ui-style-baseline`** | Loads design token links + RTL rules on demand. |
 
 ## 3. Proposed Skills Architecture
