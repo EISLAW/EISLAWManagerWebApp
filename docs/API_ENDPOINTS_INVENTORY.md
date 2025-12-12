@@ -206,20 +206,24 @@ Reply:       https://outlook.office365.com/owa/?ItemID={encoded_id}&action=Reply
 
 ## RAG/Documents Endpoints
 
+> **Backend:** SQLite (eislaw.db) + Meilisearch (port 7700)
+> **Phase:** RAG-FIX-001 (RAG-FIX-002, RAG-FIX-003, RAG-FIX-004, RAG-FIX-005 in progress)
+> **Status:** All 12 endpoints implemented using SQLite backend. JSON files deprecated (Phase 4L.2).
+
 | Endpoint | Method | Purpose | Status | Backend |
 |----------|--------|---------|--------|---------|
-| `/api/rag/search` | GET | Search RAG documents | UI | ✅ |
-| `/api/rag/inbox` | GET | Get RAG inbox items | UI | ✅ |
-| `/api/rag/ingest` | POST | Ingest document to RAG | UI | ✅ |
-| `/api/rag/transcribe_doc` | POST | Transcribe document | UI | ✅ |
-| `/api/rag/publish/{item_id}` | POST | Publish RAG item | UI | ✅ |
-| `/api/rag/reviewer/{item_id}` | GET | Get reviewer data | UI | ✅ |
-| `/api/rag/reviewer/{item_id}` | PATCH | Update reviewer data | UI | ✅ |
-| `/api/rag/models` | GET | List available AI models | UI | ✅ |
-| `/api/rag/file/{item_id}` | PATCH | Update RAG file | UI | ✅ |
-| `/api/rag/file/{item_id}` | DELETE | Delete RAG file | UI | ✅ |
-| `/api/rag/audio/{item_id}` | GET | Get audio file | UI | ✅ |
-| `/api/rag/assistant` | POST | Chat with RAG assistant | UI | ✅ |
+| `/api/rag/search` | GET | Search RAG documents (SQLite LIKE + Meilisearch) | UI | ✅ |
+| `/api/rag/inbox` | GET | Get RAG inbox items (draft/reviewed status) | UI | ✅ |
+| `/api/rag/ingest` | POST | Ingest document to RAG (transcribe + store) | UI | ✅ |
+| `/api/rag/transcribe_doc` | POST | Transcribe document (stub - preview only) | UI | ✅ |
+| `/api/rag/publish/{item_id}` | POST | Publish RAG item + index in Meilisearch | UI | ✅ |
+| `/api/rag/reviewer/{item_id}` | GET | Get transcript for reviewer | UI | ✅ |
+| `/api/rag/reviewer/{item_id}` | PATCH | Update transcript via reviewer | UI | ✅ |
+| `/api/rag/models` | GET | List available AI models (Gemini, OpenAI, Claude) | UI | ✅ |
+| `/api/rag/file/{item_id}` | PATCH | Update transcript metadata | UI | ✅ |
+| `/api/rag/file/{item_id}` | DELETE | Soft delete transcript | UI | ✅ |
+| `/api/rag/audio/{item_id}` | GET | Stream audio file for transcript | UI | ✅ |
+| `/api/rag/assistant` | POST | Chat with RAG assistant (Meilisearch + LLM) | UI | ✅ |
 
 ### Missing Agent Tools (RAG)
 - `search_documents` - Search knowledge base

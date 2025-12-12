@@ -33,8 +33,13 @@ AI agents and developers MUST reference this document before accessing any data.
 | **RAG Index** | Meilisearch | Port 7700 | ✅ Active |
 | **Recordings (files)** | Files | `recordings/` + SharePoint | ✅ Active |
 | **Privacy Submissions** | SQLite | `data/privacy.db` → `privacy_submissions` | ✅ Active |
+| **Privacy Reviews** | SQLite | `data/privacy.db` → `privacy_reviews` | ✅ Active |
 | **Privacy Activity Log** | SQLite | `data/privacy.db` → `activity_log` | ✅ Active |
 | **Privacy Reports** | TBD | See "Report Hosting Options" below | ⏳ CEO Decision Pending |
+| **Marketing Leads** | SQLite | `data/marketing.db` → `marketing_leads` | ✅ Active |
+| **Marketing Campaigns** | SQLite | `data/marketing.db` → `marketing_campaigns` | ✅ Active |
+| **Marketing Form Mapping** | SQLite | `data/marketing.db` → `marketing_form_mapping` | ✅ Active |
+| **Lead Scoring Rules** | SQLite | `data/marketing.db` → `lead_scoring_rules` | ✅ Active |
 | **Settings** | JSON | `config/*.json` | ✅ Active |
 | **Secrets** | JSON | `secrets.local.json` | ✅ Local only |
 
@@ -212,6 +217,7 @@ CREATE TABLE sync_state (
 Stores Zoom cloud recordings and uploaded audio files.
 - Primary source: Zoom API sync + manual uploads
 - Status flow: in_zoom → downloading → downloaded → transcribing → completed
+- **Migration:** JSON-based storage (recordings_cache.json) deprecated in RAG-FIX-001. All endpoints now use SQLite.
 
 ```sql
 CREATE TABLE IF NOT EXISTS recordings (
@@ -305,7 +311,7 @@ CREATE INDEX IF NOT EXISTS idx_rag_docs_meili ON rag_documents(meilisearch_id);
 
 ### Privacy Database: `privacy.db`
 **Location:** `data/privacy.db` (Docker: `/app/data/privacy.db`)
-**Tables:** 2 total (privacy_submissions, activity_log)
+**Tables:** 3 total (privacy_submissions, privacy_reviews, activity_log)
 
 > **Note:** Privacy data is stored in a SEPARATE database from eislaw.db.
 > This allows independent backup/restore of privacy questionnaire data.

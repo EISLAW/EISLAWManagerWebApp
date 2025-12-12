@@ -1,0 +1,101 @@
+{
+  "name": "working-memory-refresh",
+  "description": "Update docs/WORKING_MEMORY.md with current sprint status, completions, and blockers.",
+  "category": "automation",
+  "version": "1.0.0",
+  "inputs": {
+    "update_type": {
+      "type": "string",
+      "description": "Type of update: 'sprint_end', 'infrastructure_change', 'blocker_update', or 'full_refresh'",
+      "required": false,
+      "default": "full_refresh"
+    },
+    "recent_completions": {
+      "type": "array",
+      "description": "List of recently completed tasks/features",
+      "required": false
+    },
+    "new_priorities": {
+      "type": "array",
+      "description": "Current priority tasks from TEAM_INBOX",
+      "required": false
+    },
+    "new_blockers": {
+      "type": "array",
+      "description": "New blockers to add",
+      "required": false
+    },
+    "resolved_blockers": {
+      "type": "array",
+      "description": "Blockers to mark as resolved",
+      "required": false
+    },
+    "infrastructure_changes": {
+      "type": "object",
+      "description": "Changes to services, ports, or infrastructure",
+      "required": false
+    }
+  },
+  "steps": [
+    {
+      "type": "read_file",
+      "path": "docs/TEAM_INBOX.md",
+      "description": "Get current sprint status and active tasks"
+    },
+    {
+      "type": "read_file",
+      "path": "docs/WORKING_MEMORY.md",
+      "description": "Read current working memory"
+    },
+    {
+      "type": "get_date",
+      "description": "Get current date for timestamp"
+    },
+    {
+      "type": "update_section",
+      "section": "Last Updated",
+      "value": "{{date}}",
+      "description": "Update timestamp"
+    },
+    {
+      "type": "update_section",
+      "section": "Recent Session Activity",
+      "value": "{{recent_completions}}",
+      "description": "Add recent completions"
+    },
+    {
+      "type": "update_section",
+      "section": "Active Development",
+      "value": "{{new_priorities}}",
+      "description": "Update current priorities from TEAM_INBOX"
+    },
+    {
+      "type": "update_section",
+      "section": "Open Items / Blockers",
+      "description": "Add new blockers, mark resolved ones as complete"
+    },
+    {
+      "type": "write_file",
+      "path": "docs/WORKING_MEMORY.md",
+      "description": "Write updated working memory"
+    },
+    {
+      "type": "verify",
+      "description": "Verify all sections were updated correctly"
+    }
+  ],
+  "outputs": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether working memory was successfully updated"
+    },
+    "sections_updated": {
+      "type": "array",
+      "description": "List of sections that were modified"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "New 'Last Updated' timestamp"
+    }
+  }
+}

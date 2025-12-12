@@ -708,7 +708,7 @@ BASE_DIR = Path(__file__).resolve().parent
 TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
 INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
 LIBRARY_DIR = TRANSCRIPTS_DIR / "Library"
-INDEX_PATH = TRANSCRIPTS_DIR / "index.json"
+# INDEX_PATH removed - RAG now uses SQLite only, not JSON files
 
 
 def get_tasks_store_path():
@@ -796,47 +796,9 @@ def find_task(task_id: str):
         return None
 
 
-def load_index():
-    if not INDEX_PATH.exists():
-        return []
-    try:
-        return json.loads(INDEX_PATH.read_text("utf-8"))
-    except Exception:
-        return []
-
-
-def save_index(items):
-    INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    INDEX_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def upsert_item(new_item):
-    items = load_index()
-    # replace if same id or hash
-    replaced = False
-    for idx, itm in enumerate(items):
-        if itm.get("id") == new_item["id"] or (new_item.get("hash") and itm.get("hash") == new_item["hash"]):
-            items[idx] = new_item
-            replaced = True
-            break
-    if not replaced:
-        items.append(new_item)
-    save_index(items)
-    return new_item
-
-
-def remove_item(item_id: str):
-    items = load_index()
-    remaining = [i for i in items if i.get("id") != item_id]
-    save_index(remaining)
-    return len(items) != len(remaining)
-
-
-def find_item(item_id: str):
-    for itm in load_index():
-        if itm.get("id") == item_id:
-            return itm
-    return None
+# REMOVED: Old JSON-based functions (load_index, save_index, upsert_item, remove_item, find_item)
+# These were replaced by SQLite-based implementations in rag_sqlite.py
+# All RAG endpoints now use rag_sqlite.find_transcript_by_id() and related functions
 
 
 def require_env(key_name: str):

@@ -23,34 +23,37 @@ Anthropic's official document Skills (PDF, DOCX, Excel):
 
 ### Step 1: Install Claude Code Plugin Runner
 
-[PLACEHOLDER - Research exact installation command]
-
-Likely one of:
+Check if plugin CLI is available:
 ```bash
-# Option A: npm global install
-npm install -g @anthropic/claude-code-plugin
+claude plugin --help
+```
 
-# Option B: Claude CLI command
-claude plugin install
+If not available, install Claude Code plugin support. Likely via:
+```bash
+# Check Claude Code version
+claude --version
+
+# If plugin support is missing, update Claude Code
+npm install -g @anthropic/claude-code@latest
 ```
 
 ### Step 2: Add Anthropic Skills Marketplace
 
 ```bash
-/plugin marketplace add anthropics/skills
+claude plugin marketplace add anthropics/skills
 ```
 
 ### Step 3: Install Document Skills
 
 ```bash
-/plugin install document-skills@anthropic-agent-skills
+claude plugin install document-skills@anthropic-agent-skills
 ```
 
 ### Step 4: Verify Installation
 
 ```bash
 # List installed plugins
-/plugin list
+claude plugin list
 
 # Should show:
 # - anthropic-docx
@@ -85,3 +88,22 @@ claude -p "Validate formulas in clients_export.xlsx"
 - [ ] Skills verified working
 
 Once complete, update TEAM_INBOX SKILLS-006 to ✅ COMPLETE.
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `claude plugin` command not found | Update Claude Code to latest version |
+| Marketplace add fails | Check internet connection, verify anthropics/skills repo exists |
+| Skills don't activate | Restart Claude session after install |
+| Permission errors | Run with elevated permissions (Windows: Run as Administrator) |
+
+---
+
+## References
+
+- Anthropic Skills marketplace: https://github.com/anthropics/skills
+- Claude Code plugin docs: https://docs.claude.com/en/docs/claude-code/plugins
+- EISLAW Skills research: `docs/RESEARCH_SKILLS_ARCHITECTURE.md` §5

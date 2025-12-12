@@ -1,13 +1,14 @@
 """
 EISLAW Agent Orchestrator - POC Workflow
 Created by Alex (AOS-025)
+Updated by Alex (AOS-026) - Enhanced Langfuse tracing via langfuse_integration module
 
 Implements the Alex -> Jacob POC workflow per PRD section 8.3:
 1. Alex implements a task
 2. Jacob reviews the implementation
 3. Conditional routing: APPROVED -> done, NEEDS_FIXES -> loop back to Alex
 
-Uses Langfuse for tracing when configured.
+Uses langfuse_integration module for comprehensive tracing.
 """
 import os
 import re
@@ -15,27 +16,20 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Callable, Literal
+from typing import Optional, Callable, Literal, Any
 
 from .config import config
 from .agents import alex, jacob, AgentDefinition
+from .langfuse_integration import (
+    get_langfuse_client,
+    TracedWorkflow,
+    flush_langfuse,
+    log_agent_result,
+    observe,
+    LANGFUSE_AVAILABLE,
+)
 
 logger = logging.getLogger(__name__)
-
-# Try to import Langfuse for tracing (optional dependency)
-try:
-    from langfuse import Langfuse
-    from langfuse.decorators import observe
-    LANGFUSE_AVAILABLE = True
-except ImportError:
-    LANGFUSE_AVAILABLE = False
-    logger.warning("Langfuse not installed - tracing disabled")
-
-    # Stub decorator when Langfuse not available
-    def observe(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator if args and callable(args[0]) else decorator
 
 
 # =============================================================================
@@ -91,40 +85,18 @@ class WorkflowResult:
 
 
 # =============================================================================
-# Langfuse Integration
+# Langfuse Integration (delegated to langfuse_integration module)
 # =============================================================================
 
-_langfuse: Optional["Langfuse"] = None
-
-
-def get_langfuse() -> Optional["Langfuse"]:
+# Legacy alias for backward compatibility
+def get_langfuse():
     """
-    Get or create Langfuse client for tracing.
+    Get Langfuse client for tracing.
 
+    Delegates to langfuse_integration.get_langfuse_client().
     Returns None if Langfuse is not configured or not available.
     """
-    global _langfuse
-
-    if not LANGFUSE_AVAILABLE:
-        return None
-
-    if not config.langfuse.is_configured:
-        logger.debug("Langfuse not configured - tracing disabled")
-        return None
-
-    if _langfuse is None:
-        try:
-            _langfuse = Langfuse(
-                secret_key=config.langfuse.secret_key,
-                public_key=config.langfuse.public_key,
-                host=config.langfuse.host,
-            )
-            logger.info(f"Langfuse initialized: {config.langfuse.host}")
-        except Exception as e:
-            logger.error(f"Failed to initialize Langfuse: {e}")
-            return None
-
-    return _langfuse
+    return get_langfuse_client()
 
 
 # =============================================================================
@@ -289,7 +261,7 @@ class POCWorkflow:
 
     def run(self, task_id: str, task_description: str) -> WorkflowResult:
         """
-        Execute the POC workflow.
+        Execute the POC workflow with comprehensive Langfuse tracing.
 
         Workflow:
         1. Alex implements the task
@@ -312,44 +284,47 @@ class POCWorkflow:
         )
 
         start_time = datetime.utcnow()
-        lf = get_langfuse()
-        trace = None
 
-        # Create Langfuse trace if available
-        if lf:
+        # Generate session ID for grouping all traces in this workflow run
+        session_id = f"{self.name}:{task_id}:{start_time.strftime('%Y%m%d%H%M%S')}"
+
+        # Use TracedWorkflow for comprehensive tracing (AOS-026)
+        with TracedWorkflow(
+            name=f"{self.name}:{task_id}",
+            task_id=task_id,
+            session_id=session_id,
+            metadata={
+                "workflow": self.name,
+                "max_iterations": self.max_iterations,
+            },
+            tags=["workflow:poc", f"task:{task_id}"],
+        ) as traced_wf:
             try:
-                trace = lf.trace(
-                    name=f"{self.name}:{task_id}",
-                    metadata={
-                        "task_id": task_id,
-                        "workflow": self.name,
-                        "max_iterations": self.max_iterations,
-                    }
-                )
-            except Exception as e:
-                logger.warning(f"Failed to create Langfuse trace: {e}")
+                current_task = task_description
+                iteration = 0
 
-        try:
-            current_task = task_description
-            iteration = 0
+                while iteration < self.max_iterations:
+                    iteration += 1
+                    result.iterations = iteration
+                    logger.info(f"[{task_id}] Iteration {iteration}/{self.max_iterations}")
 
-            while iteration < self.max_iterations:
-                iteration += 1
-                result.iterations = iteration
-                logger.info(f"[{task_id}] Iteration {iteration}/{self.max_iterations}")
+                    # Step 1: Alex implements (with span tracing)
+                    with traced_wf.span(
+                        f"alex_impl_{iteration}",
+                        metadata={"agent": "Alex", "iteration": iteration},
+                    ):
+                        alex_output = self._run_agent(
+                            agent=self.alex,
+                            task=current_task,
+                            task_id=task_id,
+                            session_id=session_id,
+                            step_name=f"alex_impl_{iteration}",
+                            result=result,
+                            trace=traced_wf.trace,
+                        )
 
-                # Step 1: Alex implements
-                alex_output = self._run_agent(
-                    agent=self.alex,
-                    task=current_task,
-                    task_id=task_id,
-                    step_name=f"alex_impl_{iteration}",
-                    result=result,
-                    trace=trace,
-                )
-
-                # Step 2: Jacob reviews
-                review_task = f"""Review Alex's implementation for task {task_id}.
+                    # Step 2: Jacob reviews (with span tracing)
+                    review_task = f"""Review Alex's implementation for task {task_id}.
 
 Alex's output:
 {alex_output}
@@ -358,35 +333,47 @@ Original task: {task_description}
 
 Provide your verdict: APPROVED, NEEDS_FIXES (with specific issues), or BLOCKED (with reason)."""
 
-                jacob_output = self._run_agent(
-                    agent=self.jacob,
-                    task=review_task,
-                    task_id=task_id,
-                    step_name=f"jacob_review_{iteration}",
-                    result=result,
-                    trace=trace,
-                )
+                    with traced_wf.span(
+                        f"jacob_review_{iteration}",
+                        metadata={"agent": "Jacob", "iteration": iteration},
+                    ):
+                        jacob_output = self._run_agent(
+                            agent=self.jacob,
+                            task=review_task,
+                            task_id=task_id,
+                            session_id=session_id,
+                            step_name=f"jacob_review_{iteration}",
+                            result=result,
+                            trace=traced_wf.trace,
+                        )
 
-                # Step 3: Route based on verdict
-                next_step = route_after_review(jacob_output)
-                verdict = parse_review_verdict(jacob_output)
-                result.verdict = verdict
+                    # Step 3: Route based on verdict
+                    next_step = route_after_review(jacob_output)
+                    verdict = parse_review_verdict(jacob_output)
+                    result.verdict = verdict
 
-                logger.info(f"[{task_id}] Jacob verdict: {verdict} -> {next_step}")
+                    logger.info(f"[{task_id}] Jacob verdict: {verdict} -> {next_step}")
 
-                if next_step == "done":
-                    result.status = "completed"
-                    logger.info(f"[{task_id}] Workflow completed - APPROVED")
-                    break
+                    # Log verdict as a score for tracking (AOS-026)
+                    traced_wf.score(
+                        name=f"review_verdict_iter_{iteration}",
+                        value={"APPROVED": 1.0, "NEEDS_FIXES": 0.5, "BLOCKED": 0.0}.get(verdict, 0.5),
+                        comment=f"Iteration {iteration}: {verdict}",
+                    )
 
-                elif next_step == "escalate":
-                    result.status = "blocked"
-                    logger.warning(f"[{task_id}] Workflow blocked - escalating")
-                    break
+                    if next_step == "done":
+                        result.status = "completed"
+                        logger.info(f"[{task_id}] Workflow completed - APPROVED")
+                        break
 
-                else:  # fix - loop back
-                    # Prepare fix task for Alex
-                    current_task = f"""Fix the issues identified in Jacob's review.
+                    elif next_step == "escalate":
+                        result.status = "blocked"
+                        logger.warning(f"[{task_id}] Workflow blocked - escalating")
+                        break
+
+                    else:  # fix - loop back
+                        # Prepare fix task for Alex
+                        current_task = f"""Fix the issues identified in Jacob's review.
 
 Original task: {task_description}
 
@@ -397,34 +384,43 @@ Jacob's feedback:
 {jacob_output}
 
 Address all issues and re-implement."""
-                    logger.info(f"[{task_id}] Looping back to Alex for fixes")
+                        logger.info(f"[{task_id}] Looping back to Alex for fixes")
 
-            # Check if we hit max iterations
-            if result.status == "running":
-                result.status = "max_iterations"
-                logger.warning(f"[{task_id}] Max iterations ({self.max_iterations}) reached")
+                # Check if we hit max iterations
+                if result.status == "running":
+                    result.status = "max_iterations"
+                    logger.warning(f"[{task_id}] Max iterations ({self.max_iterations}) reached")
 
-        except Exception as e:
-            result.status = "error"
-            result.error = str(e)
-            logger.exception(f"[{task_id}] Workflow error: {e}")
-
-        # Calculate total duration
-        end_time = datetime.utcnow()
-        result.total_duration_ms = int((end_time - start_time).total_seconds() * 1000)
-
-        # Update Langfuse trace
-        if trace:
-            try:
-                trace.update(
+                # Update trace with final result
+                traced_wf.update(
                     output={
                         "status": result.status,
                         "verdict": result.verdict,
                         "iterations": result.iterations,
                     }
                 )
+
+                # Add final workflow score
+                workflow_score = {
+                    "completed": 1.0,
+                    "blocked": 0.0,
+                    "max_iterations": 0.3,
+                    "error": 0.0,
+                }.get(result.status, 0.5)
+                traced_wf.score(
+                    name="workflow_success",
+                    value=workflow_score,
+                    comment=f"Final status: {result.status}",
+                )
+
             except Exception as e:
-                logger.warning(f"Failed to update Langfuse trace: {e}")
+                result.status = "error"
+                result.error = str(e)
+                logger.exception(f"[{task_id}] Workflow error: {e}")
+
+        # Calculate total duration
+        end_time = datetime.utcnow()
+        result.total_duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
         # Update TEAM_INBOX
         self._update_inbox(result)
@@ -436,20 +432,26 @@ Address all issues and re-implement."""
         agent: AgentDefinition,
         task: str,
         task_id: str,
+        session_id: str,
         step_name: str,
         result: WorkflowResult,
-        trace: Optional["Langfuse"] = None,
+        trace: Optional[Any] = None,
     ) -> str:
         """
-        Run a single agent step with tracing.
+        Run a single agent step with comprehensive Langfuse tracing (AOS-026).
+
+        Tracing is done at two levels:
+        1. Workflow span level (created by parent)
+        2. Agent LLM call level (via LangChain callback in agent.invoke)
 
         Args:
             agent: Agent to run.
             task: Task description for the agent.
-            task_id: Task identifier for logging.
+            task_id: Task identifier for tracing.
+            session_id: Session ID for grouping related traces.
             step_name: Name for this step (for tracing).
             result: WorkflowResult to append step to.
-            trace: Optional Langfuse trace.
+            trace: Optional Langfuse trace (for nested spans).
 
         Returns:
             Agent's output as string.
@@ -457,7 +459,7 @@ Address all issues and re-implement."""
         step_start = datetime.utcnow()
         span = None
 
-        # Create Langfuse span if available
+        # Create Langfuse span if trace provided (additional nesting)
         if trace:
             try:
                 span = trace.span(
@@ -473,7 +475,12 @@ Address all issues and re-implement."""
         logger.info(f"[{task_id}] Running {agent.name} ({agent.model})...")
 
         try:
-            output = agent.invoke(task)
+            # Pass task_id and session_id to enable LangChain callback tracing (AOS-026)
+            output = agent.invoke(
+                task_description=task,
+                task_id=task_id,
+                session_id=session_id,
+            )
         except Exception as e:
             output = f"ERROR: Agent execution failed: {e}"
             logger.error(f"[{task_id}] {agent.name} failed: {e}")
@@ -491,10 +498,10 @@ Address all issues and re-implement."""
         )
         result.steps.append(step)
 
-        # Update Langfuse span
+        # Update Langfuse span with output
         if span:
             try:
-                span.end(output={"result": output[:1000]})
+                span.end(output={"result": output[:1000], "duration_ms": duration_ms})
             except Exception as e:
                 logger.warning(f"Failed to end Langfuse span: {e}")
 

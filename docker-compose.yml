@@ -116,17 +116,30 @@ services:
     volumes:
       # Mount docs for TEAM_INBOX access
       - ./docs:/app/docs
-      # Mount backend for orchestrator code updates
+      # Mount data directory
       - ./data:/app/data
+      # Mount orchestrator code for hot-reload
+      - ./backend/orchestrator:/app/orchestrator:ro
+      # Mount backend for shared modules (read-only)
       - ./backend:/app/backend:ro
     depends_on:
       - api
     restart: unless-stopped
+    command: ["uvicorn", "orchestrator.main:app", "--host", "0.0.0.0", "--port", "8801", "--reload"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8801/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  docs:
+    image: nginx:alpine
+    ports:
+      - "${DOCS_PORT:-8000}:80"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./docs/robots.txt:/usr/share/nginx/html/robots.txt:ro
+    restart: unless-stopped
 
 volumes:
   meili_data:
