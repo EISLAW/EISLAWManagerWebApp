@@ -90,6 +90,7 @@ EISLAW is a Hebrew-language legal practice management system with:
 ---
 
 ## Messages TO Joe (Recent Only)
+- 2025-12-12 (Jane): ENV-002 GitHub Action fix on `dev-main-2025-12-11` pushed (`.github/workflows/sync_to_vm.yml` now uses `tr -d \\r` to preserve SSH key). Commit `156432c2`.
 
 > Only showing last 5 active messages. For history, see archive.
 
