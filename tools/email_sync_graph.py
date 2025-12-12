@@ -3,6 +3,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -107,20 +108,159 @@ def ensure_path(p: Path):
     p.parent.mkdir(parents=True, exist_ok=True)
 
 
+def upload_to_sharepoint(
+    client_name: str,
+    message_id: str,
+    file_content: bytes,
+    file_type: str,
+    token: str
+) -> Optional[str]:
+    """
+    Upload email file to SharePoint using Microsoft Graph API.
+
+    Returns SharePoint web URL or None if upload fails.
+    """
+    site_path = "/sites/EISLAWTEAM"
+    folder_path = f"לקוחות משרד/{client_name}/Emails"
+    filename = f"{message_id}.{file_type}"
+
+    try:
+        # Get drive ID
+        drive_url = f"https://graph.microsoft.com/v1.0{site_path}/drive"
+        drive_resp = requests.get(
+            drive_url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30
+        )
+        drive_resp.raise_for_status()
+        drive_id = drive_resp.json()["id"]
+
+        # Upload file (creates folder if needed)
+        upload_url = (
+            f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/"
+            f"{folder_path}/{filename}:/content"
+        )
+
+        upload_resp = requests.put(
+            upload_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/octet-stream"
+            },
+            data=file_content,
+            timeout=30
+        )
+        upload_resp.raise_for_status()
+
+        web_url = upload_resp.json().get("webUrl")
+        print(f"  ✓ Uploaded {file_type} to SharePoint: {folder_path}/{filename}")
+        return web_url
+
+    except Exception as e:
+        print(f"  ✗ SharePoint upload failed ({file_type}): {str(e)}")
+        return None
+
+
+def update_email_index_db(
+    message_id: str,
+    sharepoint_url: Optional[str],
+    sharepoint_json_url: Optional[str],
+    db_path: Path = None
+):
+    """
+    Update email_index.sqlite with SharePoint URLs for this message.
+
+    If message doesn't exist in DB, this is a no-op (catalog will add it later).
+    """
+    if db_path is None:
+        # Default to clients/email_index.sqlite
+        db_path = Path(__file__).resolve().parents[1] / "clients" / "email_index.sqlite"
+
+    if not db_path.exists():
+        print(f"  ⚠ Email index DB not found at {db_path}, skipping DB update")
+        return
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Update existing message with SharePoint URLs
+        cursor.execute("""
+            UPDATE messages
+            SET sharepoint_url = ?, sharepoint_json_url = ?
+            WHERE id = ?
+        """, (sharepoint_url, sharepoint_json_url, message_id))
+
+        conn.commit()
+
+        if cursor.rowcount > 0:
+            print(f"  ✓ Updated email_index.sqlite with SharePoint URLs")
+        else:
+            # Message not in DB yet - that's OK, email_catalog.py will add it later
+            print(f"  ℹ Message not yet in email_index.sqlite (will be cataloged later)")
+
+        conn.close()
+
+    except Exception as e:
+        print(f"  ✗ Failed to update email_index.sqlite: {str(e)}")
+
+
 def save_message(mailbox: str, endpoint: str, token: str, msg: dict, client_dir: Path):
     thread = msg.get("conversationId") or "no-thread"
     msg_id = msg.get("id")
     thread_dir = client_dir / "emails" / thread
     thread_dir.mkdir(parents=True, exist_ok=True)
-    # Save normalized JSON
+
+    # STEP 1: Save normalized JSON to disk (existing behavior)
     jpath = thread_dir / f"{msg_id}.json"
+    json_content = json.dumps(msg, ensure_ascii=False, indent=2).encode("utf-8")
     with jpath.open("w", encoding="utf-8") as f:
-        json.dump(msg, f, ensure_ascii=False, indent=2)
-    # Save MIME (.eml)
+        f.write(json_content.decode("utf-8"))
+
+    # STEP 2: Save MIME (.eml) to disk (existing behavior)
     mime_url = endpoint.rstrip("/") + f"/users/{mailbox}/messages/{msg_id}/$value"
     r = requests.get(mime_url, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+    eml_content = None
     if r.status_code == 200:
-        (thread_dir / f"{msg_id}.eml").write_bytes(r.content)
+        eml_content = r.content
+        (thread_dir / f"{msg_id}.eml").write_bytes(eml_content)
+
+    # STEP 3: Upload to SharePoint (NEW - dual-write)
+    client_name = client_dir.name
+    sharepoint_url = None
+    sharepoint_json_url = None
+
+    try:
+        # Upload .eml file to SharePoint
+        if eml_content:
+            sharepoint_url = upload_to_sharepoint(
+                client_name=client_name,
+                message_id=msg_id,
+                file_content=eml_content,
+                file_type="eml",
+                token=token
+            )
+
+        # Upload .json file to SharePoint
+        sharepoint_json_url = upload_to_sharepoint(
+            client_name=client_name,
+            message_id=msg_id,
+            file_content=json_content,
+            file_type="json",
+            token=token
+        )
+
+        # STEP 4: Update email_index.sqlite with SharePoint URLs (NEW)
+        if sharepoint_url or sharepoint_json_url:
+            update_email_index_db(
+                message_id=msg_id,
+                sharepoint_url=sharepoint_url,
+                sharepoint_json_url=sharepoint_json_url
+            )
+
+    except Exception as e:
+        # Graceful degradation: If SharePoint fails, email is still saved to disk
+        print(f"  ⚠ SharePoint upload failed but email saved to disk: {str(e)}")
 
 
 def resolve_client(addresses: List[str], mapping: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
