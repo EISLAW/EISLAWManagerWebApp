@@ -56,6 +56,11 @@ When Jacob reviews ANY task, he MUST verify:
 **If docs NOT updated:** Return `NEEDS_FIXES: Update {doc_name}` - do NOT approve.
 
 8. **TEAM_INBOX Updated:** Post review verdict to "Messages TO Joe" section (MANDATORY)
+9. **Git Push (MANDATORY):** After committing approved code, ALWAYS push to origin:
+   ```bash
+   git push -u origin feature/{TASK-ID}
+   ```
+   **Rule:** No approval is complete until the branch is pushed to GitHub.
 
 > **Template:** Use `docs/JACOB_REVIEW_TEMPLATE.md` for all reviews. Updates to TEAM_INBOX are NOT optional.
 
