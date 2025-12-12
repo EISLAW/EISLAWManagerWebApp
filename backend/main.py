@@ -51,23 +51,7 @@ except ImportError:
 
 # Chat integration imports (CHAT-DEBUG-001)
 import logging
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
-from pydantic import ValidationError
 
-from schemas.rag import (
-    RAGAssistantRequest,
-    RAGAssistantResponse,
-    RAGDeleteRequest,
-    RAGIngestRequest,
-    RAGItemResponse,
-    RAGOperationResponse,
-    RAGPublishRequest,
-    RAGReviewerUpdateRequest,
-    RAGUpdateRequest,
-)
-from utils.audit import RAGAuditLog, get_request_context
 
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
