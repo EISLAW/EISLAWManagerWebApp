@@ -1,0 +1,109 @@
+{
+  "name": "testing-checklist",
+  "version": "1.0.0",
+  "description": "Comprehensive pre-completion testing checklist for EISLAW tasks. Enforces pytest, build verification, Playwright smoke tests, and documentation updates before marking work complete.",
+  "category": "quality",
+  "inputs": {
+    "task_id": {
+      "type": "string",
+      "description": "Task ID (e.g., CLI-009, SKILLS-003)",
+      "required": true
+    },
+    "task_type": {
+      "type": "string",
+      "description": "Type of task: backend, frontend, fullstack, docs, infrastructure",
+      "required": true,
+      "enum": ["backend", "frontend", "fullstack", "docs", "infrastructure"]
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch name (e.g., feature/CLI-009)",
+      "required": true
+    }
+  },
+  "outputs": {
+    "checklist_passed": {
+      "type": "boolean",
+      "description": "Whether all required checks passed"
+    },
+    "failed_checks": {
+      "type": "array",
+      "description": "List of checks that failed"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Summary of testing results"
+    }
+  },
+  "steps": [
+    {
+      "id": "git_status",
+      "type": "bash",
+      "description": "Verify git branch and clean working tree",
+      "command": "git status && git branch --show-current"
+    },
+    {
+      "id": "backend_tests",
+      "type": "bash",
+      "description": "Run backend pytest suite (if backend or fullstack)",
+      "command": "cd backend && python -m pytest tests/ -v --tb=short",
+      "when": "task_type in ['backend', 'fullstack']",
+      "optional": false
+    },
+    {
+      "id": "frontend_lint",
+      "type": "bash",
+      "description": "Run frontend linting (if frontend or fullstack)",
+      "command": "cd frontend && npm run lint",
+      "when": "task_type in ['frontend', 'fullstack']",
+      "optional": true
+    },
+    {
+      "id": "frontend_build",
+      "type": "bash",
+      "description": "Verify frontend build succeeds (if frontend or fullstack)",
+      "command": "cd frontend && npm run build",
+      "when": "task_type in ['frontend', 'fullstack']",
+      "optional": false
+    },
+    {
+      "id": "playwright_smoke",
+      "type": "bash",
+      "description": "Run Playwright smoke tests for affected routes (if frontend or fullstack)",
+      "command": "cd frontend && npx playwright test --grep @smoke",
+      "when": "task_type in ['frontend', 'fullstack']",
+      "optional": true
+    },
+    {
+      "id": "docs_check",
+      "type": "read_files",
+      "description": "Verify documentation updates per CLAUDE.md §8",
+      "files": [
+        "docs/API_ENDPOINTS_INVENTORY.md",
+        "docs/DATA_STORES.md",
+        "docs/TEAM_INBOX.md"
+      ]
+    },
+    {
+      "id": "mkdocs_build",
+      "type": "bash",
+      "description": "Verify MkDocs builds successfully (if docs created)",
+      "command": "mkdocs build --strict",
+      "when": "task_type == 'docs'",
+      "optional": false
+    }
+  ],
+  "verification": {
+    "required_checks": ["git_status", "backend_tests", "frontend_build", "docs_check"],
+    "exit_on_failure": false,
+    "summary_template": "Testing Checklist for {{task_id}}:\n- Git: {{git_status.status}}\n- Backend Tests: {{backend_tests.status}}\n- Frontend Build: {{frontend_build.status}}\n- Docs Updated: {{docs_check.status}}\n\nResult: {{checklist_passed ? 'PASS' : 'FAIL'}}"
+  },
+  "references": [
+    "docs/Testing_Episodic_Log.md",
+    "CLAUDE.md Section 8 (Docs Update Rule)",
+    "CLAUDE.md Section 14 (Testing & Validation Discipline)"
+  ],
+  "tags": ["testing", "quality-gate", "pre-completion", "validation"],
+  "author": "Alex",
+  "created": "2025-12-12"
+}
