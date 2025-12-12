@@ -12,7 +12,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from pathlib import Path
-import json
 
 router = APIRouter(prefix="/api/zoom", tags=["zoom"])
 
@@ -34,7 +33,7 @@ def load_zoom_index():
         return {}
     try:
         return json.loads(INDEX_PATH.read_text("utf-8"))
-    except:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError, TypeError):
         return {}
 
 def save_zoom_index(items):
@@ -47,7 +46,7 @@ def load_recordings_cache():
         return {}
     try:
         return json.loads(RECORDINGS_CACHE_PATH.read_text("utf-8"))
-    except:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError, TypeError):
         return {}
 
 def save_recordings_cache(recordings):
@@ -61,7 +60,7 @@ def load_skipped_ids():
         return set()
     try:
         return set(json.loads(SKIPPED_IDS_PATH.read_text("utf-8")))
-    except:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError, TypeError):
         return set()
 
 def save_skipped_ids(ids):
@@ -297,16 +296,17 @@ async def download_recording(zoom_id: str):
     except Exception as e:
         _recordings_cache[zoom_id]['status'] = 'failed'
         # Convert error to user-friendly message
-        error_msg = str(e)
-        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+        raw_error = str(e).lower()
+        error_msg = "Download failed"
+        if 'timeout' in raw_error or 'timed out' in raw_error:
             error_msg = "Download timeout - the file is large. Try again or use a shorter recording."
-        elif 'blob' in error_msg.lower() and 'not found' in error_msg.lower():
+        elif 'blob' in raw_error and 'not found' in raw_error:
             error_msg = "File not found in storage. Try downloading the recording again."
-        elif 'api key' in error_msg.lower() or 'invalid' in error_msg.lower():
+        elif 'api key' in raw_error or 'invalid' in raw_error:
             error_msg = "Gemini API error - check API key configuration."
-        elif 'connection' in error_msg.lower():
+        elif 'connection' in raw_error:
             error_msg = "Connection error - check network and try again."
-        elif 'quota' in error_msg.lower() or 'limit' in error_msg.lower():
+        elif 'quota' in raw_error or 'limit' in raw_error:
             error_msg = "API quota exceeded - try again later."
         raise HTTPException(status_code=500, detail=error_msg)
 
@@ -399,16 +399,17 @@ async def transcribe_recording(zoom_id: str):
     except Exception as e:
         _recordings_cache[zoom_id]['status'] = 'failed'
         # Convert error to user-friendly message
-        error_msg = str(e)
-        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+        raw_error = str(e).lower()
+        error_msg = "Download failed"
+        if 'timeout' in raw_error or 'timed out' in raw_error:
             error_msg = "Download timeout - the file is large. Try again or use a shorter recording."
-        elif 'blob' in error_msg.lower() and 'not found' in error_msg.lower():
+        elif 'blob' in raw_error and 'not found' in raw_error:
             error_msg = "File not found in storage. Try downloading the recording again."
-        elif 'api key' in error_msg.lower() or 'invalid' in error_msg.lower():
+        elif 'api key' in raw_error or 'invalid' in raw_error:
             error_msg = "Gemini API error - check API key configuration."
-        elif 'connection' in error_msg.lower():
+        elif 'connection' in raw_error:
             error_msg = "Connection error - check network and try again."
-        elif 'quota' in error_msg.lower() or 'limit' in error_msg.lower():
+        elif 'quota' in raw_error or 'limit' in raw_error:
             error_msg = "API quota exceeded - try again later."
         raise HTTPException(status_code=500, detail=error_msg)
 

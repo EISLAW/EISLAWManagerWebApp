@@ -63,6 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_transcripts_recording ON transcripts(recording_id
 CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts(status);
 CREATE INDEX IF NOT EXISTS idx_transcripts_client ON transcripts(client_id);
 CREATE INDEX IF NOT EXISTS idx_transcripts_hash ON transcripts(hash);
+CREATE INDEX IF NOT EXISTS idx_transcripts_domain ON transcripts(domain);
+CREATE INDEX IF NOT EXISTS idx_transcripts_created_at ON transcripts(created_at);
 
 CREATE TABLE IF NOT EXISTS rag_documents (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),

@@ -57,12 +57,12 @@ def rag_inbox_sqlite() -> Dict:
         if item.get("segments"):
             try:
                 item["segments"] = json.loads(item["segments"])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 item["segments"] = []
         if item.get("tags"):
             try:
                 item["tags"] = json.loads(item["tags"])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 item["tags"] = []
         item["fileName"] = item.get("title", "Untitled")
         item["hash"] = item.get("id", "")[:8]
@@ -214,7 +214,7 @@ def run_transcription_task(zoom_id: str, recording: Dict, load_secrets_func, gem
 
         try:
             os.unlink(temp_path)
-        except:
+        except OSError:
             pass
 
         word_count = len(transcript_text.split()) if transcript_text else 0
@@ -294,12 +294,12 @@ def find_transcript_by_id(item_id: str) -> Optional[Dict]:
     if transcript.get("segments"):
         try:
             transcript["segments"] = json.loads(transcript["segments"])
-        except:
+        except (json.JSONDecodeError, TypeError):
             transcript["segments"] = []
     if transcript.get("tags"):
         try:
             transcript["tags"] = json.loads(transcript["tags"])
-        except:
+        except (json.JSONDecodeError, TypeError):
             transcript["tags"] = []
 
     # Frontend compatibility
@@ -451,49 +451,60 @@ def update_transcript_sqlite(item_id: str, updates: Dict, meilisearch_index_func
         return None
 
     # Build update query - note: 'note' column doesn't exist in transcripts table
-    allowed_fields = ["title", "content", "domain", "client_id", "status", "tags", "model_used"]
-    set_parts = []
+    COLUMN_MAP = {
+        'title': 'title',
+        'content': 'content',
+        'domain': 'domain',
+        'client_id': 'client_id',
+        'status': 'status',
+        'tags': 'tags',
+        'model_used': 'model_used',
+        'segments': 'segments',
+        'word_count': 'word_count',
+    }
+    assignments = []
     params = []
 
-    for field in allowed_fields:
+    def _add_assignment(column_key: str, value):
+        column = COLUMN_MAP[column_key]
+        assignments.append(f"{column} = ?")
+        params.append(value)
+
+    for field in ('title', 'content', 'domain', 'client_id', 'status', 'tags', 'model_used'):
         if field in updates:
             value = updates[field]
-            if field == "tags" and isinstance(value, list):
+            if field == 'tags' and isinstance(value, list):
                 value = json.dumps(value, ensure_ascii=False)
-            set_parts.append(f"{field} = ?")
-            params.append(value)
+            _add_assignment(field, value)
 
     # Handle 'client' as alias for client_id
-    if "client" in updates and "client_id" not in updates:
-        set_parts.append("client_id = ?")
-        params.append(updates["client"])
+    if 'client' in updates and 'client_id' not in updates:
+        _add_assignment('client_id', updates['client'])
 
     # Handle segments separately (may come as transcript key from frontend)
-    if "transcript" in updates:
-        set_parts.append("segments = ?")
-        segments = updates["transcript"]
+    if 'transcript' in updates:
+        segments = updates['transcript']
         if isinstance(segments, list):
-            params.append(json.dumps(segments, ensure_ascii=False))
-        else:
-            params.append(segments)
+            segments = json.dumps(segments, ensure_ascii=False)
+        _add_assignment('segments', segments)
 
-    if "content" in updates:
-        word_count = len(updates["content"].split()) if updates["content"] else 0
-        set_parts.append("word_count = ?")
-        params.append(word_count)
+    if 'content' in updates:
+        content_value = updates.get('content') or ''
+        _add_assignment('word_count', len(content_value.split()) if content_value else 0)
 
-    if not set_parts:
+    literal_assignments = ["updated_at = datetime('now')"]
+    if updates.get('status') == 'published':
+        literal_assignments.append("published_at = datetime('now')")
+
+    if not assignments and not (len(literal_assignments) > 1):
         return find_transcript_by_id(item_id)
 
-    set_parts.append("updated_at = datetime('now')")
+    set_clause = ', '.join(assignments + literal_assignments)
     params.append(item_id)
 
     with db.connection() as conn:
-        conn.execute(f"""
-            UPDATE transcripts
-            SET {', '.join(set_parts)}
-            WHERE id = ?
-        """, tuple(params))
+        conn.execute(f"UPDATE transcripts SET {set_clause} WHERE id = ?", tuple(params))
+
 
     # If publishing, index in Meilisearch
     if updates.get("status") == "published" and meilisearch_index_func:
