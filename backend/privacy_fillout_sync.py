@@ -236,20 +236,17 @@ def get_submissions_from_sqlite(limit: int = 50, offset: int = 0) -> List[dict]:
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    # Query using actual schema - answers are in answers_json, scores in score_* columns
     cursor.execute("""
         SELECT
-            ps.id, ps.form_id, ps.submitted_at,
-            ps.contact_name, ps.contact_email, ps.contact_phone, ps.business_name,
-            ps.owners, ps.access, ps.ethics, ps.ppl,
-            ps.sensitive_types, ps.sensitive_people, ps.biometric_100k,
-            ps.transfer, ps.directmail_biz, ps.directmail_self,
-            ps.monitor_1000, ps.processor, ps.processor_large_org,
-            ps.employees_exposed, ps.cameras,
-            ps.imported_at,
-            pr.level, pr.dpo, pr.reg, pr.report, pr.status as review_status
-        FROM privacy_submissions ps
-        LEFT JOIN privacy_reviews pr ON ps.id = pr.submission_id
-        ORDER BY ps.submitted_at DESC
+            id, submission_id, form_id, submitted_at, received_at,
+            contact_name, contact_email, contact_phone, business_name,
+            answers_json,
+            score_level, score_color, score_dpo, score_reg, score_report,
+            score_requirements, score_confidence,
+            review_status, reviewed_at, override_level, override_reason
+        FROM privacy_submissions
+        ORDER BY submitted_at DESC
         LIMIT ? OFFSET ?
     """, (limit, offset))
 
@@ -259,23 +256,41 @@ def get_submissions_from_sqlite(limit: int = 50, offset: int = 0) -> List[dict]:
     # Transform to frontend format
     submissions = []
     for row in rows:
+        # Parse answers_json to get questionnaire fields
+        answers = {}
+        if row["answers_json"]:
+            try:
+                answers = json.loads(row["answers_json"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         submissions.append({
             "id": row["id"],
-            "submission_id": row["id"],
+            "submission_id": row["submission_id"],
             "contact_name": row["contact_name"] or "לא צוין",
             "business_name": row["business_name"],
             "contact_email": row["contact_email"],
             "contact_phone": row["contact_phone"],
             "submitted_at": row["submitted_at"],
-            "level": row["level"] or "pending",
+            "level": row["score_level"] or "pending",
             "status": row["review_status"] or "pending",
-            "dpo": bool(row["dpo"]) if row["dpo"] is not None else None,
-            "reg": bool(row["reg"]) if row["reg"] is not None else None,
-            "report": bool(row["report"]) if row["report"] is not None else None,
-            "ppl": row["ppl"],
+            "dpo": bool(row["score_dpo"]) if row["score_dpo"] is not None else None,
+            "reg": bool(row["score_reg"]) if row["score_reg"] is not None else None,
+            "report": bool(row["score_report"]) if row["score_report"] is not None else None,
+            "ppl": answers.get("ppl"),
         })
 
     return submissions
+
+
+def get_submissions_count() -> int:
+    """Get total count of privacy submissions"""
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM privacy_submissions")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
 
 
 def get_submission_by_id(submission_id: str) -> Optional[dict]:
@@ -284,16 +299,11 @@ def get_submission_by_id(submission_id: str) -> Optional[dict]:
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    # Query using actual schema - no privacy_reviews table exists
     cursor.execute("""
-        SELECT
-            ps.*,
-            pr.level as review_level, pr.dpo as review_dpo, pr.reg as review_reg, 
-            pr.report as review_report, pr.requirements as review_requirements,
-            pr.status as pr_status, pr.reviewed_by, pr.notes,
-            pr.email_sent_at, pr.report_token
-        FROM privacy_submissions ps
-        LEFT JOIN privacy_reviews pr ON CAST(ps.id AS TEXT) = pr.submission_id
-        WHERE ps.id = ? OR ps.submission_id = ?
+        SELECT *
+        FROM privacy_submissions
+        WHERE id = ? OR submission_id = ?
     """, (submission_id, submission_id))
 
     row = cursor.fetchone()
@@ -303,10 +313,10 @@ def get_submission_by_id(submission_id: str) -> Optional[dict]:
         return None
 
     row_dict = dict(row)
-    
+
     # Parse requirements from JSON
     requirements = []
-    req_str = row_dict.get("review_requirements") or row_dict.get("score_requirements")
+    req_str = row_dict.get("score_requirements")
     if req_str:
         try:
             requirements = json.loads(req_str)
@@ -335,20 +345,18 @@ def get_submission_by_id(submission_id: str) -> Optional[dict]:
         "answers": compute_derived_fields(map_answers_to_fields(answers)),
         "answers_json": row_dict.get("answers_json"),
         "score": {
-            "level": row_dict.get("review_level") or row_dict.get("score_level"),
+            "level": row_dict.get("override_level") or row_dict.get("score_level"),
             "color": row_dict.get("score_color"),
-            "dpo": bool(row_dict.get("review_dpo") or row_dict.get("score_dpo")),
-            "reg": bool(row_dict.get("review_reg") or row_dict.get("score_reg")),
-            "report": bool(row_dict.get("review_report") or row_dict.get("score_report")),
+            "dpo": bool(row_dict.get("score_dpo")),
+            "reg": bool(row_dict.get("score_reg")),
+            "report": bool(row_dict.get("score_report")),
             "requirements": requirements,
-            "level_reasons": compute_level_reasons(compute_derived_fields(map_answers_to_fields(answers)), row_dict.get("review_level") or row_dict.get("score_level")),
+            "level_reasons": compute_level_reasons(compute_derived_fields(map_answers_to_fields(answers)), row_dict.get("override_level") or row_dict.get("score_level")),
         },
         "review": {
-            "status": row_dict.get("pr_status") or row_dict.get("review_status") or "pending",
-            "reviewed_by": row_dict.get("reviewed_by"),
-            "notes": row_dict.get("notes"),
-            "email_sent_at": row_dict.get("email_sent_at"),
-            "report_token": row_dict.get("report_token"),
+            "status": row_dict.get("review_status") or "pending",
+            "reviewed_at": row_dict.get("reviewed_at"),
+            "notes": row_dict.get("override_reason"),
         },
         "override": {
             "level": row_dict.get("override_level"),
