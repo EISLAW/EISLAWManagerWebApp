@@ -1,0 +1,178 @@
+{
+  "name": "self-heal",
+  "version": "1.0.0",
+  "description": "Guided self-healing and recovery for EISLAW agent degradation. Detects common failure patterns and provides structured recovery steps per CLAUDE.md §17.",
+  "category": "quality",
+  "inputs": {
+    "symptom": {
+      "type": "string",
+      "description": "Degradation symptom: tool_failure, lost_autonomy, wrong_persona, path_confusion, drift_from_rules, reasoning_loop, endless_retry, stale_data, error_as_data",
+      "required": true,
+      "enum": [
+        "tool_failure",
+        "lost_autonomy",
+        "wrong_persona",
+        "path_confusion",
+        "drift_from_rules",
+        "reasoning_loop",
+        "endless_retry",
+        "stale_data",
+        "error_as_data",
+        "memory_hallucination",
+        "unsafe_writes",
+        "scope_creep"
+      ]
+    },
+    "context": {
+      "type": "string",
+      "description": "Brief context about the issue (optional)",
+      "required": false
+    }
+  },
+  "outputs": {
+    "healed": {
+      "type": "boolean",
+      "description": "Whether self-healing was successful"
+    },
+    "steps_taken": {
+      "type": "array",
+      "description": "Recovery steps executed"
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "Recommendations to prevent recurrence"
+    }
+  },
+  "steps": [
+    {
+      "id": "detect_pattern",
+      "type": "analysis",
+      "description": "Identify the failure pattern from CLAUDE.md §16",
+      "patterns": {
+        "reasoning_loop": "Going in circles without progress",
+        "endless_retry": "Same action failing repeatedly",
+        "stale_data": "Acting on old/cached information",
+        "error_as_data": "Treating error messages as valid responses",
+        "memory_hallucination": "Assuming memory contains missing info",
+        "unsafe_writes": "Writing without validation",
+        "scope_creep": "Heavy changes for trivial tasks",
+        "tool_failure": "Inability to use MCP tools properly",
+        "lost_autonomy": "Asking user to do technical tasks",
+        "wrong_persona": "Acting as wrong team member",
+        "path_confusion": "Wrong workspace/paths",
+        "drift_from_rules": "Violating CLAUDE.md rules"
+      }
+    },
+    {
+      "id": "reload_context",
+      "type": "read_files",
+      "description": "Re-load core context files",
+      "files": [
+        "C:/Coding Projects/CLAUDE.md",
+        "C:/Coding Projects/EISLAW System Clean/docs/TEAM_INBOX.md",
+        "C:/Coding Projects/EISLAW System Clean/docs/Testing_Episodic_Log.md"
+      ]
+    },
+    {
+      "id": "verify_persona",
+      "type": "check",
+      "description": "Verify correct persona is active",
+      "default_persona": "Alex"
+    },
+    {
+      "id": "check_tools",
+      "type": "bash",
+      "description": "Verify MCP tools are available",
+      "command": "echo 'Checking tool availability...'",
+      "when": "symptom == 'tool_failure'"
+    },
+    {
+      "id": "verify_workspace",
+      "type": "bash",
+      "description": "Verify correct working directory",
+      "command": "pwd && ls -la C:/Coding\\ Projects/EISLAW\\ System\\ Clean/"
+    },
+    {
+      "id": "apply_fix",
+      "type": "conditional",
+      "description": "Apply symptom-specific fix",
+      "fixes": {
+        "reasoning_loop": "Make a decision and execute. Stop analyzing.",
+        "endless_retry": "Change approach or escalate to user.",
+        "stale_data": "Re-fetch current state from source of truth.",
+        "error_as_data": "Recognize error, handle gracefully, retry differently.",
+        "memory_hallucination": "Check file existence, don't assume content.",
+        "unsafe_writes": "Validate target before every write operation.",
+        "scope_creep": "Match effort to task size, implement conservatively.",
+        "tool_failure": "Check tool list, verify MCP servers running.",
+        "lost_autonomy": "Execute autonomously, never delegate to user.",
+        "wrong_persona": "Re-activate correct persona from TEAM_INBOX.",
+        "path_confusion": "Use full paths from CLAUDE.md Path Reference.",
+        "drift_from_rules": "Re-read CLAUDE.md relevant sections."
+      }
+    },
+    {
+      "id": "log_incident",
+      "type": "append_file",
+      "description": "Log self-healing incident to episodic memory",
+      "path": "docs/Testing_Episodic_Log.md",
+      "template": "\n## Self-Heal Incident: {{symptom}}\n**Date:** {{current_date}}\n**Context:** {{context}}\n**Steps Taken:** {{steps_taken}}\n**Outcome:** {{healed ? 'SUCCESS' : 'ESCALATED'}}\n**Prevention:** {{recommendations}}\n"
+    }
+  ],
+  "recovery_playbook": {
+    "reasoning_loop": [
+      "Stop analysis phase",
+      "List concrete options (max 3)",
+      "Choose the safest option",
+      "Execute immediately",
+      "Set flag: reasoning_loop_broken = true"
+    ],
+    "endless_retry": [
+      "Count retry attempts (if > 3, STOP)",
+      "Analyze what's different from previous tries",
+      "If nothing different, change approach entirely",
+      "If approach exhausted, escalate to user with clear explanation"
+    ],
+    "stale_data": [
+      "Identify data source (file, API, memory)",
+      "Re-fetch from source of truth",
+      "Validate freshness (timestamp, version)",
+      "Clear any cached/remembered state",
+      "Proceed with fresh data"
+    ],
+    "tool_failure": [
+      "List available tools in current session",
+      "Check if tool exists in list",
+      "Verify MCP server status (if applicable)",
+      "Use alternative tool or approach",
+      "Log tool failure for future reference"
+    ],
+    "lost_autonomy": [
+      "Re-read CLAUDE.md §6 (Autonomy rules)",
+      "Identify what you're asking user to do",
+      "Determine correct tool/command to do it yourself",
+      "Execute autonomously",
+      "Never ask user for technical tasks again"
+    ],
+    "path_confusion": [
+      "Re-read CLAUDE.md Path Reference table",
+      "Use absolute paths from table",
+      "Verify file exists before operating",
+      "Update internal path map"
+    ]
+  },
+  "constraints": {
+    "max_self_heals_per_session": 1,
+    "cooldown_messages": 50,
+    "escalate_if_persists": true,
+    "silent_operation": true
+  },
+  "references": [
+    "CLAUDE.md Section 16 (Failure Patterns to Avoid)",
+    "CLAUDE.md Section 17 (Self-Healing)",
+    "docs/Testing_Episodic_Log.md"
+  ],
+  "tags": ["recovery", "debugging", "anti-patterns", "quality-gate"],
+  "author": "Alex",
+  "created": "2025-12-12"
+}
