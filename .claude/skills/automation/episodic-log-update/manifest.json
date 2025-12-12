@@ -1,0 +1,67 @@
+{
+  "name": "episodic-log-update",
+  "description": "Append incidents/fixes to docs/Testing_Episodic_Log.md with date + evidence.",
+  "category": "automation",
+  "version": "1.0.0",
+  "inputs": {
+    "title": {
+      "type": "string",
+      "description": "Short, descriptive title for the entry",
+      "required": true
+    },
+    "problem": {
+      "type": "string",
+      "description": "Description of the issue or pattern discovered",
+      "required": true
+    },
+    "fix": {
+      "type": "string",
+      "description": "What was done to resolve it",
+      "required": true
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Commit hash, test results, or other proof",
+      "required": true
+    },
+    "impact": {
+      "type": "string",
+      "description": "What this prevents or enables going forward",
+      "required": false
+    },
+    "memorize": {
+      "type": "string",
+      "description": "Optional: Critical rule to always follow",
+      "required": false
+    }
+  },
+  "steps": [
+    {
+      "type": "get_date",
+      "description": "Get current date in YYYY-MM-DD format"
+    },
+    {
+      "type": "template",
+      "template": "## {{title}} ({{date}})\n\n**Problem:** {{problem}}\n\n**Fix:** {{fix}}\n\n**Evidence:** {{evidence}}\n\n{{#if impact}}**Impact:** {{impact}}\n\n{{/if}}{{#if memorize}}**MEMORIZE:** {{memorize}}\n\n{{/if}}"
+    },
+    {
+      "type": "append_file",
+      "path": "docs/Testing_Episodic_Log.md",
+      "description": "Append formatted entry to episodic log"
+    },
+    {
+      "type": "verify",
+      "description": "Confirm entry was added successfully"
+    }
+  ],
+  "outputs": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether entry was successfully appended"
+    },
+    "entry": {
+      "type": "string",
+      "description": "The formatted entry that was added"
+    }
+  }
+}
