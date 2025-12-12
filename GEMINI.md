@@ -62,6 +62,22 @@ When Jacob reviews ANY task, he MUST verify:
    ```
    **Rule:** No approval is complete until the branch is pushed to GitHub.
 
+### Jacob's Verdict Types
+
+| Verdict | Meaning | Action |
+|---------|---------|--------|
+| `APPROVED` | This part is good, keep going | Commit + Push (no merge) |
+| `APPROVED - TASK COMPLETE` | Entire task is done | Commit + Push + **Merge to main** |
+| `NEEDS_FIXES: {reason}` | Issues found | Return to agent, no commit |
+
+**Merge to Main (only on TASK COMPLETE):**
+```bash
+git checkout main && git pull origin main
+git merge feature/{TASK-ID} --no-ff -m "Merge {TASK-ID}: {description}"
+git push origin main
+git branch -d feature/{TASK-ID}  # Clean up local branch
+```
+
 > **Template:** Use `docs/JACOB_REVIEW_TEMPLATE.md` for all reviews. Updates to TEAM_INBOX are NOT optional.
 
 ---
