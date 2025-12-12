@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/EISLAW_System_Feature_Spec/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>EISLAW System Feature Spec - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#eislaw-system-feature-architecture-overview" class="nav-link">EISLAW System — Feature &amp; Architecture Overview</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
+<h1 id="eislaw-system-feature-architecture-overview">EISLAW System — Feature &amp; Architecture Overview</h1>
+<p>Purpose
+- Provide partners (technical and non‑technical) a clear view of what the system does, the tools and integrations it uses, and how it is validated.
+- Summarize current status: what’s done, in progress, and planned.</p>
+<p>Audience
+- Firm partners and technical collaborators who need both the “why” (business goals) and the “how” (stack, endpoints, tests).</p>
+<p>Goals (Business Outcomes)
+- Centralize client work: files, emails, tasks, and deliverables in one interface.
+- Accelerate privacy/compliance deliverables (questionnaire → scoring → Word review → send).
+- Keep local‑first velocity (fast iteration on desktop) with seamless cloud deploy parity.</p>
+<p>System Modules (Conceptual)
+- SystemCore: Navigation, brand, session bootstrapping, docs, and governance.
+- ClientComms: Client registry, folders (local/SharePoint), Outlook deep‑links, Airtable integration.
+- PrivacyExpress: Scoring engine, Fillout integration, Word review flow.
+- AutomailerBridge: Bridges deliverables into Outlook/Automailer for compose/send.
+- MarketingOps: Optional Facebook/Instagram analytics utilities.
+- RAGPilot / Insights: Retrieval over transcripts/knowledge, expanding to an “Insights Engine”.</p>
+<p>High‑Level Architecture
+- Frontend: React + Vite SPA (local dev on <code>5173</code>), routes for Dashboard, Clients, Marketing, Prompts, Insights.
+- Backend: FastAPI app (<code>scoring_service/main.py</code>) exposed locally on <code>8788</code> and in Azure Web App (staging).
+- Data/Stores:
+  - Client registry JSON (<code>clients.json</code>) in the SharePoint library under “לקוחות משרד”. Local mirror is discovered via AudoProcessor settings.
+  - Email local index (SQLite) at <code>clients/email_index.sqlite</code> (if present) for quick history by client.
+  - RAG index (pilot) under <code>rag_local</code> or future vector store.
+- Integrations:
+  - Microsoft Graph (app‑only) for Outlook message links and SharePoint drive/folder access.
+  - SharePoint (Graph) as the canonical file store (“לקוחות משרד”).
+  - Airtable for client/contacts registry (optional but supported).
+  - Fillout for intake (PrivacyExpress).</p>
+<p>Core Feature Catalog (by Module)</p>
+<p>1) ClientComms
+- Clients list and detail (“Client Overview”) with per‑client actions:
+  - Open (view): navigates to client detail.
+  - Files: opens Windows Explorer on the client folder via backend helper; falls back to SharePoint or copies path.
+  - SharePoint: opens the exact SharePoint folder for the client.
+  - Emails (Outlook): opens a dedicated named Outlook window (EISLAW‑OWA) with either a deep link to the latest message or an OWA search (AQS) scoped to the client’s address(es).
+  - Send Email: <code>mailto:</code> quick compose.
+  - WhatsApp: opens a chat using <code>wa.me/&lt;digits&gt;</code> when phone is available.
+  - Sync: pulls recent emails (online) where supported.
+  - Airtable buttons: “Airtable Search” (opens record or Clients view) and “Sync Airtable” (upserts name/email).
+- Add Client modal:
+  - Airtable search backed by view <code>viw34b0ytkGoQd1n3</code> (table <code>tbloKUYGtEEdM76Nm</code>) with normalized name/email/phone/status/type pulled from <code>docs/Airtable_Schema.md</code>.
+  - Selecting a client hydrates summary + linked contacts (via <code>tblWVZn9VjoGjdWrX</code> / <code>viwDZcPYwOkY2bm1g</code>), then creates/links SharePoint folder, upserts Airtable client + contacts, and mirrors metadata into the local registry (<code>/registry/clients</code>).
+- Registry cleanup endpoint (admin): preview/apply removal of stale or buggy entries (with backup).</p>
+<p>2) PrivacyExpress
+- Scoring engine with rules (thresholds, precedence) and Fillout mapping.
+- Intake pull via Fillout API, evaluation, and staging for review.
+- Word review workflow: compose content in DOCX from templates; optional email compose integration.</p>
+<p>3) AutomailerBridge
+- Bridge for sending deliverables via Outlook/Automailer (initial scaffolding; sending path next).</p>
+<p>4) Word Template Flow (TK Parity)
+- Template discovery (<code>/word/templates</code>) from “לקוחות משרד_טמפלייטים” (auto‑detected relative to store base). <code>TEMPLATES_ROOT</code> env can override.
+- Generate DOCX (<code>/word/generate</code>):
+  - Windows: Microsoft Word COM (DOTX/DOCX) with <code>SaveAs2</code> into the client folder.
+  - Fallback: <code>python-docx</code> for basic DOCX generation when COM is unavailable or busy.</p>
+<p>5) MarketingOps
+- Optional analytics utilities (FB/IG) for internal reporting (tokens in local secrets, used only when invoked).</p>
+<p>6) RAGPilot / Insights (expansion)
+- PRD defined for an Insights Engine: transcript review, tagging, search, and chat with memory; later email/WhatsApp/legal docs.
+- Backend stubs: <code>/api/insights/add|review|search|ingest_manifest</code> (to be completed).</p>
+<p>Technology Stack &amp; Key Files
+- Frontend: React 18, Vite 5, React Router 6, lightweight CSS (Tailwind present), Playwright for e2e.
+  - Example pages: <code>frontend/src/pages/Clients/ClientsList.jsx</code>, <code>frontend/src/pages/Clients/ClientCard/ClientOverview.jsx</code>.
+- Backend: Python FastAPI, uvicorn, Starlette; pytest for unit tests.
+  - Main service: <code>scoring_service/main.py</code> (all endpoints below).
+- Local Automation: PowerShell launchers (<code>session_start.bat</code>, <code>tools/session_start.ps1</code>, <code>tools/open_local.ps1</code>) and MCP helper scripts (<code>start_mcp.bat</code>).</p>
+<p>Primary Backend Endpoints (selection)
+- Clients &amp; Registry
+  - <code>GET /api/clients</code> — list clients (from SharePoint registry or local mirror).
+  - <code>GET /api/client/summary?name=</code> — client files/emails summary.
+  - <code>GET /api/client/locations?name=</code> — returns <code>{ localFolder, sharepointUrl }</code> for Explorer/SharePoint open.
+  - <code>GET /registry/clients</code> — read registry; <code>POST /registry/clients</code> — upsert (display_name, emails, phone, contacts).
+  - <code>GET /registry/cleanup?apply=false|true</code> — preview/apply stale entry cleanup.
+- Outlook &amp; Emails
+  - <code>GET /api/outlook/latest_link?email=</code> — Graph‑based deep link to the latest message for an address.
+  - Client view composes OWA search queries for single/multiple addresses and reuses a named window.
+- SharePoint
+  - <code>GET /sp/check</code> — verify site/drive/base connectivity.
+  - <code>POST /sp/folder_create</code> — ensure a client folder exists in SharePoint.
+- Files (local dev)
+  - <code>POST /dev/open_folder</code> — opens Explorer on the client folder (enabled only in local dev via <code>DEV_ENABLE_OPEN</code>).
+- Word Templates
+  - <code>GET /word/templates</code> — list DOTX/DOCX templates.
+  - <code>POST /word/generate</code> — generate a client‑scoped DOCX (COM first, fallback to <code>python-docx</code>).
+- Airtable
+  - <code>POST /airtable/clients_upsert</code> — upsert client record.
+  - <code>POST /airtable/contacts_upsert</code> — upsert contact(s) associated to a client.
+  - <code>GET /airtable/search_open?name=&amp;email=</code> — return UI URL to open a matching record/view.
+- Insights (stubs)
+  - <code>GET /api/insights/search</code>, <code>POST /api/insights/add</code>, <code>POST /api/insights/review</code>, <code>POST /api/insights/ingest_manifest</code>.</p>
+<p>Environment &amp; Deployments
+- Local‑first (preferred for iteration)
+  - One‑click start: <code>session_start.bat</code> (starts backend on 8788, frontend on 5173, MCP bridge; opens Clients page).
+  - Light start: <code>open_local.bat</code> (backend + Vite dev + browser).
+  - Env setup: <code>tools/dev_env.ps1</code> sets <code>GRAPH_*</code>, <code>SP_*</code>, <code>VITE_API_URL</code>, <code>DEV_ENABLE_OPEN</code>, CORS.
+  - Secrets: <code>secrets.local.json</code> (never committed) contains Airtable token/base, Microsoft Graph app creds, etc. Schema: <code>secrets.schema.json</code>.
+- Cloud/Staging (Azure)
+  - Backend Web App: <code>https://eislaw-api-01.azurewebsites.net</code>.
+  - Frontend Static Site: Azure Storage static website (e.g., <code>eislawstweb</code>).
+  - Redeploy scripts in <code>infra/</code> (package, grant roles, README).</p>
+<p>Security &amp; Privacy
+- Secrets: stored locally in <code>secrets.local.json</code>. Do not commit or share tokens; use the schema to validate presence.
+- Microsoft Graph: app‑only credentials; recommend <code>Sites.Selected</code> or carefully scoped <code>Sites.ReadWrite.All</code> to the SharePoint site; Mail read via application permissions only when needed.
+- Desktop: local‑first workflow reduces cloud exposure while iterating; minimal logging of personal data; registry cleanup tool to remove stale data.</p>
+<p>Testing &amp; QA (What and How)
+- Automated
+  - Unit tests (pytest): focus on SharePoint endpoints and location resolution. Example: <code>scoring_service/tests/test_sharepoint.py</code> (3 passing locally).
+  - UI tests (Playwright): navigation, Clients list, add client modal, SharePoint button behavior, Word templates modal, and client update flow. Suite passes locally (6/6).
+- Manual smoke
+  - Test client “יעל שמיר” created end‑to‑end: SharePoint folder creation, registry upsert, Airtable upsert, locations returns correct paths, Outlook latest link resolves.
+  - Emails open in named “EISLAW‑OWA” window; Files open via backend; SharePoint opens exact folder.
+- CI (next): enable in repo runner to run pytest + Playwright on PRs; address any selectors flakiness with stable <code>data-testid</code>s.</p>
+<p>Status Snapshot (04‑Nov‑2025)
+- Completed
+  - Clients module core: list, detail, actions (Files, SP, Emails, Send Email, WhatsApp, Sync).
+  - Outlook named window behavior; OWA deep link/search fallback.
+  - SharePoint folder resolution and creation; registry read/write; cleanup preview/apply.
+  - Word template listing and DOCX generation; default templates root detection; Windows COM + fallback.
+  - Airtable Search/Sync buttons; clients_upsert and contacts_upsert endpoints.
+  - Local one‑click session start; MCP bridge bootstrap; docs updated.
+  - Automated tests green locally (pytest + Playwright).
+- In Progress
+  - Client view: richer Airtable contact edit/add (phone), and Task list backed by Airtable.
+  - Clients list: optional multi‑address email search parity with detail view.
+  - Outlook convenience: optional Edge app‑window launcher for steady reuse (local only).
+  - Cloud path for Word: upload generated DOCX to SharePoint when running in cloud; return webUrl.
+  - Insights (RAG): implement backend routes + vector index; frontend tab.
+- Upcoming
+  - “Send” step for AutomailerBridge (Outlook/Graph send + optional PDF export).
+  - CI workflows for tests; staging deploy automation.</p>
+<p>Operations (Runbook)
+- Start session: <code>session_start.bat</code> (or <code>open_local.bat</code>).
+- Verify health: backend <code>/health</code>, <code>GET /sp/check</code> (site/drive/base true), and open <code>/#/clients</code>.
+- Run tests: <code>python -m pytest -q scoring_service/tests</code> and <code>npm run ui:test</code>.
+- Common issues
+  - Outlook replaces app tab → refresh to latest build; popups allowed; ensure named window path is active.
+  - Word COM “call was rejected” → retry; fallback uses <code>python-docx</code> for DOCX.
+  - Explorer open requires local start scripts (set <code>DEV_ENABLE_OPEN=1</code>).</p>
+<p>References
+- Index: <code>docs/INDEX.md</code>
+- Technical Overview: <code>docs/TECHNICAL_OVERVIEW.md</code>
+- Working Memory (live status): <code>docs/WORKING_MEMORY.md</code>
+- Insights PRD: <code>docs/INSIGHTS_RAG_PRD.md</code></p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

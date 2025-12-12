@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/INSIGHTS_RAG_PRD/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>EISLAW Insights RAG — Product Definition (PRD) - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#eislaw-insights-rag-product-definition-prd" class="nav-link">EISLAW Insights RAG — Product Definition (PRD)</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#rag-ingest-transcript-pipeline-prd-v20-ready-for-dev" class="nav-link">RAG Ingest &amp; Transcript Pipeline — PRD v2.0 (Ready for Dev)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="eislaw-insights-rag-product-definition-prd">EISLAW Insights RAG — Product Definition (PRD)</h1>
+<blockquote>
+<p>Working copy: use <code>/mnt/c/Coding Projects/EISLAW System Clean</code> (origin <code>github.com/EISLAW/EISLAWManagerWebApp</code>). The older <code>EISLAW System</code> folder is archive/reference only—do not develop or commit there.</p>
+</blockquote>
+<h2 id="rag-ingest-transcript-pipeline-prd-v20-ready-for-dev">RAG Ingest &amp; Transcript Pipeline — PRD v2.0 (Ready for Dev)</h2>
+<p>Status: ready for development. This supersedes earlier ingest/staging notes in this document and should be treated as the source of truth for ingest + transcript review.</p>
+<p>Core principle: “Inbox First” — upload fast, process in background, review metadata later.</p>
+<p>1) Workflow
+- Drop &amp; Go: user drags files, front-end calculates hash (MD5 of first 1MB), checks duplicates, uploads immediately if unique.
+- Processing (background): server handles transcription (prefer Gemini 1.5 Flash/Pro end-to-end; fallback chunking + Whisper).
+- Inbox (staging): files surface here with “Red Badges” for missing metadata.
+- Review (quality): user opens file → visual “script” editor → fixes speakers → fills tags.
+- Publish: user clicks “Index” → file moves to Library.</p>
+<p>2) Functional requirements</p>
+<p>A. Ingestion (“robust” upload)
+- Duplicate check: front-end computes MD5 of first 1MB; if hash matches existing DB hash, reject with “File already exists.”
+- Auto-extraction:
+  - Date: extract from file creation time or filename (e.g., 2024-11-28...).
+  - Client: regex-match filename against Client Registry list.
+  - Model: use Gemini 1.5 Flash/Pro when possible for transcription (1M+ context to keep speaker continuity).
+  - Fallback: if Gemini fails, fall back to chunking + Whisper.</p>
+<p>B. Inbox (metadata staging)
+- Status indicators: Uploading (X%), Transcribing, Ready (Draft), Error.
+- Tag safety: when “Client” is selected, filter tags to Global_Tags + This_Client_Tags.
+- Bulk actions: “Apply Date to All,” “Apply Domain to All.”</p>
+<p>C. Transcript reviewer (“WhatsApp” view)
+- Layout: chat-style bubbles (not a table).
+- Audio sync: clicking a text bubble plays that timestamp range (Start -&gt; End).
+- Global rename: right-click “Speaker 1” → “Rename to Eitan” → applies across document.
+- Editor: inline text editing; “Save” re-indexes if already published.</p>
+<p>D. Storage &amp; maintenance
+- File structure:
+  - <code>Transcripts/Inbox/{hash}_filename.ext</code>
+  - <code>Transcripts/Library/{Domain}/{Client}/{Date}_{filename}.txt</code>
+- Hard delete: <code>DELETE /api/rag/file/{id}</code> must remove Meilisearch index entry, JSON/TXT files, and original audio.</p>
+<p>Final UI layouts (summary)
+- Inbox (batch upload):
+  - Header “RAG PIPELINE [Drop Files Here to Upload]”.
+  - Bulk controls: Select All, Bulk Actions, Refresh.
+  - Inbox list shows filename, status (Ready for Review, Transcribing %, Duplicate with link), metadata badges, and actions (Open Reviewer, Quick Edit, Delete).
+  - Published Library list (latest items, editable).
+- Transcript reviewer (editor):
+  - Left: metadata form (Date, Domain, Client, Tags) + actions (Play Audio at timestamp, Save Changes, Publish to RAG).
+  - Right: chat bubbles with speaker labels and timestamps; inline editable text; right-click to rename speaker globally.</p>
+<p>Execution plan (initial track)
+- Backend: install FastAPI + python-multipart; create <code>Transcripts/Inbox</code> folder; implement POST <code>/ingest</code> with hash check and storage layout above.
+- UI: build Inbox list component first to allow manual drop tests; wire statuses and actions.
+- Transcription: integrate Gemini 1.5 Flash/Pro for long-form; fallback to chunked Whisper.
+- Deletion: implement hard delete endpoint as specified and ensure Meilisearch cleanup.</p>
+<p>Dev task breakdown (to track in tickets)
+- Frontend: drop-zone + MD5(first 1MB) hashing; duplicate rejection; upload progress; statuses (Uploading, Transcribing, Ready, Error); inbox table/cards matching layout; bulk actions (Select All, Apply Date/Domain); metadata safety (client-scoped tags); Quick Edit modal; Reviewer chat view with inline edits, right-click speaker rename (global), timestamped audio playback; Publish/Save actions that trigger re-index.
+- Backend API: POST <code>/api/rag/ingest</code> (hash check, store in <code>Transcripts/Inbox</code>, enqueue transcription job), GET <code>/api/rag/inbox</code> (list with statuses), PATCH metadata, POST <code>/api/rag/publish</code>, DELETE <code>/api/rag/file/{id}</code> (hard delete + Meilisearch cleanup), transcription service using Gemini 1.5 Flash/Pro with fallback to chunked Whisper, status updates, MD5 hash persistence.
+- Storage/infra: ensure folder scaffolding (<code>Transcripts/Inbox</code>, <code>Transcripts/Library/...</code>), configure Meilisearch client, add Gemini and Whisper credentials/envs, add python-multipart dependency, ensure background worker or task queue for transcription, log/audit for deletions.</p>
+<p>Purpose</p>
+<p>Extend the existing RAG (Retrieval‑Augmented Generation) layer of the EISLAW System from a basic transcript retrieval utility into a full Insight Engine — a tool designed to extract human, emotional, and linguistic insights from client conversations, emails, and communications. This module will also serve as the knowledge substrate for marketing and storytelling prompts across the firm’s AI‑driven workflows.</p>
+<p>Goals</p>
+<ul>
+<li>Transform transcripts into actionable insight.</li>
+<li>Analyze client interactions to surface emotional, linguistic, and behavioral patterns.</li>
+<li>Build a dynamic vector index that updates automatically whenever new transcripts are added or assigned to a client.</li>
+<li>Enable conversational exploration through an “Insights” tab — a chat interface with memory and contextual understanding.</li>
+<li>Unify data sources between insight extraction and marketing generation workflows.</li>
+<li>Introduce a Quality Gate to verify and correct speaker alignment before transcripts are indexed into RAG.</li>
+</ul>
+<p>Scope</p>
+<ul>
+<li>Phase 1: Transcripts only (TXT / JSON), including quality control review.</li>
+<li>Phase 2: Integration of emails (Microsoft Graph) and WhatsApp exports.</li>
+<li>Phase 3: Expansion to include legal documents and structured templates.</li>
+</ul>
+<p>Data Sources</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Location</th>
+<th>Format</th>
+<th>Integration Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Transcripts (Sales / Personal)</td>
+<td>SharePoint / Local (clients/<name> or personal/)</td>
+<td>TXT / JSON</td>
+<td>Existing (manual ingest)</td>
+</tr>
+<tr>
+<td>Emails</td>
+<td>Microsoft Graph / Email Mirror</td>
+<td>EML / JSON</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>WhatsApp</td>
+<td>Exported Chats / Future API</td>
+<td>TXT / JSON</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>Legal Documents</td>
+<td>SharePoint Libraries</td>
+<td>DOCX / PDF</td>
+<td>Future</td>
+</tr>
+</tbody>
+</table>
+<p>Architecture Overview</p>
+<p>The RAG layer functions as an independent module with internal API endpoints, built on top of the existing <code>RAG_Pilot/</code> scripts (<code>ingest_transcripts.py</code>, <code>search.py</code>), and integrated into both the backend and frontend stacks.</p>
+<p>1) Backend (FastAPI)</p>
+<ul>
+<li>New endpoints under <code>/api/insights/*</code></li>
+<li><code>/api/insights/search</code> — semantic search with filters (client, tags, source)</li>
+<li><code>/api/insights/add</code> — add or update transcripts and metadata</li>
+<li><code>/api/insights/review</code> — quality‑control interface for transcript validation</li>
+<li>Uses a vector store (SQLite, Elastic, or Qdrant depending on deployment).</li>
+</ul>
+<p>2) Frontend (React + Vite)</p>
+<ul>
+<li>New module: Insights Tab</li>
+<li>Chat interface with contextual memory (thread‑based).</li>
+<li>Sidebar filters for clients, tags, and sources.</li>
+<li>“Convert to Content” button linking to the Marketing module.</li>
+<li>Insight cards displaying search results and extracted conclusions.</li>
+</ul>
+<p>Functional Features</p>
+<p>1) Transcription Review Queue</p>
+<ul>
+<li>Every new transcript enters Pending Review state.</li>
+<li>The system displays representative samples per speaker (auto‑selected).</li>
+<li>Reviewer can mark “Approved” or “Incorrect Speaker.”</li>
+<li>Corrections trigger a secondary process (<code>speaker_realign</code>) that reassigns speakers for affected excerpts.</li>
+<li>Upon approval, the transcript is indexed into the RAG database.</li>
+</ul>
+<p>Speaker Re‑Alignment Process</p>
+<p>When a transcript enters the Pending Review state, the reviewer may identify and flag segments where speakers were misclassified (e.g., “Speaker A” and “Speaker B” reversed or merged). The correction process combines manual review input with automated propagation:</p>
+<ul>
+<li>Sampling &amp; Flagging – the system displays several representative excerpts per speaker; the reviewer marks incorrect attributions (e.g., “swap A ↔ B” or “mislabelled segment”).</li>
+<li>Pattern Extraction – the system analyzes acoustic and textual patterns (pronouns, phrasing, turn length, interjections, punctuation rhythm) from the corrected samples.</li>
+<li>Automated Re‑Alignment – using these identified patterns, the system automatically adjusts speaker labels across the entire transcript, focusing on sections with similar linguistic or structural signatures.</li>
+<li>Self‑Correction Learning – feedback from multiple reviews is logged in a local cache (<code>speaker_alignment_cache.json</code>), improving subsequent alignments for the same speakers or recurring voices.</li>
+<li>Re‑Validation – the corrected transcript is re‑sampled for quick verification before being approved for RAG ingestion.</li>
+</ul>
+<p>This semi‑supervised cycle minimizes manual effort: reviewers intervene only once per error type, and the system extrapolates and learns from the feedback automatically.</p>
+<p>2) Batch Assignment &amp; Tagging</p>
+<ul>
+<li>Allows multiple audio files to be selected and assigned before transcription.</li>
+<li>Batch grid view:</li>
+</ul>
+<pre><code>File           Duration  Client          Tags        Status
+meeting1.m4a   28:31     Sivan Benayni   closed      transcribing
+meeting2.m4a   35:10     Personal        not closed  queued
+meeting3.m4a   41:02     Unicell         closed      complete
+</code></pre>
+<ul>
+<li>Metadata structure stored in JSON:</li>
+</ul>
+<pre><code>{ &quot;client&quot;: &quot;Sivan Benayni&quot;, &quot;tags&quot;: [&quot;closed&quot;, &quot;first call&quot;], &quot;source&quot;: &quot;transcript&quot;, &quot;category&quot;: &quot;office&quot; }
+</code></pre>
+<p>3) Tag Management</p>
+<ul>
+<li>CRUD for tags (create, edit, delete).</li>
+<li>Search and filter by tags (multi‑tag intersection supported).</li>
+<li>Autocomplete suggestions for tags based on transcript content.</li>
+<li>Metadata stored in SharePoint or local JSON registry.</li>
+</ul>
+<p>4) Insights Interface (Chat)</p>
+<ul>
+<li>Conversational chat window with persistent thread memory.</li>
+<li>Semantic search + LLM summarization.</li>
+<li>Insight cards display with contextual excerpts.</li>
+<li>Example built‑in prompts:</li>
+<li>“Analyze why the client hesitated to close.”</li>
+<li>“Identify recurring metaphors in successful conversations.”</li>
+<li>“Which words indicate resistance or lack of trust?”</li>
+</ul>
+<p>5) Integration with Marketing Module</p>
+<ul>
+<li>Each insight can be saved as a “Seed Prompt” for the marketing workflow.</li>
+<li>“Convert to Content” button opens the Marketing Editor.</li>
+<li>Both systems rely on the same vector base, viewed from different perspectives (analytical vs. narrative).</li>
+</ul>
+<p>Future Extensions</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Description</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Email RAG Integration</td>
+<td>Ingest emails via Graph API after cleaning signatures and reply chains</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>WhatsApp Integration</td>
+<td>Import chat exports and link to clients</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>Legal Document RAG</td>
+<td>Vectorize and analyze legal documents</td>
+<td>Phase 3</td>
+</tr>
+<tr>
+<td>Emotion Timeline</td>
+<td>Visualize emotional tone throughout the conversation</td>
+<td>Future</td>
+</tr>
+<tr>
+<td>Team Access &amp; Permissions</td>
+<td>Separation between personal and team‑level RAGs</td>
+<td>Future</td>
+</tr>
+</tbody>
+</table>
+<p>UX Guidelines</p>
+<ul>
+<li>RTL‑ready layout; colors follow Brand Guide (#0B3B5A, #D07655).</li>
+<li>Font: Noto Sans Hebrew.</li>
+<li>Tags displayed with color coding by category.</li>
+<li>Pending transcripts: light amber background.</li>
+<li>Approved transcripts: light green.</li>
+<li>Search results highlight keywords and expand excerpts in context.</li>
+</ul>
+<p>QA Policy</p>
+<p>Before a transcript enters the RAG index:</p>
+<ul>
+<li>Verify: no speaker mismatch (sample review).</li>
+<li>Validate: required metadata (client, tags, source) present.</li>
+<li>Confirm: UTF‑8 encoding and token length &gt; 100.</li>
+<li>Auto‑Test: ensure vector ingestion returns valid ID.</li>
+<li>Manual Review: random sample check weekly.</li>
+</ul>
+<p>Dependencies</p>
+<ul>
+<li><code>RAG_Pilot/ingest_transcripts.py</code> — extended for metadata support.</li>
+<li><code>RAG_Pilot/search.py</code> — filters for tags and clients.</li>
+<li>Backend routes: <code>/api/insights/*</code> (FastAPI).</li>
+<li>Frontend module: <code>/src/pages/Insights/</code>.</li>
+<li>Shared vector store (SQLite / Elastic / Qdrant).</li>
+</ul>
+<p>Versioning &amp; Documentation</p>
+<ul>
+<li>Added file: <code>docs/INSIGHTS_RAG_PRD.md</code> (this document).</li>
+<li>Update <code>docs/PROJECTS_COMPENDIUM.md</code> → add under “RAGPilot Module.”</li>
+<li>Update <code>docs/TECHNICAL_OVERVIEW.md</code> → new section “Insights Extension.”</li>
+<li>New configuration: <code>config/insights_metadata.json</code> (tags &amp; status list).</li>
+<li>New CLI utilities:</li>
+<li><code>python tools/insights_review.py</code></li>
+<li><code>python tools/insights_tag_assign.py</code></li>
+<li><code>python tools/insights_index.py</code></li>
+</ul>
+<p>Notes / Open Questions</p>
+<ul>
+<li>Preferred vector store for production? (SQLite persisted locally vs. Elastic/Qdrant managed service)</li>
+<li>Where to persist the review queue state — SharePoint JSON per client vs. central <code>System/insights_registry.json</code>?</li>
+<li>Chat model/provider standardization (match LLM policy in <code>secrets.local.json</code>)?</li>
+<li>Do we ingest personal transcripts separately (private namespace) with opt‑in linking to clients?</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

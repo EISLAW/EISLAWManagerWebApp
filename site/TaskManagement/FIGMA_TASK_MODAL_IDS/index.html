@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/TaskManagement/FIGMA_TASK_MODAL_IDS/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Task Management — Figma IDs, Actions, and Payloads - EISLAW Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#task-management-figma-ids-actions-and-payloads" class="nav-link">Task Management — Figma IDs, Actions, and Payloads</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="task-management-figma-ids-actions-and-payloads">Task Management — Figma IDs, Actions, and Payloads</h1>
+<p>Purpose: provide stable identifiers and action semantics for every button in the Task Modal (Hebrew/RTL). Use this for Dev Mode annotations, Make exports, UI wiring, tests, and automation.</p>
+<p>Conventions
+- data-testid: tm.<section>.<control>[.<variant>] — stable selector for UI/tests.
+- data-action: <domain>.<verb>[.<variant>] — intent used by the app.
+- data-field: domain field affected by the action (e.g., priority, assignee, dueDate, tags, assetType).
+- Dynamic ids: data-task-id, data-subtask-id, data-asset-id, data-comment-id, data-reply-id (set at runtime, placeholder in Figma).
+- Hebrew labels: do not derive logic from label text; rely on data-* attributes.</p>
+<p>Sections
+- modal: top-level modal controls
+- task: task-level controls (root and subtask share patterns)
+- assets: asset add/delete controls
+- details: due date, calendar sync, owner, tags
+- comment/reply: discussion actions</p>
+<p>Label Notes (Hebrew)
+- “+ הוסף נתונים”
+- “לינק” (not “קישור”)
+- Change “היררכית משימות” → “משימות”</p>
+<p>ID / Action Mapping</p>
+<p>A) Modal (TaskModal frame)
+1) Close (X)
+   - data-testid: tm.modal.close
+   - data-action: modal.close</p>
+<p>2) Add root task (“הוסף משימה +”)
+   - data-testid: tm.task.add_root
+   - data-action: task.add_root</p>
+<p>3) Add subtask (Plus icon in expanded task)
+   - data-testid: tm.subtask.add
+   - data-action: subtask.add
+   - data-task-id: {taskId}</p>
+<p>B) Task/Subtask row (SubtaskItem)
+4) Expand/Collapse (Chevron)
+   - data-testid: tm.task.toggle_expand
+   - data-action: task.toggle_expand
+   - data-task-id: {taskId}</p>
+<p>5) Complete (Checkbox)
+   - data-testid: tm.task.complete
+   - data-action: task.complete
+   - data-task-id: {taskId}
+   - data-field: status</p>
+<p>6) Delete (Trash)
+   - data-testid: tm.task.delete
+   - data-action: task.delete
+   - data-task-id: {taskId}</p>
+<p>7) Priority — open menu (“הגדר חשיבות”)
+   - data-testid: tm.task.priority.open
+   - data-action: priority.open
+   - data-task-id: {taskId}</p>
+<p>7a) Priority High
+   - data-testid: tm.task.priority.set.high
+   - data-action: priority.set
+   - data-task-id: {taskId}
+   - data-field: priority
+   - data-value: high</p>
+<p>7b) Priority Medium
+   - data-testid: tm.task.priority.set.medium
+   - data-action: priority.set
+   - data-task-id: {taskId}
+   - data-field: priority
+   - data-value: medium</p>
+<p>7c) Priority Low
+   - data-testid: tm.task.priority.set.low
+   - data-action: priority.set
+   - data-task-id: {taskId}
+   - data-field: priority
+   - data-value: low</p>
+<p>7d) Add custom tag (as priority label)
+   - data-testid: tm.task.priority.custom.add
+   - data-action: priority.custom.add
+   - data-task-id: {taskId}
+   - data-field: priorityTag</p>
+<p>8) Assignee — open menu (“הוסף אחראי”)
+   - data-testid: tm.task.assignee.open
+   - data-action: assignee.open
+   - data-task-id: {taskId}</p>
+<p>8a–8e) Assignee set (choose person)
+   - data-testid: tm.task.assignee.set
+   - data-action: assignee.set
+   - data-task-id: {taskId}
+   - data-field: assigneeId
+   - data-value: {userId}   // e.g., user.sara.m, user.yohanan.d (final IDs from directory)</p>
+<p>9) Set date (Date Picker) — open
+   - data-testid: tm.task.due.open
+   - data-action: due.open
+   - data-task-id: {taskId}</p>
+<p>9b) Set date — confirm
+   - data-testid: tm.task.due.set
+   - data-action: due.set
+   - data-task-id: {taskId}
+   - data-field: dueDate
+   - data-value: {ISO8601}</p>
+<p>C) Assets section (Assets)
+10) “+ הוסף נתונים” — open asset menu
+   - data-testid: tm.assets.add.open
+   - data-action: assets.add.open
+   - data-entity-level: {task|subtask}
+   - data-task-id: {taskId}
+   - data-subtask-id: {subtaskId?}</p>
+<p>10a) Add File (📄)
+   - data-testid: tm.assets.add.file
+   - data-action: assets.add.file
+   - data-field: assetType
+   - data-value: file</p>
+<p>10b) Add Link (לינק) (🔗)
+   - data-testid: tm.assets.add.link
+   - data-action: assets.add.link
+   - data-field: assetType
+   - data-value: link</p>
+<p>10c) Add Folder (📁)
+   - data-testid: tm.assets.add.folder
+   - data-action: assets.add.folder
+   - data-field: assetType
+   - data-value: folder</p>
+<p>10d) Add Email (✉)
+   - data-testid: tm.assets.add.email
+   - data-action: assets.add.email
+   - data-field: assetType
+   - data-value: email</p>
+<p>11) Delete asset (X in asset item)
+   - data-testid: tm.asset.delete
+   - data-action: asset.delete
+   - data-asset-id: {assetId}</p>
+<p>11b) Open Email in Outlook (row action; if present)
+   - data-testid: tm.asset.email.open_outlook
+   - data-action: email.open_in_outlook
+   - data-asset-id: {assetId}</p>
+<p>D) Details section (Details)
+12) Due date (Calendar icon) — open
+   - data-testid: tm.details.due.open
+   - data-action: details.due.open</p>
+<p>12b) Due date — set
+   - data-testid: tm.details.due.set
+   - data-action: details.due.set
+   - data-field: dueDate
+   - data-value: {ISO8601}</p>
+<p>13) Sync to calendar (Calendar icon)
+   - data-testid: tm.details.calendar.sync
+   - data-action: calendar.sync</p>
+<p>14) Main owner (User icon) — open
+   - data-testid: tm.details.owner.open
+   - data-action: owner.open</p>
+<p>14b) Main owner — set
+   - data-testid: tm.details.owner.set
+   - data-action: owner.set
+   - data-field: ownerId
+   - data-value: {userId}</p>
+<p>15) Add tag (Plus in tags row)
+   - data-testid: tm.details.tags.add.open
+   - data-action: tags.add.open</p>
+<p>16) Remove tag (X)
+   - data-testid: tm.details.tags.remove
+   - data-action: tags.remove
+   - data-field: tagId
+   - data-value: {tagId}</p>
+<p>17) Add tag (confirm in tag menu)
+   - data-testid: tm.details.tags.add.confirm
+   - data-action: tags.add.confirm
+   - data-field: tag
+   - data-payload: { name: <string>, color: <hex> }</p>
+<p>E) Comments — top level comment item
+18) Reply ("תשובה")
+   - data-testid: tm.comment.reply
+   - data-action: comment.reply
+   - data-comment-id: {commentId}</p>
+<p>19) Mark as resolved (CheckCircle)
+   - data-testid: tm.comment.resolve
+   - data-action: comment.resolve
+   - data-comment-id: {commentId}</p>
+<p>20) Like (ThumbsUp)
+   - data-testid: tm.comment.like
+   - data-action: comment.like
+   - data-comment-id: {commentId}</p>
+<p>21) Publish reply
+   - data-testid: tm.comment.reply.post
+   - data-action: comment.reply.post
+   - data-comment-id: {commentId}</p>
+<p>22) Cancel reply
+   - data-testid: tm.comment.reply.cancel
+   - data-action: comment.reply.cancel
+   - data-comment-id: {commentId}</p>
+<p>F) Reply — level 1
+23) Reply
+   - data-testid: tm.reply.reply
+   - data-action: reply.reply
+   - data-reply-id: {replyId}</p>
+<p>24) Resolve
+   - data-testid: tm.reply.resolve
+   - data-action: reply.resolve
+   - data-reply-id: {replyId}</p>
+<p>25) Like
+   - data-testid: tm.reply.like
+   - data-action: reply.like
+   - data-reply-id: {replyId}</p>
+<p>26) Publish reply
+   - data-testid: tm.reply.post
+   - data-action: reply.post
+   - data-reply-id: {replyId}</p>
+<p>27) Cancel
+   - data-testid: tm.reply.cancel
+   - data-action: reply.cancel
+   - data-reply-id: {replyId}</p>
+<p>G) Nested reply — level 2
+28) Resolve
+   - data-testid: tm.nreply.resolve
+   - data-action: nreply.resolve
+   - data-reply-id: {replyId}</p>
+<p>29) Like
+   - data-testid: tm.nreply.like
+   - data-action: nreply.like
+   - data-reply-id: {replyId}</p>
+<p>H) New comment composer
+30) Publish new comment ("פרסם תגובה")
+   - data-testid: tm.comment.create
+   - data-action: comment.create</p>
+<p>Disabled/State Expectations
+- All actions support disabled state when preconditions fail (e.g., empty link URL, invalid date).
+- Tooltips in Hebrew where helpful: e.g., "פתח באאוטלוק", "מחק משימה", "סמן כהושלם".
+- Email rows show “פתח באאוטלוק” when we have Graph webLink.</p>
+<p>Expected Event Payloads (examples)</p>
+<pre><code class="language-json">// Set task priority
+{
+  &quot;action&quot;: &quot;priority.set&quot;,
+  &quot;taskId&quot;: &quot;t_123&quot;,
+  &quot;field&quot;: &quot;priority&quot;,
+  &quot;value&quot;: &quot;high&quot;
+}
+
+// Add asset: link
+{
+  &quot;action&quot;: &quot;assets.add.link&quot;,
+  &quot;taskId&quot;: &quot;t_123&quot;,
+  &quot;asset&quot;: {
+    &quot;type&quot;: &quot;link&quot;,
+    &quot;title&quot;: &quot;Google&quot;,
+    &quot;url&quot;: &quot;https://www.google.com/&quot;
+  }
+}
+
+// Open email in Outlook
+{
+  &quot;action&quot;: &quot;email.open_in_outlook&quot;,
+  &quot;assetId&quot;: &quot;a_789&quot;
+}
+
+// Set due date
+{
+  &quot;action&quot;: &quot;due.set&quot;,
+  &quot;taskId&quot;: &quot;t_123&quot;,
+  &quot;field&quot;: &quot;dueDate&quot;,
+  &quot;value&quot;: &quot;2025-11-15T00:00:00+02:00&quot;
+}
+</code></pre>
+<p>Designer Handoff — How to annotate in Figma (Dev Mode)
+1) For each button, set the component name to include data-testid (e.g., "Button / Primary / tm.assets.add.file").
+2) Add a pinned note with the exact data-action and any data-field/value per this spec.
+3) If Make export is used, include a frame-level JSON node named "TaskModal.actions.json" with all entries; use the template below.
+4) Ensure Hebrew labels match UI (e.g., “+ הוסף נתונים”, “לינק”).</p>
+<p>Make/JSON Export Template (frame-level attachment)</p>
+<pre><code class="language-json">{
+  &quot;frame&quot;: &quot;TaskModal&quot;,
+  &quot;controls&quot;: [
+    { &quot;testid&quot;: &quot;tm.modal.close&quot;, &quot;action&quot;: &quot;modal.close&quot; },
+    { &quot;testid&quot;: &quot;tm.task.add_root&quot;, &quot;action&quot;: &quot;task.add_root&quot; },
+    { &quot;testid&quot;: &quot;tm.subtask.add&quot;, &quot;action&quot;: &quot;subtask.add&quot;, &quot;params&quot;: [&quot;taskId&quot;] },
+    { &quot;testid&quot;: &quot;tm.task.priority.set.high&quot;, &quot;action&quot;: &quot;priority.set&quot;, &quot;field&quot;: &quot;priority&quot;, &quot;value&quot;: &quot;high&quot; },
+    { &quot;testid&quot;: &quot;tm.assets.add.link&quot;, &quot;action&quot;: &quot;assets.add.link&quot;, &quot;field&quot;: &quot;assetType&quot;, &quot;value&quot;: &quot;link&quot; },
+    { &quot;testid&quot;: &quot;tm.asset.email.open_outlook&quot;, &quot;action&quot;: &quot;email.open_in_outlook&quot;, &quot;params&quot;: [&quot;assetId&quot;] }
+    // ...continue for all controls listed above
+  ]
+}
+</code></pre>
+<p>Open Questions for Product
+- Directory of users (IDs) for assignee/owner: should we use Azure AD objectIds or internal user IDs?
+- Calendar sync target: default Outlook mailbox vs. per-user calendars?
+- Subtask asset scoping: store under subtask folder or inherit task folder with subtask prefix?</p>
+<p>Notes
+- For automated tests, we’ll target data-testid. For runtime, data-action routes to UI handlers.
+- Where a control operates on both task and subtask, include data-entity-level and the relevant id.</p>
+<p>2025-11-08 Figma Build — Observed testids (from provided React handoff)
+- File: EISLAW System/docs/TaskManagement/figma_new/2025-11-08/src/components/TaskModal.tsx
+- Existing data-testid values used in the new files:
+  - task modal/frame: task-modal
+  - close: close-modal
+  - title input: task-title
+  - progress bar container: progress
+  - add root task: add-task-btn
+  - task list container: task-list
+  - add child to task: add-child-${taskId}
+  - inline input for new child: subtask-input-${taskId}
+  - assets menu open: add-data-btn
+  - assets menu group: asset-actions
+  - assets: add-file | add-link | add-folder | add-email
+  - details: due-date | sync-calendar | owner | assignee | tags
+  - comments container: comments
+  - comment item: comment-item; reply item: reply-item; nested reply: nested-reply-item
+  - comment actions (templated): reply-comment-${commentId} | resolve-comment-${commentId} | like-comment-${commentId} | post-reply-${commentId}
+  - reply actions (templated): reply-to-reply-${replyId} | resolve-reply-${replyId} | like-reply-${replyId} | post-nested-reply-${replyId}
+  - composer: comment-input | post-comment-btn
+- Subtask row component (SubtaskItem.tsx):
+  - row: task-item
+  - per-row menus: set-priority-${taskId} | set-assignee-${taskId} | set-due-date-${taskId}
+- Asset row (AssetItem.tsx):
+  - row: asset-row
+  - email action: open-in-outlook
+- Attach email modal (AttachEmailModal.tsx):
+  - modal root: attach-email
+  - options: attach-email-save-pdf | attach-email-save-attachments</p>
+<p>Recommended data-action mapping for existing testids
+- close-modal → modal.close
+- add-task-btn → task.add_root
+- add-child-${taskId} → subtask.add (params: parentId)
+- set-priority-${taskId} → priority.open (params: taskId)
+  - Add menu items with data-action priority.set and data-value high|medium|low
+- set-assignee-${taskId} → assignee.open (params: taskId)
+  - Add menu items with data-action assignee.set and data-value {userId}
+- set-due-date-${taskId} → due.open (params: taskId)
+  - Confirm in picker: due.set (field: dueDate, value: ISO8601)
+- add-data-btn → assets.add.open
+- add-file|add-link|add-folder|add-email → assets.add.<type> (field: assetType, value: file|link|folder|email)
+- asset-row delete (Trash button) → asset.delete (param: assetId)
+- open-in-outlook (email rows) → email.open_in_outlook (param: assetId)
+- due-date (details) → details.due.open; final set: details.due.set (field: dueDate)
+- sync-calendar → calendar.sync
+- owner → owner.open; owner.set on selection (field: ownerId)
+- assignee (details) → assignee.open; assignee.set on selection (field: assigneeId)
+- tags → tags.add.open | tags.add.confirm (payload: { name, color }) | tags.remove (value: tagId)
+- post-comment-btn → comment.create; comment-input holds text
+- reply/resolve/like/post-<em> templated ids → comment.reply | comment.resolve | comment.like | comment.reply.post and similarly for reply.</em> and nreply.*</p>
+<p>Gaps to annotate in the new build
+- Priority and assignee menus: add testids for menu options and data-action with concrete values.
+- Due date pickers (task and subtask): add testid for confirm and data-action due.set with ISO8601 value.
+- Owner selection: add testids for list items and owner.set with {userId} values.
+- Tags: add testids for add.confirm (name/color) and tags.remove per tag item.
+- Assets: ensure delete buttons carry data-action asset.delete and data-asset-id.</p>
+<p>Hebrew Labels (verify in the new build)
+- “+ הוסף נתונים” for the add assets button.
+- “לינק” for link items and menu.
+- “משימות” in headers where relevant.</p>
+<p>Decisions (from 2025‑11‑08)
+- Assignee/Owner IDs: use internal stable keys <code>user.&lt;kebab-slug&gt;</code> (map to Azure AD objectIds at runtime). Examples: user.sara-m, user.yohanan-d, user.michael-r, user.emma-l.
+- Calendar sync: enabled; default to the signed‑in user’s Outlook calendar.
+- Subtasks: do not create separate subfolders; keep all assets under the task’s canonical folder; prefix subtask assets as needed.</p>
+<p>See also
+- Design tokens: EISLAW System/docs/DesignSystem/DESIGN_TOKENS.md:1
+- Component library: EISLAW System/docs/DesignSystem/COMPONENT_LIBRARY.md:1
+- Tasks template: EISLAW System/docs/DesignSystem/TASKS_TEMPLATE.md:1</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

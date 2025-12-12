@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/PRD_SQLITE_MIGRATION/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>PRD: SQLite Database Migration - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#prd-sqlite-database-migration" class="nav-link">PRD: SQLite Database Migration</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#1-executive-summary" class="nav-link">1. Executive Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#2-architecture" class="nav-link">2. Architecture</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#3-implementation-phases" class="nav-link">3. Implementation Phases</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#4-api-changes" class="nav-link">4. API Changes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#5-backup-strategy" class="nav-link">5. Backup Strategy</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#6-monitoring-alerts" class="nav-link">6. Monitoring &amp; Alerts</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#7-risks-mitigations" class="nav-link">7. Risks &amp; Mitigations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#8-testing-strategy" class="nav-link">8. Testing Strategy</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#9-timeline" class="nav-link">9. Timeline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#10-success-criteria" class="nav-link">10. Success Criteria</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#11-appendix" class="nav-link">11. Appendix</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="prd-sqlite-database-migration">PRD: SQLite Database Migration</h1>
+<p><strong>Document Version:</strong> 1.0
+<strong>Created:</strong> 2025-12-05
+<strong>Author:</strong> EISLAW Dev Agent
+<strong>Status:</strong> APPROVED FOR PLANNING</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<h3 id="problem-statement">Problem Statement</h3>
+<p>The EISLAW system currently stores critical data in fragmented JSON files (<code>clients.json</code>, <code>tasks.json</code>) which causes:
+- No indexing (slow searches as data grows)
+- No transactions (corruption risk)
+- No relationships (can't link tasks to clients efficiently)
+- No queries (must load entire file into memory)
+- External dependency on Airtable (rate limits, cost, availability)</p>
+<h3 id="solution">Solution</h3>
+<p>Migrate all local data storage to SQLite with:
+- Unified database architecture
+- Automated backups
+- Proper schema validation
+- Path to eliminate Airtable dependency</p>
+<h3 id="success-metrics">Success Metrics</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Current (JSON)</th>
+<th>Target (SQLite)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Client list load time</td>
+<td>~500ms</td>
+<td>&lt;100ms</td>
+</tr>
+<tr>
+<td>Search across clients</td>
+<td>N/A (full scan)</td>
+<td>&lt;50ms</td>
+</tr>
+<tr>
+<td>Data corruption incidents</td>
+<td>Risk exists</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Backup frequency</td>
+<td>Manual/None</td>
+<td>Every 6 hours</td>
+</tr>
+<tr>
+<td>Recovery time objective</td>
+<td>Hours/Unknown</td>
+<td>&lt;10 minutes</td>
+</tr>
+<tr>
+<td>Airtable dependency</td>
+<td>Required</td>
+<td>Optional</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-architecture">2. Architecture</h2>
+<h3 id="21-target-state">2.1 Target State</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    EISLAW DATA ARCHITECTURE                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  🗄️ SQLite Database (~/.eislaw/store/eislaw.db)             │
+│     ├── clients           ← Primary client storage          │
+│     ├── contacts          ← Client contacts                 │
+│     ├── tasks             ← Task management                 │
+│     ├── privacy_submissions ← Already implemented           │
+│     ├── activity_log      ← Audit trail                     │
+│     └── sync_state        ← Track external sync status      │
+│                                                              │
+│  🔍 Meilisearch (Search Layer)                              │
+│     ├── clients_index     ← Synced from SQLite              │
+│     ├── tasks_index       ← Synced from SQLite              │
+│     ├── emails_index      ← Synced from Graph cache         │
+│     └── documents_index   ← Synced from Blob metadata       │
+│                                                              │
+│  ☁️ Azure Blob Storage (Files)                               │
+│     ├── transcripts/      ← Audio transcriptions            │
+│     ├── documents/        ← Uploaded documents              │
+│     └── backups/          ← Database backups                │
+│                                                              │
+│  🔄 External APIs (Sync Targets, Not Dependencies)          │
+│     ├── Airtable          ← Optional CRM sync               │
+│     ├── Microsoft Graph   ← Email/Calendar (read-only)      │
+│     └── Zoom              ← Recordings (read-only)          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="22-database-schema">2.2 Database Schema</h3>
+<pre><code class="language-sql">-- Enable WAL mode for better concurrency
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+
+-- ═══════════════════════════════════════════════════════════
+-- CLIENTS TABLE
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE clients (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    name TEXT NOT NULL UNIQUE,
+    email TEXT,
+    phone TEXT,
+
+    -- Classification
+    stage TEXT DEFAULT 'new' CHECK (stage IN ('new', 'active', 'pending', 'completed', 'archived')),
+    types TEXT DEFAULT '[]',  -- JSON array: [&quot;retainer&quot;, &quot;litigation&quot;, &quot;privacy&quot;]
+
+    -- External links
+    airtable_id TEXT,
+    airtable_url TEXT,
+    sharepoint_url TEXT,
+    local_folder TEXT,
+
+    -- Status
+    active INTEGER DEFAULT 1,  -- Boolean: 1=active, 0=archived
+
+    -- Metadata
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    -- Sync tracking
+    last_synced_at TEXT,
+    sync_source TEXT  -- 'local', 'airtable', 'import'
+);
+
+CREATE INDEX idx_clients_name ON clients(name);
+CREATE INDEX idx_clients_email ON clients(email);
+CREATE INDEX idx_clients_active ON clients(active);
+CREATE INDEX idx_clients_stage ON clients(stage);
+
+-- ═══════════════════════════════════════════════════════════
+-- CONTACTS TABLE
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE contacts (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    role TEXT,  -- 'primary', 'billing', 'technical', etc.
+
+    -- Metadata
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_contacts_client ON contacts(client_id);
+CREATE INDEX idx_contacts_email ON contacts(email);
+
+-- ═══════════════════════════════════════════════════════════
+-- TASKS TABLE
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE tasks (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+
+    title TEXT NOT NULL,
+    description TEXT,
+
+    -- Status
+    done INTEGER DEFAULT 0,  -- Boolean
+    status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done', 'cancelled')),
+
+    -- Priority &amp; Scheduling
+    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    due_date TEXT,  -- ISO date
+
+    -- Assignment
+    assigned_to TEXT,
+
+    -- Source tracking
+    source_type TEXT,  -- 'email', 'manual', 'recurring'
+    source_id TEXT,    -- email_id if created from email
+
+    -- Metadata
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT
+);
+
+CREATE INDEX idx_tasks_client ON tasks(client_id);
+CREATE INDEX idx_tasks_done ON tasks(done);
+CREATE INDEX idx_tasks_due ON tasks(due_date);
+CREATE INDEX idx_tasks_priority ON tasks(priority);
+
+-- ═══════════════════════════════════════════════════════════
+-- SYNC STATE TABLE (for external API sync tracking)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE sync_state (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,  -- 'airtable', 'graph', 'zoom'
+    entity_type TEXT NOT NULL,  -- 'clients', 'emails', 'recordings'
+    last_sync_at TEXT,
+    last_sync_cursor TEXT,  -- For pagination/delta sync
+    status TEXT DEFAULT 'idle',  -- 'idle', 'syncing', 'error'
+    error_message TEXT,
+    records_synced INTEGER DEFAULT 0
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- ACTIVITY LOG (already exists in privacy_db, unify here)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    event_type TEXT NOT NULL,
+    entity_type TEXT,  -- 'client', 'task', 'privacy', 'sync'
+    entity_id TEXT,
+    details TEXT,  -- JSON
+    duration_ms INTEGER,
+    success INTEGER DEFAULT 1,
+    user_id TEXT
+);
+
+CREATE INDEX idx_activity_timestamp ON activity_log(timestamp);
+CREATE INDEX idx_activity_type ON activity_log(event_type);
+CREATE INDEX idx_activity_entity ON activity_log(entity_type, entity_id);
+</code></pre>
+<h3 id="23-unified-database-module">2.3 Unified Database Module</h3>
+<p><strong>File:</strong> <code>backend/db.py</code></p>
+<pre><code class="language-python">&quot;&quot;&quot;
+Unified Database Module for EISLAW
+Provides consistent interface for all database operations.
+&quot;&quot;&quot;
+import sqlite3
+import json
+from pathlib import Path
+from datetime import datetime
+from contextlib import contextmanager
+from typing import Optional, List, Dict, Any
+
+# Database path
+DB_PATH = Path.home() / &quot;.eislaw&quot; / &quot;store&quot; / &quot;eislaw.db&quot;
+BACKUP_DIR = Path.home() / &quot;.eislaw&quot; / &quot;backups&quot;
+
+class Database:
+    def __init__(self, db_path: Path = DB_PATH):
+        self.db_path = db_path
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    @contextmanager
+    def connection(self):
+        conn = sqlite3.connect(str(self.db_path), timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        conn.execute(&quot;PRAGMA foreign_keys=ON&quot;)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def _init_db(self):
+        &quot;&quot;&quot;Initialize database schema&quot;&quot;&quot;
+        # Execute schema SQL here
+        pass
+
+# Namespace classes for organized access
+class ClientsDB:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -&gt; Optional[Dict]:
+        pass
+
+    def get_by_name(self, name: str) -&gt; Optional[Dict]:
+        pass
+
+    def list(self, active_only: bool = True, limit: int = 100) -&gt; List[Dict]:
+        pass
+
+    def save(self, data: Dict) -&gt; str:
+        pass
+
+    def archive(self, id: str) -&gt; bool:
+        pass
+
+    def restore(self, id: str) -&gt; bool:
+        pass
+
+class TasksDB:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -&gt; Optional[Dict]:
+        pass
+
+    def list(self, client_id: Optional[str] = None, done: Optional[bool] = None) -&gt; List[Dict]:
+        pass
+
+    def save(self, data: Dict) -&gt; str:
+        pass
+
+    def complete(self, id: str) -&gt; bool:
+        pass
+
+    def delete(self, id: str) -&gt; bool:
+        pass
+
+class ContactsDB:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, id: str) -&gt; Optional[Dict]:
+        pass
+
+    def list_for_client(self, client_id: str) -&gt; List[Dict]:
+        pass
+
+    def save(self, data: Dict) -&gt; str:
+        pass
+
+    def delete(self, id: str) -&gt; bool:
+        pass
+
+# Global instance
+_db = Database()
+clients = ClientsDB(_db)
+tasks = TasksDB(_db)
+contacts = ContactsDB(_db)
+
+# Convenience functions
+def backup(destination: Optional[Path] = None) -&gt; Path:
+    &quot;&quot;&quot;Create database backup&quot;&quot;&quot;
+    pass
+
+def restore(backup_path: Path) -&gt; bool:
+    &quot;&quot;&quot;Restore from backup&quot;&quot;&quot;
+    pass
+
+def log_activity(event_type: str, entity_type: str = None,
+                 entity_id: str = None, details: Dict = None) -&gt; None:
+    &quot;&quot;&quot;Log activity for audit trail&quot;&quot;&quot;
+    pass
+</code></pre>
+<hr />
+<h2 id="3-implementation-phases">3. Implementation Phases</h2>
+<h3 id="phase-0-validate-existing-1-day">Phase 0: Validate Existing (1 day)</h3>
+<p><strong>Goal:</strong> Learn from privacy_db before expanding</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Audit privacy_db.py</td>
+<td>Check file size, growth rate, any issues</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Review activity_log</td>
+<td>Look for errors or patterns</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Test backup/restore</td>
+<td>Verify privacy.db can be backed up and restored</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Document learnings</td>
+<td>Write findings for reference</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit Criteria:</strong> No critical issues found in existing SQLite implementation</p>
+<hr />
+<h3 id="phase-1-foundation-3-days">Phase 1: Foundation (3 days)</h3>
+<p><strong>Goal:</strong> Create unified database infrastructure</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create db.py module</td>
+<td>Unified database interface</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Implement schema</td>
+<td>All tables with constraints</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add WAL mode</td>
+<td>Better concurrency</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add backup automation</td>
+<td>Azure Blob upload every 6h</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add backup restore</td>
+<td>Script to restore from backup</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Integration tests</td>
+<td>Test all CRUD operations</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Files to Create:</strong>
+- <code>backend/db.py</code> - Main database module
+- <code>backend/db_backup.py</code> - Backup/restore utilities
+- <code>backend/tests/test_db.py</code> - Unit tests
+- <code>tools/backup_db.py</code> - CLI backup tool</p>
+<p><strong>Exit Criteria:</strong>
+- All tests pass
+- Backup runs successfully to Azure Blob
+- Restore verified working</p>
+<hr />
+<h3 id="phase-2-clients-migration-1-week">Phase 2: Clients Migration (1 week)</h3>
+<p><strong>Goal:</strong> Migrate clients from JSON to SQLite</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create migration script</td>
+<td>Read JSON, write SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add feature flag</td>
+<td><code>USE_SQLITE_CLIENTS=true</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update GET /api/clients</td>
+<td>Read from SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update POST /registry/clients</td>
+<td>Write to SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update PATCH archive/restore</td>
+<td>Use SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Migrate contacts</td>
+<td>Part of client data</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Keep JSON backup</td>
+<td>Don't delete for 2 weeks</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Integration tests</td>
+<td>Full API tests</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Validate data integrity</td>
+<td>Compare JSON vs SQLite</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration Script:</strong> <code>tools/migrate_clients_to_sqlite.py</code></p>
+<pre><code class="language-python">def migrate_clients():
+    # 1. Load existing JSON
+    json_path = Path.home() / &quot;.eislaw&quot; / &quot;store&quot; / &quot;clients.json&quot;
+    clients = json.loads(json_path.read_text())
+
+    # 2. Insert into SQLite
+    for client in clients:
+        db.clients.save(client)
+
+        # Migrate contacts if present
+        for contact in client.get(&quot;contacts&quot;, []):
+            contact[&quot;client_id&quot;] = client[&quot;id&quot;]
+            db.contacts.save(contact)
+
+    # 3. Validate
+    json_count = len(clients)
+    sqlite_count = len(db.clients.list(active_only=False))
+    assert json_count == sqlite_count
+
+    # 4. Rename JSON as backup
+    json_path.rename(json_path.with_suffix(&quot;.json.backup&quot;))
+
+    return {&quot;migrated&quot;: json_count}
+</code></pre>
+<p><strong>Rollback Procedure:</strong>
+1. Set <code>USE_SQLITE_CLIENTS=false</code>
+2. Rename <code>.json.backup</code> back to <code>.json</code>
+3. Restart API</p>
+<p><strong>Exit Criteria:</strong>
+- All clients accessible via API
+- No data loss (compare counts)
+- JSON backup preserved</p>
+<hr />
+<h3 id="phase-3-tasks-migration-3-days">Phase 3: Tasks Migration (3 days)</h3>
+<p><strong>Goal:</strong> Migrate tasks from JSON to SQLite</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create migration script</td>
+<td>Read tasks.json, write SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add feature flag</td>
+<td><code>USE_SQLITE_TASKS=true</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update GET /api/tasks</td>
+<td>Read from SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update POST /api/tasks</td>
+<td>Write to SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update PATCH /api/tasks/{id}</td>
+<td>Use SQLite</td>
+<td>☐</td>
+</tr>
+<tr>
+<td><strong>Add POST /api/tasks/batch</strong></td>
+<td>Batch create tasks (AI efficiency)</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Link tasks to clients</td>
+<td>Use client_id foreign key</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Keep JSON backup</td>
+<td>Don't delete for 2 weeks</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Integration tests</td>
+<td>Full API tests</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit Criteria:</strong>
+- All tasks accessible via API
+- Tasks properly linked to clients
+- Due date filtering works
+- Batch task creation works (for AI agent efficiency)</p>
+<hr />
+<h3 id="phase-4-airtable-import-1-week">Phase 4: Airtable Import (1 week)</h3>
+<p><strong>Goal:</strong> Import Airtable data, make Airtable optional</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create Airtable export script</td>
+<td>Download all clients/contacts</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Merge with existing SQLite</td>
+<td>Handle duplicates by name</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Import Airtable-only fields</td>
+<td>Any extra fields we need</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Create sync_state tracking</td>
+<td>Know what's synced</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Optional: bidirectional sync</td>
+<td>Push changes back to Airtable</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Remove Airtable as dependency</td>
+<td>API works without Airtable</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Update health check</td>
+<td>Don't fail if Airtable down</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit Criteria:</strong>
+- All Airtable data in SQLite
+- API works when Airtable is unavailable
+- Optional sync to Airtable for CRM users</p>
+<hr />
+<h3 id="phase-5-meilisearch-integration-3-days">Phase 5: Meilisearch Integration (3 days)</h3>
+<p><strong>Goal:</strong> Unified search across all data</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Description</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create sync job</td>
+<td>SQLite → Meilisearch</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Index clients</td>
+<td>With all searchable fields</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Index tasks</td>
+<td>With client name denormalized</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Create unified search endpoint</td>
+<td>GET /api/search?q=</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Add sync trigger</td>
+<td>On save, queue index update</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit Criteria:</strong>
+- Single search finds clients, tasks, and documents
+- Search updates within 5 seconds of data change</p>
+<hr />
+<h2 id="4-api-changes">4. API Changes</h2>
+<h3 id="41-new-endpoints">4.1 New Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td>/api/db/stats</td>
+<td>Database statistics</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>/api/db/backup</td>
+<td>Trigger manual backup</td>
+</tr>
+<tr>
+<td>GET</td>
+<td>/api/db/backups</td>
+<td>List available backups</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>/api/db/restore</td>
+<td>Restore from backup</td>
+</tr>
+<tr>
+<td>GET</td>
+<td>/api/search</td>
+<td>Unified search</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-modified-endpoints">4.2 Modified Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET /api/clients</td>
+<td>Now reads from SQLite</td>
+</tr>
+<tr>
+<td>POST /registry/clients</td>
+<td>Now writes to SQLite</td>
+</tr>
+<tr>
+<td>GET /api/tasks</td>
+<td>Now reads from SQLite</td>
+</tr>
+<tr>
+<td>POST /api/tasks</td>
+<td>Now writes to SQLite</td>
+</tr>
+<tr>
+<td>GET /health</td>
+<td>No longer requires Airtable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-deprecated-endpoints">4.3 Deprecated Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Replacement</th>
+<th>Removal Date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET /airtable/clients</td>
+<td>GET /api/clients</td>
+<td>2025-02-01</td>
+</tr>
+<tr>
+<td>POST /airtable/sync</td>
+<td>Automatic sync</td>
+<td>2025-02-01</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-api-response-contracts">4.4 API Response Contracts</h3>
+<blockquote>
+<p><strong>Purpose:</strong> Exact field names for AI tools to parse responses and construct requests.</p>
+</blockquote>
+<h4 id="get-apiclients">GET /api/clients</h4>
+<pre><code class="language-json">{
+  &quot;clients&quot;: [
+    {
+      &quot;id&quot;: &quot;abc123&quot;,
+      &quot;name&quot;: &quot;Client Name&quot;,
+      &quot;email&quot;: &quot;email@example.com&quot;,
+      &quot;phone&quot;: &quot;054-xxx-xxxx&quot;,
+      &quot;stage&quot;: &quot;active&quot;,
+      &quot;types&quot;: [&quot;retainer&quot;, &quot;litigation&quot;],
+      &quot;active&quot;: true,
+      &quot;airtable_id&quot;: &quot;recXXX&quot;,
+      &quot;sharepoint_url&quot;: &quot;https://...&quot;,
+      &quot;contacts&quot;: [
+        {&quot;id&quot;: &quot;cnt1&quot;, &quot;name&quot;: &quot;Contact Name&quot;, &quot;email&quot;: &quot;contact@example.com&quot;, &quot;phone&quot;: &quot;052-xxx&quot;, &quot;role&quot;: &quot;primary&quot;}
+      ],
+      &quot;created_at&quot;: &quot;2025-01-01T00:00:00Z&quot;,
+      &quot;updated_at&quot;: &quot;2025-01-15T10:30:00Z&quot;
+    }
+  ],
+  &quot;total&quot;: 150
+}
+</code></pre>
+<h4 id="get-apiclientsid">GET /api/clients/{id}</h4>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;abc123&quot;,
+  &quot;name&quot;: &quot;Client Name&quot;,
+  &quot;email&quot;: &quot;email@example.com&quot;,
+  &quot;phone&quot;: &quot;054-xxx-xxxx&quot;,
+  &quot;stage&quot;: &quot;active&quot;,
+  &quot;types&quot;: [&quot;retainer&quot;, &quot;litigation&quot;],
+  &quot;active&quot;: true,
+  &quot;airtable_id&quot;: &quot;recXXX&quot;,
+  &quot;sharepoint_url&quot;: &quot;https://...&quot;,
+  &quot;local_folder&quot;: &quot;C:/Clients/client-name&quot;,
+  &quot;notes&quot;: &quot;Important client notes&quot;,
+  &quot;contacts&quot;: [
+    {&quot;id&quot;: &quot;cnt1&quot;, &quot;name&quot;: &quot;Contact Name&quot;, &quot;email&quot;: &quot;contact@example.com&quot;, &quot;phone&quot;: &quot;052-xxx&quot;, &quot;role&quot;: &quot;primary&quot;}
+  ],
+  &quot;created_at&quot;: &quot;2025-01-01T00:00:00Z&quot;,
+  &quot;updated_at&quot;: &quot;2025-01-15T10:30:00Z&quot;
+}
+</code></pre>
+<h4 id="get-apitasks">GET /api/tasks</h4>
+<pre><code class="language-json">{
+  &quot;tasks&quot;: [
+    {
+      &quot;id&quot;: &quot;task123&quot;,
+      &quot;client_id&quot;: &quot;abc123&quot;,
+      &quot;client_name&quot;: &quot;Client Name&quot;,
+      &quot;title&quot;: &quot;Task title&quot;,
+      &quot;description&quot;: &quot;Task description&quot;,
+      &quot;done&quot;: false,
+      &quot;status&quot;: &quot;todo&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;due_date&quot;: &quot;2025-12-10&quot;,
+      &quot;assigned_to&quot;: &quot;user@example.com&quot;,
+      &quot;source_type&quot;: &quot;email&quot;,
+      &quot;source_id&quot;: &quot;email456&quot;,
+      &quot;created_at&quot;: &quot;2025-01-01T00:00:00Z&quot;,
+      &quot;updated_at&quot;: &quot;2025-01-02T09:00:00Z&quot;,
+      &quot;completed_at&quot;: null
+    }
+  ],
+  &quot;total&quot;: 423
+}
+</code></pre>
+<h4 id="get-apitasksclient_idid">GET /api/tasks?client_id={id}</h4>
+<p>Same response format as GET /api/tasks, filtered by client.</p>
+<h4 id="post-apitasks-create-task">POST /api/tasks (Create Task)</h4>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  &quot;title&quot;: &quot;Task title&quot;,
+  &quot;client_id&quot;: &quot;abc123&quot;,
+  &quot;client_name&quot;: &quot;Client Name&quot;,
+  &quot;description&quot;: &quot;Optional description&quot;,
+  &quot;due_date&quot;: &quot;2025-12-10&quot;,
+  &quot;priority&quot;: &quot;high&quot;,
+  &quot;assigned_to&quot;: &quot;user@example.com&quot;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>title</td>
+<td>Yes</td>
+<td>Task title</td>
+</tr>
+<tr>
+<td>client_id</td>
+<td>No</td>
+<td>Link to client by ID</td>
+</tr>
+<tr>
+<td>client_name</td>
+<td>No</td>
+<td>Fallback - lookup client by name if no ID</td>
+</tr>
+<tr>
+<td>description</td>
+<td>No</td>
+<td>Task details</td>
+</tr>
+<tr>
+<td>due_date</td>
+<td>No</td>
+<td>ISO date format</td>
+</tr>
+<tr>
+<td>priority</td>
+<td>No</td>
+<td>low/medium/high/urgent (default: medium)</td>
+</tr>
+<tr>
+<td>assigned_to</td>
+<td>No</td>
+<td>User email or name</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;task456&quot;,
+  &quot;success&quot;: true
+}
+</code></pre>
+<h4 id="post-apitasksbatch-batch-create">POST /api/tasks/batch (Batch Create)</h4>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  &quot;tasks&quot;: [
+    {&quot;title&quot;: &quot;Task 1&quot;, &quot;client_id&quot;: &quot;abc123&quot;, &quot;priority&quot;: &quot;high&quot;},
+    {&quot;title&quot;: &quot;Task 2&quot;, &quot;client_id&quot;: &quot;abc123&quot;, &quot;due_date&quot;: &quot;2025-12-15&quot;},
+    {&quot;title&quot;: &quot;Task 3&quot;, &quot;client_id&quot;: &quot;abc123&quot;}
+  ]
+}
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;created&quot;: 3,
+  &quot;ids&quot;: [&quot;task1&quot;, &quot;task2&quot;, &quot;task3&quot;],
+  &quot;success&quot;: true
+}
+</code></pre>
+<blockquote>
+<p><strong>Use Case:</strong> AI agent says "Create 3 tasks for this client" - batch is more efficient than 3 separate calls.</p>
+</blockquote>
+<h4 id="patch-apitasksid">PATCH /api/tasks/{id}</h4>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  &quot;done&quot;: true,
+  &quot;status&quot;: &quot;done&quot;,
+  &quot;completed_at&quot;: &quot;2025-12-05T14:30:00Z&quot;
+}
+</code></pre>
+<p>Any field can be updated. Only include fields to change.</p>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;task123&quot;,
+  &quot;success&quot;: true
+}
+</code></pre>
+<h4 id="get-apisearch-phase-5-unified-search">GET /api/search (Phase 5 - Unified Search)</h4>
+<p><strong>Parameters:</strong>
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| q | Yes | - | Search query |
+| types | No | all | Comma-separated: clients,tasks,emails,documents |
+| limit | No | 10 | Max results per type |
+| client_id | No | - | Filter to specific client |</p>
+<p><strong>Request:</strong></p>
+<pre><code>GET /api/search?q=Sivan&amp;types=clients,tasks&amp;limit=5
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;query&quot;: &quot;Sivan&quot;,
+  &quot;results&quot;: {
+    &quot;clients&quot;: [
+      {
+        &quot;id&quot;: &quot;abc123&quot;,
+        &quot;name&quot;: &quot;Sivan Binyamini&quot;,
+        &quot;email&quot;: &quot;sivan@example.com&quot;,
+        &quot;type&quot;: &quot;client&quot;,
+        &quot;score&quot;: 0.95,
+        &quot;highlight&quot;: &quot;&lt;em&gt;Sivan&lt;/em&gt; Binyamini&quot;
+      }
+    ],
+    &quot;tasks&quot;: [
+      {
+        &quot;id&quot;: &quot;task789&quot;,
+        &quot;title&quot;: &quot;Call Sivan about contract&quot;,
+        &quot;client_name&quot;: &quot;Sivan Binyamini&quot;,
+        &quot;type&quot;: &quot;task&quot;,
+        &quot;score&quot;: 0.82,
+        &quot;highlight&quot;: &quot;Call &lt;em&gt;Sivan&lt;/em&gt; about contract&quot;
+      }
+    ],
+    &quot;emails&quot;: [],
+    &quot;documents&quot;: []
+  },
+  &quot;total&quot;: 2,
+  &quot;took_ms&quot;: 45
+}
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> This endpoint available in Phase 5 when <code>UNIFIED_SEARCH=true</code></p>
+</blockquote>
+<hr />
+<h2 id="5-backup-strategy">5. Backup Strategy</h2>
+<h3 id="51-automated-backups">5.1 Automated Backups</h3>
+<table>
+<thead>
+<tr>
+<th>Frequency</th>
+<th>Destination</th>
+<th>Retention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Every 6 hours</td>
+<td>Azure Blob</td>
+<td>7 days</td>
+</tr>
+<tr>
+<td>Daily</td>
+<td>Azure Blob</td>
+<td>30 days</td>
+</tr>
+<tr>
+<td>Weekly</td>
+<td>Azure Blob</td>
+<td>90 days</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-backup-format">5.2 Backup Format</h3>
+<pre><code>backups/
+├── hourly/
+│   ├── eislaw_2025-12-05_06-00.db
+│   ├── eislaw_2025-12-05_12-00.db
+│   └── ...
+├── daily/
+│   ├── eislaw_2025-12-05.db
+│   └── ...
+└── weekly/
+    ├── eislaw_2025-W49.db
+    └── ...
+</code></pre>
+<h3 id="53-restore-procedure">5.3 Restore Procedure</h3>
+<pre><code class="language-bash"># List available backups
+python tools/backup_db.py list
+
+# Restore from specific backup
+python tools/backup_db.py restore --from hourly/eislaw_2025-12-05_12-00.db
+
+# Verify restore
+python tools/backup_db.py verify
+</code></pre>
+<hr />
+<h2 id="6-monitoring-alerts">6. Monitoring &amp; Alerts</h2>
+<h3 id="61-metrics-to-track">6.1 Metrics to Track</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Alert Threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Database file size</td>
+<td>&gt; 500MB</td>
+</tr>
+<tr>
+<td>Query time (p95)</td>
+<td>&gt; 500ms</td>
+</tr>
+<tr>
+<td>Backup age</td>
+<td>&gt; 12 hours</td>
+</tr>
+<tr>
+<td>Error rate</td>
+<td>&gt; 1%</td>
+</tr>
+<tr>
+<td>Connection failures</td>
+<td>&gt; 0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-health-check">6.2 Health Check</h3>
+<pre><code class="language-python">@app.get(&quot;/health&quot;)
+def health():
+    return {
+        &quot;status&quot;: &quot;ok&quot;,
+        &quot;database&quot;: {
+            &quot;connected&quot;: True,
+            &quot;size_mb&quot;: 12.5,
+            &quot;last_backup&quot;: &quot;2025-12-05T12:00:00Z&quot;,
+            &quot;tables&quot;: {
+                &quot;clients&quot;: 150,
+                &quot;tasks&quot;: 423,
+                &quot;contacts&quot;: 312
+            }
+        },
+        &quot;external&quot;: {
+            &quot;airtable&quot;: &quot;optional&quot;,  # No longer required
+            &quot;graph&quot;: &quot;connected&quot;,
+            &quot;meilisearch&quot;: &quot;connected&quot;
+        }
+    }
+</code></pre>
+<hr />
+<h2 id="7-risks-mitigations">7. Risks &amp; Mitigations</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Probability</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data loss during migration</td>
+<td>Low</td>
+<td>Critical</td>
+<td>Feature flags, JSON backup, validation</td>
+</tr>
+<tr>
+<td>SQLite corruption</td>
+<td>Very Low</td>
+<td>High</td>
+<td>WAL mode, hourly backups, integrity checks</td>
+</tr>
+<tr>
+<td>Performance regression</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Indexes, query optimization, benchmarks</td>
+</tr>
+<tr>
+<td>API downtime</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Hot-reload, feature flags, rollback plan</td>
+</tr>
+<tr>
+<td>Airtable data mismatch</td>
+<td>Medium</td>
+<td>Low</td>
+<td>One-time sync validation, manual review</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-testing-strategy">8. Testing Strategy</h2>
+<h3 id="81-unit-tests">8.1 Unit Tests</h3>
+<pre><code class="language-python"># backend/tests/test_db.py
+def test_client_crud():
+    # Create
+    client_id = db.clients.save({&quot;name&quot;: &quot;Test Client&quot;})
+    assert client_id is not None
+
+    # Read
+    client = db.clients.get(client_id)
+    assert client[&quot;name&quot;] == &quot;Test Client&quot;
+
+    # Update
+    db.clients.save({&quot;id&quot;: client_id, &quot;name&quot;: &quot;Updated Name&quot;})
+    assert db.clients.get(client_id)[&quot;name&quot;] == &quot;Updated Name&quot;
+
+    # Delete (archive)
+    db.clients.archive(client_id)
+    assert db.clients.get(client_id)[&quot;active&quot;] == 0
+</code></pre>
+<h3 id="82-integration-tests">8.2 Integration Tests</h3>
+<pre><code class="language-python"># tests/test_clients_api.spec.cjs
+test('GET /api/clients returns SQLite data', async () =&gt; {
+    const response = await fetch('/api/clients');
+    const data = await response.json();
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0]).toHaveProperty('name');
+});
+</code></pre>
+<h3 id="83-migration-validation">8.3 Migration Validation</h3>
+<pre><code class="language-python"># tools/validate_migration.py
+def validate():
+    json_clients = load_json(&quot;clients.json.backup&quot;)
+    sqlite_clients = db.clients.list(active_only=False)
+
+    # Count match
+    assert len(json_clients) == len(sqlite_clients)
+
+    # Data match
+    for jc in json_clients:
+        sc = db.clients.get_by_name(jc[&quot;name&quot;])
+        assert sc is not None
+        assert sc[&quot;email&quot;] == jc.get(&quot;email&quot;)
+</code></pre>
+<hr />
+<h2 id="9-timeline">9. Timeline</h2>
+<pre><code>Week 1 (Dec 9-13)
+├── Phase 0: Validate existing (1 day)
+└── Phase 1: Foundation (3 days)
+
+Week 2 (Dec 16-20)
+└── Phase 2: Clients migration (5 days)
+
+Week 3 (Dec 23-27)
+├── Phase 3: Tasks migration (3 days)
+└── Buffer for issues (2 days)
+
+Week 4 (Dec 30 - Jan 3)
+└── Phase 4: Airtable import (5 days)
+
+Week 5 (Jan 6-10)
+├── Phase 5: Meilisearch integration (3 days)
+└── Final testing &amp; documentation (2 days)
+
+Week 6+ (Future - Optional)
+└── Phase 6: Marketing module merge (when ready)
+</code></pre>
+<hr />
+<h2 id="10-success-criteria">10. Success Criteria</h2>
+<h3 id="must-have-p0">Must Have (P0)</h3>
+<ul>
+<li>[ ] All clients accessible via SQLite</li>
+<li>[ ] All tasks accessible via SQLite</li>
+<li>[ ] Automated backups running</li>
+<li>[ ] Zero data loss during migration</li>
+<li>[ ] API response time &lt; 100ms for list operations</li>
+</ul>
+<h3 id="should-have-p1">Should Have (P1)</h3>
+<ul>
+<li>[ ] Airtable becomes optional (not required for API)</li>
+<li>[ ] Unified search across clients/tasks</li>
+<li>[ ] Activity logging for all operations</li>
+</ul>
+<h3 id="nice-to-have-p2">Nice to Have (P2)</h3>
+<ul>
+<li>[ ] Bidirectional Airtable sync</li>
+<li>[ ] Point-in-time recovery</li>
+<li>[ ] Database size monitoring dashboard</li>
+</ul>
+<hr />
+<h2 id="11-appendix">11. Appendix</h2>
+<h3 id="a-current-data-inventory">A. Current Data Inventory</h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Records (est.)</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clients.json</td>
+<td>~150 clients</td>
+<td>~50KB</td>
+</tr>
+<tr>
+<td>tasks.json</td>
+<td>~400 tasks</td>
+<td>~80KB</td>
+</tr>
+<tr>
+<td>Airtable Clients</td>
+<td>~200</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>Airtable Contacts</td>
+<td>~500</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>privacy_submissions</td>
+<td>18</td>
+<td>~10KB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b-sqlite-capacity">B. SQLite Capacity</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>SQLite Limit</th>
+<th>Our Expected Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Database size</td>
+<td>281 TB</td>
+<td>&lt; 1 GB</td>
+</tr>
+<tr>
+<td>Rows per table</td>
+<td>Unlimited</td>
+<td>&lt; 100K</td>
+</tr>
+<tr>
+<td>Concurrent readers</td>
+<td>Unlimited</td>
+<td>&lt; 10</td>
+</tr>
+<tr>
+<td>Concurrent writers</td>
+<td>1 (WAL: many readers)</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c-feature-flags">C. Feature Flags</h3>
+<pre><code class="language-python"># Environment variables for gradual rollout
+USE_SQLITE_CLIENTS=true   # Phase 2
+USE_SQLITE_TASKS=true     # Phase 3
+AIRTABLE_OPTIONAL=true    # Phase 4
+UNIFIED_SEARCH=true       # Phase 5
+</code></pre>
+<h3 id="c1-feature-flag-timeline">C.1 Feature Flag Timeline</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Phase</th>
+<th>Expected Date</th>
+<th>AI Tools Dependency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>USE_SQLITE_CLIENTS</code></td>
+<td>Phase 2</td>
+<td>Week 2 (Dec 16-20)</td>
+<td>None - API response format unchanged</td>
+</tr>
+<tr>
+<td><code>USE_SQLITE_TASKS</code></td>
+<td>Phase 3</td>
+<td>Week 3 (Dec 23-27)</td>
+<td>None - API response format unchanged</td>
+</tr>
+<tr>
+<td><code>AIRTABLE_OPTIONAL</code></td>
+<td>Phase 4</td>
+<td>Week 4 (Dec 30 - Jan 3)</td>
+<td>None - Airtable becomes optional sync</td>
+</tr>
+<tr>
+<td><code>UNIFIED_SEARCH</code></td>
+<td>Phase 5</td>
+<td>Week 5 (Jan 6-10)</td>
+<td><strong>search_all tool</strong> will use <code>/api/search</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note for AI Tools Team:</strong> You can build tools using current APIs today. The API response contracts (section 4.4) will remain stable through the migration. The only new capability is <code>UNIFIED_SEARCH</code> which adds <code>/api/search</code> endpoint in Week 5.</p>
+</blockquote>
+<h3 id="c2-api-stability-guarantee">C.2 API Stability Guarantee</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Change During Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET /api/clients</td>
+<td>Response format unchanged</td>
+</tr>
+<tr>
+<td>GET /api/tasks</td>
+<td>Response format unchanged, adds <code>client_id</code> field</td>
+</tr>
+<tr>
+<td>POST /api/tasks</td>
+<td>Request format unchanged</td>
+</tr>
+<tr>
+<td>POST /api/tasks/batch</td>
+<td><strong>NEW</strong> in Phase 3</td>
+</tr>
+<tr>
+<td>GET /api/search</td>
+<td><strong>NEW</strong> in Phase 5</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Document History:</strong>
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2025-12-05 | Agent | Initial PRD |
+| 1.1 | 2025-12-05 | Agent | Added API Response Contracts (4.4), batch tasks, feature flag timeline per AI Studio feedback |</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

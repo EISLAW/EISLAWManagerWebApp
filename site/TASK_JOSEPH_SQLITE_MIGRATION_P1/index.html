@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/TASK_JOSEPH_SQLITE_MIGRATION_P1/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Task: SQLite Migration Phase 1 - Foundation - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#task-sqlite-migration-phase-1-foundation" class="nav-link">Task: SQLite Migration Phase 1 - Foundation</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#objective" class="nav-link">Objective</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#background" class="nav-link">Background</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#task-checklist" class="nav-link">Task Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#success-criteria" class="nav-link">Success Criteria</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#completion-report" class="nav-link">Completion Report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="task-sqlite-migration-phase-1-foundation">Task: SQLite Migration Phase 1 - Foundation</h1>
+<p><strong>Assigned To:</strong> Joseph (Database Developer)
+<strong>Date:</strong> 2025-12-05
+<strong>Priority:</strong> P2</p>
+<hr />
+<h2 id="objective">Objective</h2>
+<p>Implement Phase 1 of the SQLite Migration PRD: Create unified database module and establish migration foundation.</p>
+<hr />
+<h2 id="background">Background</h2>
+<p>From <code>docs/PRD_SQLITE_MIGRATION.md</code>:
+- Phase 1: Foundation (unified db.py, backup automation)
+- Current: Mixed storage (JSON files + SQLite for privacy)
+- Goal: Single SQLite database for all data</p>
+<hr />
+<h2 id="task-checklist">Task Checklist</h2>
+<h3 id="1-create-unified-database-module">1. Create Unified Database Module</h3>
+<p><strong>File:</strong> <code>backend/db.py</code></p>
+<pre><code class="language-python">import sqlite3
+from pathlib import Path
+from datetime import datetime
+
+DB_PATH = Path.home() / '.eislaw' / 'store' / 'eislaw.db'
+
+def get_connection():
+    &quot;&quot;&quot;Get database connection with WAL mode&quot;&quot;&quot;
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA foreign_keys=ON')
+    return conn
+
+def init_db():
+    &quot;&quot;&quot;Initialize all tables&quot;&quot;&quot;
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Clients table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clients (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            business_name TEXT,
+            email TEXT,
+            phone TEXT,
+            airtable_id TEXT,
+            sharepoint_url TEXT,
+            status TEXT DEFAULT 'active',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Tasks table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            client_id TEXT,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT DEFAULT 'pending',
+            priority TEXT DEFAULT 'medium',
+            due_date TEXT,
+            assignee TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+    ''')
+
+    # Contacts table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contacts (
+            id TEXT PRIMARY KEY,
+            client_id TEXT,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            role TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+# Initialize on import
+init_db()
+</code></pre>
+<h3 id="2-create-migration-script">2. Create Migration Script</h3>
+<p><strong>File:</strong> <code>backend/migrations/001_json_to_sqlite.py</code></p>
+<pre><code class="language-python">&quot;&quot;&quot;
+Migration: JSON files to SQLite
+Run: python -m backend.migrations.001_json_to_sqlite
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+from backend.db import get_connection
+
+def migrate_clients():
+    &quot;&quot;&quot;Migrate clients.json to SQLite&quot;&quot;&quot;
+    json_path = Path.home() / '.eislaw' / 'store' / 'clients.json'
+    if not json_path.exists():
+        print(&quot;No clients.json found&quot;)
+        return
+
+    with open(json_path) as f:
+        clients = json.load(f)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    for client in clients:
+        cursor.execute('''
+            INSERT OR REPLACE INTO clients (id, name, business_name, email, phone, airtable_id, sharepoint_url, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            client.get('id'),
+            client.get('name'),
+            client.get('business_name'),
+            client.get('email'),
+            client.get('phone'),
+            client.get('airtable_id'),
+            client.get('sharepoint_url'),
+            client.get('status', 'active')
+        ))
+
+    conn.commit()
+    print(f&quot;Migrated {len(clients)} clients&quot;)
+    conn.close()
+
+if __name__ == '__main__':
+    migrate_clients()
+</code></pre>
+<h3 id="3-add-backup-to-unified-db">3. Add Backup to Unified DB</h3>
+<p>Extend your existing backup script to include the unified database.</p>
+<h3 id="4-test-migration">4. Test Migration</h3>
+<pre><code class="language-bash"># Run migration
+python -m backend.migrations.001_json_to_sqlite
+
+# Verify data
+sqlite3 ~/.eislaw/store/eislaw.db &quot;SELECT COUNT(*) FROM clients&quot;
+sqlite3 ~/.eislaw/store/eislaw.db &quot;SELECT name FROM clients LIMIT 5&quot;
+</code></pre>
+<hr />
+<h2 id="success-criteria">Success Criteria</h2>
+<ul>
+<li>[x] <code>backend/db.py</code> created with get_connection()</li>
+<li>[x] Tables created: clients, tasks, contacts</li>
+<li>[x] WAL mode enabled</li>
+<li>[x] Migration script created</li>
+<li>[x] Test migration successful</li>
+<li>[x] Backup includes new unified DB</li>
+</ul>
+<hr />
+<h2 id="completion-report">Completion Report</h2>
+<p><strong>Date:</strong> 2025-12-05</p>
+<p><strong>Files Created:</strong>
+| File | Purpose |
+|------|---------|
+| <code>backend/db.py</code> | Unified database module with get_connection(), init_db(), all CRUD helpers |
+| <code>backend/db_api_helpers.py</code> | API-friendly wrappers returning frontend-compatible format |
+| <code>backend/backup.py</code> | CLI backup utility (create/list/verify/restore) |
+| <code>backend/validate_db.py</code> | Database validation script |
+| <code>backend/routers/db_health.py</code> | Health monitoring endpoints |</p>
+<p><strong>Tables Created:</strong>
+| Table | Columns | Rows Migrated |
+|-------|---------|---------------|
+| clients | id, name, email, phone, stage, types, airtable_id, sharepoint_url, active, notes, created_at, updated_at | 13 |
+| tasks | id, client_id, title, description, status, priority, due_date, assignee, is_private, source, airtable_id, created_at, updated_at | 10 |
+| contacts | id, client_id, name, email, phone, role, notes, created_at | 12 |
+| activity_log | id, action, entity_type, entity_id, details, timestamp | 1 |</p>
+<p><strong>Migration Test:</strong>
+- [x] JSON → SQLite successful
+- [x] Data integrity verified (PRAGMA integrity_check = ok)
+- [x] Backup working (5 backups, cron scheduled daily at 3 AM)</p>
+<p><strong>Additional Features Implemented:</strong>
+- WAL mode enabled for better concurrency
+- Foreign keys enforced
+- Health endpoint: <code>GET /api/db/health</code>
+- Stats endpoint: <code>GET /api/db/stats</code>
+- Automated daily backups with 7-day retention</p>
+<p><strong>Issues Encountered:</strong> None - all success criteria met</p>
+<hr />
+<p><strong>Status:</strong> ✅ COMPLETE
+<strong>Assigned:</strong> 2025-12-05</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

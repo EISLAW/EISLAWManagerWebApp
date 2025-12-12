@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/UX_UI/Controls_Map/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Controls Map - EISLAW Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#uxui-controls-map" class="nav-link">UX/UI Controls Map</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<!-- Project: SystemCore | Full Context: docs/System_Definition.md -->
+<h1 id="uxui-controls-map">UX/UI Controls Map</h1>
+<p>Purpose
+- Central, testable catalog of all controls: label, control ID (test id), action (route/API), and notes.
+- Used by design review, implementation, and Playwright tests.</p>
+<p>Columns
+- Page/Route • Control ID (<code>data-testid</code>) • Label • Action (route/API) • Side effects • Status/Notes</p>
+<p>Clients / Overview (header)
+- page: clients/:name • id: word-templates • label: Word Templates… • action: desktop file picker → /dev/desktop/pick_file (filters <em>.dotx/</em>.docx; initialdir from env); fallback /dev/desktop/open_path; fallback GET /word/templates + POST /word/generate • notes: prefers native file picker; if picker/open fails, shows in-app list; generate opens created doc + client folder; SharePoint upload when available
+- page: clients/:name • id: airtable-sync • label: Sync Airtable • action: POST /airtable/clients_upsert • notes: requires Airtable secrets
+- page: clients/:name • id: open-emails • label: Open Emails (Search) • action: OWA window or /api/outlook/latest_link (when mode=latest) • notes: opens named OWA window
+- page: clients/:name • id: send-email • label: Send Email • action: mailto:primaryEmail • notes: n/a
+- page: clients/:name • id: open-whatsapp • label: WhatsApp • action: https://wa.me/<digits> • notes: digits stripped
+- page: clients/:name • id: sync • label: Sync • action: GET /api/client/summary_online • notes: refreshes sample latest emails</p>
+<p>Clients / Overview (tiles)
+- page: clients/:name • id: kpi-primary-email • label: Primary Email • action: mailto:primaryEmail • notes: KPI tile clickable
+- page: clients/:name • id: kpi-folder • label: Folder • action: POST /dev/open_folder (local) with SharePoint fallback via /client/sharepoint_link; last resort opens local folder path if present • notes: click “Available” to open client folder (local first, then SharePoint)
+- page: clients/:name • id: kpi-files • label: Files • action: — • notes: informational
+- page: clients/:name • id: kpi-recent-emails • label: Recent Emails • action: route /#/clients/:name?tab=emails • notes: opens indexed view</p>
+<p>Clients / Contacts
+- page: clients/:name • id: add-contact-submit • label: Add Contact • action: POST /registry/clients; POST /airtable/contacts_upsert • notes: maps Name/Email/Phone/תיאור/כתובת/מספר זיהוי</p>
+<p>Clients / Tasks (TasksPanel, TaskRow)
+- page: clients/:name?tab=tasks • id: (plan) task-open-<id> • label: Open • action: open task modal (local) • notes: shows parent + subtasks
+- page: clients/:name?tab=tasks • id: (plan) task-sub-add-<id> • label: Add subtask • action: local create (titled) • notes: appears indented ↳
+- page: clients/:name?tab=tasks • id: (plan) task-attach-link-<id> • label: Add → Link • action: local attach {type:link}
+- page: clients/:name?tab=tasks • id: (plan) task-attach-email-<id> • label: Add → Email • action: local attach {type:email}
+- page: clients/:name?tab=tasks • id: (plan) task-attach-file-<id> • label: Add → File • action: file picker → POST /sp/task_upload • notes: SP path <client>/Tasks/<taskId>
+- page: clients/:name?tab=tasks • id: (plan) task-attach-folder-<id> • label: Add → Folder • action: POST /sp/task_folder_ensure; open webUrl; local attach folder link
+- page: clients/:name?tab=tasks • id: (plan) task-template-<id> • label: Choose Template • action: GET /word/templates; POST /word/generate • notes: attaches generated doc</p>
+<p>Dashboard
+- page: / • id: (plan) filter-time • label: Time • action: local state; affects fan-out • notes: persisted in localStorage
+- page: / • id: (plan) filter-client • label: Client • action: local state • notes: single-select picker
+- page: / • id: (plan) filter-owner • label: Owner • action: local state • notes: All/Me/Delegated
+- page: / • id: (plan) filter-mode • label: Mode • action: local state • notes: Local/Cloud API base</p>
+<p>Privacy (Assessments)
+- page: /privacy • id: (plan) privacy-preview • label: Preview Email • action: POST /privacy/preview_email
+- page: /privacy • id: (plan) privacy-save • label: Save Review • action: POST /privacy/save_review
+- page: /privacy • id: (plan) privacy-publish • label: Approve &amp; Publish • action: POST /privacy/approve_and_publish
+- page: /privacy • id: (plan) privacy-send • label: Send Email • action: POST /privacy/send_email</p>
+<p>Deprecated/Removed
+- Toggle Outlook Mode; Airtable Search; SharePoint; Open Files (client header)</p>
+<p>Process
+- Update this map alongside UI changes and screenshots.
+- Require a stable <code>data-testid</code> for new controls; add Playwright coverage.
+- Record verification in <code>docs/Testing_Episodic_Log.md</code>.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

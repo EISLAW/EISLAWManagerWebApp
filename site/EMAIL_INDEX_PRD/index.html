@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/EMAIL_INDEX_PRD/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>EMAIL INDEX PRD - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#eislaw-central-email-index-prd" class="nav-link">EISLAW — Central Email Index PRD</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<!-- Project: ClientComms | Full Context: docs/TECHNICAL_OVERVIEW.md (Email section) -->
+<h1 id="eislaw-central-email-index-prd">EISLAW — Central Email Index PRD</h1>
+<p><strong>Purpose</strong>
+- Provide fast, reliable, client‑aware email discovery inside the EISLAW app, independent of Outlook UI quirks.
+- Keep Outlook as the system of record; store a compact index for search, preview, and quick actions.</p>
+<p><strong>Goals</strong>
+- Show “all emails for a client” (client + contacts) in seconds.
+- Global search across selected mailboxes with filters (date, people, attachments, keywords).
+- Quick actions: Open in Outlook, Reply/Forward via user’s mail client, save attachments to client SharePoint folder.
+- Minimal storage: ingest only selected mailboxes/folders/categories and store previews by default.</p>
+<p><strong>Scope</strong>
+- Phase 1 (MVP)
+  - Ingest one or more allowlisted mailboxes via Microsoft Graph (application permissions), store metadata + bodyPreview.
+  - UI: “Emails (Indexed)” panel on Client view; Global “Email Search” page.
+  - Actions: Open in Outlook (webLink), Reply/Forward (mailto/Outlook desktop), Save attachment(s) to client’s SharePoint folder.
+  - Filters: Date (Last 30/90/180d), has:attachments, keyword, people (client + contacts), mailbox.
+  - Linking: auto‑link messages to clients by participant email; manual “Assign to Client” override.
+- Phase 1.5 (early add‑in usability)
+  - Outlook Add‑in (no OAuth): add a single “Assign to Client” command on Message Read.
+  - Task Pane shows client suggestions (by participants) and buttons (Open Files/SharePoint in browser).
+  - Reads current message context via Office.js and posts to our backend; no Graph delegated calls.
+- Phase 2
+  - Multi‑mailbox at scale; background schedule; per‑user controls.
+  - Optional full‑text body indexing; optional on‑demand full body fetch.
+  - Outlook add‑in (no‑OAuth) for “Assign to Client” and task pane with client actions.
+- Phase 3
+  - Outlook add‑in SSO/OAuth for native reply/forward and live mailbox search in‑pane.
+  - Analytics: volumes by client, response times, attachment stats.</p>
+<p><strong>Personas &amp; Primary Stories</strong>
+- Attorney: “Show me all emails with Sivan and her contacts since last month; open a thread and save the proposal attachment to her folder.”
+- Assistant: “Find messages tagged EISLAW and route attachments into the right client folders.”
+- Owner: “Search across my mailbox for ‘onboarding’ and filter to clients with active matters.”</p>
+<p><strong>Functional Requirements</strong>
+- Ingestion (Worker)
+  - Pull messages via Graph for allowlisted mailboxes.
+  - Support scoping by: folders (e.g., Clients/*), categories (e.g., EISLAW), date window (since_utc), participants (registry emails/contacts).
+  - Persist delta tokens to do incremental sync.
+  - Handle deletes/moves: reflect Graph delta changes — remove deleted items from index (soft‑delete flag, then purge), update folder metadata on move.
+  - Delta token expiry: detect invalid/expired delta (e.g., HTTP 410/BadDelta) and automatically trigger a full resync for that mailbox/folder scope.
+  - Retry policy: exponential backoff with jitter on 429/503, respect Retry‑After; bounded retries with circuit‑breaker log and resume next cycle.
+- Storage
+  - SQLite with FTS5 initially: <code>data/email_index.sqlite</code>.
+  - Tables: users, messages, recipients, attachments, message_client_links.
+  - Indexes: received desc, participants; FTS on subject/body_preview.
+  - Scalability note: For Phase 2 (multi‑mailbox, higher QPS), plan migration to PostgreSQL (or managed cloud DB) for concurrency and durability; keep a thin DAO to ease migration.
+- API (FastAPI)
+  - <code>GET /email/by_client?name=&amp;q=&amp;from=&amp;to=&amp;has=attachments&amp;since=&amp;mailbox=&amp;limit=&amp;offset=</code>
+  - <code>GET /email/search?q=&amp;from=&amp;to=&amp;has=&amp;since=&amp;mailbox=&amp;limit=&amp;offset=</code>
+  - <code>GET /email/message?id=</code> (metadata + preview; full body on demand if enabled)
+  - <code>POST /email/attachments/save</code> { message_id, attachment_id, client_name }
+  - <code>POST /email/assign</code> { message_id, client_name, note? }
+  - Pagination: <code>limit</code> (default 50, max 100), <code>offset</code> (default 0). Responses include <code>{ items: [...], total, next_offset }</code>.
+  - Errors: consistent JSON <code>{ "error": { "code": "string", "message": "human readable", "details": {...} } }</code> with HTTP statuses (400 bad input, 401/403 auth, 404 not found, 409 conflict, 429 throttled, 500/502/503 server/upstream).
+- UI
+  - Client view → “Emails (Indexed)” panel with list + filters; expandable preview drawer.
+  - Per‑row actions: Open in Outlook, Reply, Forward, Save attachments, Assign to client.
+  - Global nav → “Email Search” page with identical list + filters.</p>
+<p><strong>Linking Logic</strong>
+- Auto link when any from/to/cc matches client or any contact email (case‑insensitive, normalized).
+- Multi‑link: a message MAY link to multiple clients (e.g., two clients in the same thread). <code>message_client_links</code> supports many‑to‑many; UI shows all linked clients.
+- Store <code>link_type=heuristic</code> + <code>confidence</code> (e.g., 1.0 if direct match to client email, 0.7 if contact).
+- Manual override: POST /email/assign sets <code>link_type=manual</code> (highest precedence).
+- Policy: Start with flexible “registry‑only” model; “require_client_folder” is optional and configurable.</p>
+<p><strong>Configuration</strong>
+- File: <code>config/email_sync.json</code> (created on first run if missing)
+  - <code>mailboxes</code>: ["eitan@eislaw.co.il"]
+  - <code>folders</code>: ["Clients/EISLAW"] (optional)
+  - <code>categories</code>: ["EISLAW"] (optional)
+  - <code>participants_allow</code>: ["@client.com"] (optional)
+  - <code>since_utc</code>: "2025-01-01T00:00:00Z" (optional)
+  - <code>store</code>: { "mode": "preview", "max_body_chars": 1000, "enable_full_body_indexing": false }
+  - <code>attachments</code>: { "max_save_mb": 25, "block_extensions": [".exe", ".bat", ".cmd", ".com", ".js", ".vbs", ".ps1", ".scr", ".jar", ".dll"] }
+  - <code>require_client_folder</code>: false</p>
+<p><strong>Permissions &amp; Auth</strong>
+- Phase 1: Microsoft Graph application permissions, admin‑consented.
+  - Mail.Read or Mail.ReadBasic for selected mailboxes.
+  - SharePoint Sites.Selected (preferred) or Sites.ReadWrite.All for attachment saves.
+- Phase 2: Outlook add‑in SSO (delegated) for draft reply/forward and live in‑pane search.</p>
+<p><strong>Non‑Functional Requirements</strong>
+- Performance: paginate results; fetch previews from DB; open Outlook only on explicit action.
+- Reliability: idempotent ingestion; resume with delta tokens; recover on rate limits.
+- Privacy/Security:
+  - Minimize: default to metadata + bodyPreview; fetch full body on demand; attachments only by explicit save.
+  - Access: only allowlisted mailboxes; role‑based access in UI; exclude personal/private tags.
+  - Storage: encrypted disk (OS level) or move to Postgres/managed DB in cloud deploys.
+ - Backup &amp; Recovery:
+   - Nightly backup of <code>data/email_index.sqlite</code> (copy‑and‑rotate); keep last 7 days.
+   - Automatic rebuild path: if DB missing/corrupt, recreate schema and perform full resync using current config; preserve ingestion logs for root cause.
+   - Delta tokens are re‑discovered on rebuild.</p>
+<p><strong>Telemetry &amp; Logging</strong>
+- Log ingestion durations, deltas applied, throttling/backoffs, per‑mailbox health.
+- UI events: search queries (aggregate), actions (open, save attachment).
+ - Surface error metrics (HTTP status distribution), retry counts, and full‑resync events.</p>
+<p><strong>Rollout Plan</strong>
+- Week 1: Worker + DB + API; Client panel MVP with list + open/assign.
+- Week 2: Attachments save to SharePoint; Global search page; basic analytics.
+- Optional: add Outlook add‑in scaffold (no‑OAuth) after MVP is stable.</p>
+<p><strong>Validation</strong>
+- Unit tests: ingestion (mocked Graph), link heuristics, DB writes, API filters.
+- UI tests: client panel renders list; “Open”, “Assign”, “Save attachment” buttons present; selectors stable via <code>data-testid</code>.
+- Manual: run worker on one mailbox; verify results for known clients; time a 30/90/180d search.</p>
+<p><strong>Acceptance Criteria (Phase 1)</strong>
+- Ingests selected mailbox(es) with configured filters; maintains delta without errors for 48h.
+- Client view shows indexed emails for at least 3 sample clients within 1s (10k messages DB).
+- Per‑row actions work: Open in Outlook, Reply/Forward (mailto), Assign to client.
+- Save attachments writes files into the correct SharePoint client folder and reports success.
+- Security posture documented; only allowlisted mailboxes ingested; previews only by default.</p>
+<p><strong>Open Questions</strong>
+- Do we require client folder to index messages (strict mode) or allow registry‑only clients?
+- Full body retention defaults (e.g., disabled; enable per client?).
+- Attachment size limits and content‑type allowlist.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

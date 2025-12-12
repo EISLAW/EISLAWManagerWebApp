@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/TASK_JOSEPH_AGENT_TABLES/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Task: Agent Database Tables - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#task-agent-database-tables" class="nav-link">Task: Agent Database Tables</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#objective" class="nav-link">Objective</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#background" class="nav-link">Background</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#task-checklist" class="nav-link">Task Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#tables-summary" class="nav-link">Tables Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#success-criteria" class="nav-link">Success Criteria</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#coordination-with-alex" class="nav-link">Coordination with Alex</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#completion-report" class="nav-link">Completion Report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="task-agent-database-tables">Task: Agent Database Tables</h1>
+<p><strong>Assigned To:</strong> Joseph (Database Developer)
+<strong>Date:</strong> 2025-12-05
+<strong>Priority:</strong> P1</p>
+<hr />
+<h2 id="objective">Objective</h2>
+<p>Create the database tables needed for the Agent system from David's PRD. This extends your SQLite work to support agent approvals, audit logging, and agent state.</p>
+<hr />
+<h2 id="background">Background</h2>
+<p>From <code>PRD_AGENTS_ARCHITECTURE.md</code>:
+- Agent actions need approval workflow
+- All agent actions must be logged for audit
+- Agent state (enabled/disabled, settings) needs persistence</p>
+<p>Alex is implementing the Agent Registry code, you handle the database.</p>
+<hr />
+<h2 id="task-checklist">Task Checklist</h2>
+<h3 id="1-create-agent-approvals-table">1. Create Agent Approvals Table</h3>
+<p><strong>Table:</strong> <code>agent_approvals</code></p>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS agent_approvals (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    tool_id TEXT NOT NULL,
+    action_name TEXT NOT NULL,
+    action_name_he TEXT,
+    description TEXT,
+    context TEXT,
+    parameters TEXT,  -- JSON string
+    risk_level TEXT CHECK(risk_level IN ('low', 'medium', 'high')),
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'expired')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    expires_at TEXT,  -- Auto-expire old approvals
+    resolved_at TEXT,
+    resolved_by TEXT,
+    reject_reason TEXT,
+    execution_result TEXT  -- JSON: success/error after execution
+);
+
+CREATE INDEX idx_approvals_status ON agent_approvals(status);
+CREATE INDEX idx_approvals_agent ON agent_approvals(agent_id);
+CREATE INDEX idx_approvals_created ON agent_approvals(created_at);
+</code></pre>
+<h3 id="2-create-agent-audit-log-table">2. Create Agent Audit Log Table</h3>
+<p><strong>Table:</strong> <code>agent_audit_log</code></p>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS agent_audit_log (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    tool_id TEXT,
+    action TEXT NOT NULL,
+    action_type TEXT CHECK(action_type IN ('invoke', 'tool_call', 'approval', 'error', 'complete')),
+    input_data TEXT,  -- JSON: what was sent to agent
+    output_data TEXT, -- JSON: what agent returned
+    tokens_used INTEGER,
+    duration_ms INTEGER,
+    success INTEGER DEFAULT 1,
+    error_message TEXT,
+    user_id TEXT,
+    client_id TEXT,  -- If action related to specific client
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_audit_agent ON agent_audit_log(agent_id);
+CREATE INDEX idx_audit_timestamp ON agent_audit_log(timestamp);
+CREATE INDEX idx_audit_client ON agent_audit_log(client_id);
+CREATE INDEX idx_audit_action_type ON agent_audit_log(action_type);
+</code></pre>
+<h3 id="3-create-agent-settings-table">3. Create Agent Settings Table</h3>
+<p><strong>Table:</strong> <code>agent_settings</code></p>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS agent_settings (
+    agent_id TEXT PRIMARY KEY,
+    enabled INTEGER DEFAULT 1,
+    auto_trigger INTEGER DEFAULT 0,  -- Can agent auto-trigger?
+    approval_required INTEGER DEFAULT 1,
+    max_actions_per_hour INTEGER DEFAULT 100,
+    allowed_tools TEXT,  -- JSON array of allowed tool IDs
+    blocked_tools TEXT,  -- JSON array of blocked tool IDs
+    custom_prompt TEXT,  -- Additional system prompt
+    settings_json TEXT,  -- Additional settings
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT
+);
+</code></pre>
+<h3 id="4-create-agent-metrics-table">4. Create Agent Metrics Table</h3>
+<p><strong>Table:</strong> <code>agent_metrics</code> (for analytics)</p>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS agent_metrics (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    date TEXT NOT NULL,  -- YYYY-MM-DD
+    invocations INTEGER DEFAULT 0,
+    tool_calls INTEGER DEFAULT 0,
+    approvals_requested INTEGER DEFAULT 0,
+    approvals_granted INTEGER DEFAULT 0,
+    approvals_rejected INTEGER DEFAULT 0,
+    errors INTEGER DEFAULT 0,
+    total_tokens INTEGER DEFAULT 0,
+    avg_response_ms INTEGER,
+    UNIQUE(agent_id, date)
+);
+
+CREATE INDEX idx_metrics_agent_date ON agent_metrics(agent_id, date);
+</code></pre>
+<h3 id="5-add-migration-script">5. Add Migration Script</h3>
+<p><strong>File:</strong> <code>backend/migrations/003_agent_tables.py</code></p>
+<pre><code class="language-python">&quot;&quot;&quot;
+Migration: Create agent tables
+Run: python -m backend.migrations.003_agent_tables
+&quot;&quot;&quot;
+from backend.db import get_connection
+
+def migrate():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Agent approvals
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agent_approvals (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            tool_id TEXT NOT NULL,
+            action_name TEXT NOT NULL,
+            action_name_he TEXT,
+            description TEXT,
+            context TEXT,
+            parameters TEXT,
+            risk_level TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT,
+            resolved_at TEXT,
+            resolved_by TEXT,
+            reject_reason TEXT,
+            execution_result TEXT
+        )
+    ''')
+
+    # Agent audit log
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agent_audit_log (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            tool_id TEXT,
+            action TEXT NOT NULL,
+            action_type TEXT,
+            input_data TEXT,
+            output_data TEXT,
+            tokens_used INTEGER,
+            duration_ms INTEGER,
+            success INTEGER DEFAULT 1,
+            error_message TEXT,
+            user_id TEXT,
+            client_id TEXT,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Agent settings
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agent_settings (
+            agent_id TEXT PRIMARY KEY,
+            enabled INTEGER DEFAULT 1,
+            auto_trigger INTEGER DEFAULT 0,
+            approval_required INTEGER DEFAULT 1,
+            max_actions_per_hour INTEGER DEFAULT 100,
+            allowed_tools TEXT,
+            blocked_tools TEXT,
+            custom_prompt TEXT,
+            settings_json TEXT,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_by TEXT
+        )
+    ''')
+
+    # Agent metrics
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agent_metrics (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            invocations INTEGER DEFAULT 0,
+            tool_calls INTEGER DEFAULT 0,
+            approvals_requested INTEGER DEFAULT 0,
+            approvals_granted INTEGER DEFAULT 0,
+            approvals_rejected INTEGER DEFAULT 0,
+            errors INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            avg_response_ms INTEGER,
+            UNIQUE(agent_id, date)
+        )
+    ''')
+
+    # Create indexes
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_approvals_status ON agent_approvals(status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_approvals_agent ON agent_approvals(agent_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_agent ON agent_audit_log(agent_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON agent_audit_log(timestamp)')
+
+    conn.commit()
+    conn.close()
+    print(&quot;Agent tables created successfully&quot;)
+
+if __name__ == '__main__':
+    migrate()
+</code></pre>
+<h3 id="6-add-helper-functions-to-dbpy">6. Add Helper Functions to db.py</h3>
+<pre><code class="language-python"># In backend/db.py - add these functions
+
+def log_agent_action(
+    agent_id: str,
+    action: str,
+    action_type: str,
+    input_data: dict = None,
+    output_data: dict = None,
+    tokens_used: int = None,
+    duration_ms: int = None,
+    success: bool = True,
+    error_message: str = None,
+    user_id: str = None,
+    client_id: str = None
+):
+    &quot;&quot;&quot;Log an agent action to audit table&quot;&quot;&quot;
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO agent_audit_log
+        (id, agent_id, action, action_type, input_data, output_data,
+         tokens_used, duration_ms, success, error_message, user_id, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        str(uuid.uuid4()),
+        agent_id,
+        action,
+        action_type,
+        json.dumps(input_data) if input_data else None,
+        json.dumps(output_data) if output_data else None,
+        tokens_used,
+        duration_ms,
+        1 if success else 0,
+        error_message,
+        user_id,
+        client_id
+    ))
+    conn.commit()
+    conn.close()
+
+def get_agent_settings(agent_id: str) -&gt; dict:
+    &quot;&quot;&quot;Get agent settings or defaults&quot;&quot;&quot;
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM agent_settings WHERE agent_id = ?', (agent_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return dict(row)
+    return {
+        'agent_id': agent_id,
+        'enabled': True,
+        'auto_trigger': False,
+        'approval_required': True,
+        'max_actions_per_hour': 100
+    }
+
+def update_agent_metrics(agent_id: str, **metrics):
+    &quot;&quot;&quot;Update daily agent metrics&quot;&quot;&quot;
+    from datetime import date
+    today = date.today().isoformat()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Upsert metrics
+    cursor.execute('''
+        INSERT INTO agent_metrics (id, agent_id, date)
+        VALUES (?, ?, ?)
+        ON CONFLICT(agent_id, date) DO NOTHING
+    ''', (str(uuid.uuid4()), agent_id, today))
+
+    for key, value in metrics.items():
+        if key in ('invocations', 'tool_calls', 'approvals_requested',
+                   'approvals_granted', 'approvals_rejected', 'errors', 'total_tokens'):
+            cursor.execute(f'''
+                UPDATE agent_metrics
+                SET {key} = {key} + ?
+                WHERE agent_id = ? AND date = ?
+            ''', (value, agent_id, today))
+
+    conn.commit()
+    conn.close()
+</code></pre>
+<h3 id="7-verify-tables">7. Verify Tables</h3>
+<pre><code class="language-bash"># SSH to VM
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+
+# Run migration
+cd ~/EISLAWManagerWebApp
+python -m backend.migrations.003_agent_tables
+
+# Verify tables
+sqlite3 ~/.eislaw/store/eislaw.db &quot;.tables&quot;
+
+# Check schema
+sqlite3 ~/.eislaw/store/eislaw.db &quot;.schema agent_approvals&quot;
+sqlite3 ~/.eislaw/store/eislaw.db &quot;.schema agent_audit_log&quot;
+</code></pre>
+<hr />
+<h2 id="tables-summary">Tables Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Key Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent_approvals</code></td>
+<td>Pending action approvals</td>
+<td>agent_id, status, risk_level</td>
+</tr>
+<tr>
+<td><code>agent_audit_log</code></td>
+<td>All agent actions for audit</td>
+<td>agent_id, action, timestamp</td>
+</tr>
+<tr>
+<td><code>agent_settings</code></td>
+<td>Per-agent configuration</td>
+<td>enabled, approval_required</td>
+</tr>
+<tr>
+<td><code>agent_metrics</code></td>
+<td>Daily usage analytics</td>
+<td>invocations, errors, tokens</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="success-criteria">Success Criteria</h2>
+<ul>
+<li>[x] 4 tables created</li>
+<li>[x] Indexes created for performance</li>
+<li>[x] Migration script works</li>
+<li>[x] Helper functions added to db.py</li>
+<li>[x] Tables verified on VM</li>
+<li>[x] Documentation updated</li>
+</ul>
+<hr />
+<h2 id="coordination-with-alex">Coordination with Alex</h2>
+<p>Alex is creating:
+- <code>backend/agents/registry.py</code>
+- <code>backend/agents/approvals.py</code></p>
+<p>Your tables support his code. Make sure table names match.</p>
+<hr />
+<h2 id="completion-report">Completion Report</h2>
+<p><strong>Date:</strong> 2025-12-05</p>
+<p><strong>Tables Created:</strong>
+| Table | Columns | Indexes |
+|-------|---------|---------|
+| <code>agent_approvals</code> | id, agent_id, tool_id, action_name, action_name_he, description, context, parameters, risk_level, status, created_at, expires_at, resolved_at, resolved_by, reject_reason, execution_result | 3 (status, agent, created) |
+| <code>agent_audit_log</code> | id, agent_id, tool_id, action, action_type, input_data, output_data, tokens_used, duration_ms, success, error_message, user_id, client_id, timestamp | 4 (agent, timestamp, client, action_type) |
+| <code>agent_settings</code> | agent_id, enabled, auto_trigger, approval_required, max_actions_per_hour, allowed_tools, blocked_tools, custom_prompt, settings_json, updated_at, updated_by | 0 (PK only) |
+| <code>agent_metrics</code> | id, agent_id, date, invocations, tool_calls, approvals_requested, approvals_granted, approvals_rejected, errors, total_tokens, avg_response_ms | 1 (agent_date) |</p>
+<p><strong>Files Created/Modified:</strong>
+| File | Change |
+|------|--------|
+| <code>backend/migrations/003_agent_tables.py</code> | Created - Migration script |
+| <code>backend/db.py</code> | Added 4 DB helper classes + global instances |
+| <code>backend/routers/db_health.py</code> | Updated to include agent tables in health check |</p>
+<p><strong>Helper Classes Added:</strong>
+- <code>AgentApprovalsDB</code> - CRUD for approval requests
+- <code>AgentAuditDB</code> - Logging agent actions
+- <code>AgentSettingsDB</code> - Per-agent configuration
+- <code>AgentMetricsDB</code> - Daily metrics tracking</p>
+<p><strong>Verification:</strong></p>
+<pre><code class="language-json">GET /api/db/stats → {
+  &quot;tables&quot;: {
+    &quot;agent_approvals&quot;: {&quot;count&quot;: 0},
+    &quot;agent_audit_log&quot;: {&quot;count&quot;: 0},
+    &quot;agent_settings&quot;: {&quot;count&quot;: 0},
+    &quot;agent_metrics&quot;: {&quot;count&quot;: 0}
+  },
+  &quot;indexes&quot;: [...9 new agent indexes...]
+}
+</code></pre>
+<p><strong>Database Size:</strong> 0.18 MB (grew from 0.11 MB after adding tables)</p>
+<p><strong>Issues Encountered:</strong> None</p>
+<hr />
+<p><strong>Status:</strong> ✅ COMPLETE
+<strong>Assigned:</strong> 2025-12-05
+<strong>Due:</strong> 2025-12-06</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

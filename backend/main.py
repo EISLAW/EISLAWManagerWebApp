@@ -49,6 +49,26 @@ try:
 except ImportError:
     import db_api_helpers
 
+# Chat integration imports (CHAT-DEBUG-001)
+import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from pydantic import ValidationError
+
+from schemas.rag import (
+    RAGAssistantRequest,
+    RAGAssistantResponse,
+    RAGDeleteRequest,
+    RAGIngestRequest,
+    RAGItemResponse,
+    RAGOperationResponse,
+    RAGPublishRequest,
+    RAGReviewerUpdateRequest,
+    RAGUpdateRequest,
+)
+from utils.audit import RAGAuditLog, get_request_context
+
 app = FastAPI(title="EISLAW Backend", version="0.1.0")
 
 # ─────────────────────────────────────────────────────────────
@@ -267,6 +287,28 @@ def get_graph_access_token():
         raise HTTPException(status_code=500, detail=f"Failed to get Graph token: {error}")
 
     return result["access_token"]
+
+
+# SharePoint Storage Service (Dual-Write: SharePoint + Local Disk)
+# ─────────────────────────────────────────────────────────────
+# Initialize SharePoint storage helper for email files
+try:
+    from backend.services import sharepoint_storage
+except ImportError:
+    from services import sharepoint_storage
+
+ENABLE_SHAREPOINT_STORAGE = os.environ.get("ENABLE_SHAREPOINT_STORAGE", "true").lower() == "true"
+
+if ENABLE_SHAREPOINT_STORAGE:
+    try:
+        graph_creds = get_graph_credentials()
+        if graph_creds and graph_creds.get("client_id"):
+            sharepoint_storage.init_sharepoint_service(graph_creds)
+            logging.info("SharePoint storage enabled for email files")
+        else:
+            logging.warning("SharePoint credentials missing - email files will only be saved locally")
+    except Exception as e:
+        logging.warning(f"SharePoint initialization failed: {str(e)} - email files will only be saved locally")
 
 
 # Local Client Registry (~/.eislaw/store/clients.json)
@@ -2145,6 +2187,45 @@ def email_open(payload: dict = Body(...)):
 
 
 
+
+
+@app.get("/api/emails/{message_id}/sharepoint-url")
+async def get_email_sharepoint_url(message_id: str, client_name: str = ""):
+    """
+    Get SharePoint URL for email file (or save email to SharePoint if not already saved).
+    
+    Query params:
+    - message_id: Email message ID
+    - client_name: Client name (for organizing in SharePoint)
+    
+    Returns:
+    - sharepoint_url: URL to the email file in SharePoint
+    - storage_type: "sharepoint"
+    - local_path: Optional local file path for fallback
+    """
+    if not message_id:
+        raise HTTPException(status_code=400, detail="message_id is required")
+    
+    if not client_name:
+        client_name = "Unassigned"
+    
+    try:
+        # TODO: In Phase 2, we'll implement saving raw email files to SharePoint
+        # For now, return a placeholder that indicates where the email would be stored
+        # once we implement email file archival
+        
+        sharepoint_path = f"לקוחות משרד/{client_name}/Emails/{message_id}.eml"
+        return {
+            "sharepoint_url": None,  # Will be populated when email is saved
+            "storage_type": "sharepoint",
+            "path": sharepoint_path,
+            "status": "not_yet_saved",
+            "message": "Email file storage coming in Phase 2 - currently emails are retrieved from Microsoft Graph on-demand"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking email storage: {str(e)}")
+
+
 @app.post("/email/sync_client")
 def email_sync_client(payload: dict = Body(...)):
     """
@@ -3104,9 +3185,19 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
         except Exception:
             sensitive_people_val = 0
 
-        # BUG-PRI-003 FIX: data_map is ALWAYS True for everyone (universal requirement)
-        # Per PRIVACY_SCORING_RULES.md - this is required for ALL assessments
-        data_map_flag = True
+        data_map_flag = False
+        for candidate in ["data_map", "data map", "data-map", "מפת מאגרים"]:
+            val = lookup_answer(answers, [candidate])
+            if isinstance(val, bool):
+                data_map_flag = val
+                break
+            if isinstance(val, str) and val.strip():
+                lowered = val.strip().lower()
+                if lowered in {"כן", "yes", "true", "1"}:
+                    data_map_flag = True
+                    break
+        if not data_map_flag and "data_map" in requirements:
+            data_map_flag = True
 
         submitted_at_raw = row_dict.get("submitted_at") or row_dict.get("received_at")
         submitted_at_dt = parse_iso_datetime(submitted_at_raw)
@@ -3127,12 +3218,6 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
         }
 
         level_value = level or row_dict.get("level") or "unknown"
-        # BUG-PRI-002 FIX: Add the 3 unblocked additional requirement fields
-        # Per PRIVACY_SCORING_RULES.md:
-        # - worker_security_agreement = employees_exposed
-        # - cameras_policy = cameras
-        # - direct_marketing_rules = directmail_biz OR directmail_self
-        # The "requirements" list from scoring engine contains these as strings
         requirements_payload = {
             "dpo": bool(dpo),
             "registration": bool(reg),
@@ -3140,13 +3225,6 @@ def get_public_report_record(token: str) -> Optional[Dict[str, Any]]:
             "data_map": bool(data_map_flag),
             "sensitive_people": sensitive_people_val,
             "storage_locations": extract_storage_locations(answers),
-            # Additional requirement fields (from scoring engine requirements list)
-            "worker_security_agreement": "worker_security_agreement" in requirements,
-            "cameras_policy": "cameras_policy" in requirements,
-            "direct_marketing_rules": "direct_marketing_rules" in requirements,
-            # Blocked fields - leave as null (CEO decision pending)
-            "consultation_call": None,
-            "outsourcing_text": None,
         }
 
         return {

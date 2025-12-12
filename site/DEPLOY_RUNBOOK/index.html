@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/DEPLOY_RUNBOOK/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Deploy Runbook - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#deploy-runbook" class="nav-link">Deploy Runbook</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#pre-deploy-safety-steps" class="nav-link">Pre-deploy safety steps</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#post-deploy-checks" class="nav-link">Post-deploy checks</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#preferred-path-github-actions-container-deploy-staging-slot-smoke-swap" class="nav-link">Preferred path: GitHub Actions container deploy (staging slot → smoke → swap)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#versioning-and-tagging-discipline" class="nav-link">Versioning and tagging discipline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#deployment-history-manual-log" class="nav-link">Deployment history (manual log)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#container-deploy-checklist" class="nav-link">Container deploy checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="deploy-runbook">Deploy Runbook</h1>
+<p>Audience: non-technical operator running ship cycles.</p>
+<h2 id="pre-deploy-safety-steps">Pre-deploy safety steps</h2>
+<ul>
+<li>Run the GitHub Actions workflow <strong>Airtable Snapshot</strong> before risky deploys (schema changes, bulk automation changes). In GitHub → Actions → Airtable Snapshot → <strong>Run workflow</strong>, leave defaults unless you need to override tables/base. Wait for a green run; investigate and rerun if it fails.</li>
+<li>Confirm required secrets exist for the snapshot: <code>AIRTABLE_API_KEY</code>, <code>AIRTABLE_BASE_ID</code>, <code>AIRTABLE_TABLES</code>, <code>AZURE_BLOB_CONNECTION_STRING</code>, <code>AZURE_BLOB_CONTAINER</code>.</li>
+</ul>
+<h2 id="post-deploy-checks">Post-deploy checks</h2>
+<ul>
+<li>Verify the deployment target (API/UI) is healthy and that Airtable records look correct for a small sample.</li>
+<li>If an Airtable mistake is detected, pull the matching snapshot blob by timestamp and restore targeted rows (see docs/AIRTABLE_BACKUP_PLAN.md for the playbook).</li>
+</ul>
+<h2 id="preferred-path-github-actions-container-deploy-staging-slot-smoke-swap">Preferred path: GitHub Actions container deploy (staging slot → smoke → swap)</h2>
+<ul>
+<li>Workflow: GitHub → Actions → <strong>Deploy Privacy Module</strong> → Run workflow.</li>
+<li>Inputs:</li>
+<li><code>resource_group</code>, <code>webapp_name</code>, <code>storage_account</code>, <code>acr_name</code>, <code>image_name</code> (backend), optional <code>frontend_webapp_name</code> + <code>frontend_image_name</code> (containerized frontend).</li>
+<li><code>frontend_api_url</code> (default prod API) baked into the frontend image.</li>
+<li><code>image_tag</code> (optional override; defaults to commit SHA) and <code>promote_tag</code> (extra ACR tag, default <code>staging</code>).</li>
+<li><code>slot_name</code> (default <code>staging</code>), <code>run_smoke_tests</code> (default true), <code>swap_on_success</code> (default true).</li>
+<li><code>release_tag</code> (Git tag to create/push, e.g., <code>v2025.11.20a</code>) — set this on every deploy for traceability.</li>
+<li>Flow (automated in the workflow):</li>
+<li>Build + push backend image to ACR (tags: <code>${IMAGE_TAG}</code> + <code>${PROMOTE_TAG}</code>).</li>
+<li>Optionally build + push frontend container (Dockerfile.web) with <code>VITE_API_URL</code> baked in, and deploy to the provided frontend Web App.</li>
+<li>Ensure the staging slot exists; deploy the backend container + app settings there (includes <code>APPINSIGHTS_CONNECTION_STRING</code> if present).</li>
+<li>Health-check <code>/$slot/health</code>, send an App Insights heartbeat (if configured), run <code>python tools/privacy_flow_smoke_test.py --count 2</code>.</li>
+<li>Swap the slot into production (if enabled) and re-run the production <code>/health</code> check.</li>
+<li>Build the frontend and upload to the static website container (kept for compatibility even if the container is used).</li>
+<li>If <code>release_tag</code> is provided, create and push a Git tag from the workflow (git bot identity).</li>
+<li>Secrets required: <code>AZURE_CREDENTIALS</code>, <code>ACR_USERNAME</code>/<code>ACR_PASSWORD</code>, <code>FILLOUT_API_KEY</code>, <code>AIRTABLE_*</code>, <code>GRAPH_*</code>, <code>APPINSIGHTS_CONNECTION_STRING</code> (optional but recommended). Smoke tests will fail if Fillout/Airtable secrets are missing.</li>
+</ul>
+<h3 id="cors-checklist-stagingprod">CORS checklist (staging/prod)</h3>
+<ul>
+<li>Add the frontend origins for the target environment to API CORS (no wildcards in prod). If a new host is introduced, update CORS and redeploy.</li>
+<li>Prefer serving frontend via the same host/reverse proxy to eliminate CORS where possible.</li>
+</ul>
+<h2 id="versioning-and-tagging-discipline">Versioning and tagging discipline</h2>
+<ul>
+<li>Before each deploy, update <code>docs/CHANGELOG.md</code> with a dated entry and include backend/frontend image tags.</li>
+<li>Run the deploy workflow with <code>release_tag</code> set (e.g., <code>vYYYY.MM.DDa</code>). The workflow will create/push the tag automatically using <code>GITHUB_TOKEN</code>.</li>
+<li>Note in <code>docs/DEPLOY_RUNBOOK.md</code> table which tag was pushed and whether the deploy swapped to production.</li>
+</ul>
+<h2 id="deployment-history-manual-log">Deployment history (manual log)</h2>
+<table>
+<thead>
+<tr>
+<th>Timestamp (UTC)</th>
+<th>Change summary</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2025-11-19 22:55</td>
+<td>Zip deploy built via <code>infra/deploy_privacy_only.ps1</code> (python-multipart + cryptography pinned)</td>
+<td><strong>Failed</strong> – App Service crashed at import due to missing Azure monitoring deps (<code>azure.identity</code>/<code>opencensus</code> not vendored). Next action: add these packages to <code>scoring_service/requirements.txt</code> and redeploy.</td>
+</tr>
+<tr>
+<td>2025-11-20 09:16</td>
+<td>Container deploy (Dockerfile.api) pushed to <code>eislawacr.azurecr.io/privacy-api:2025-11-20</code>, Web App switched to container image.</td>
+<td><strong>Succeeded</strong> – <code>/health</code> returns 200. Backend now runs inside container with vendored Azure deps.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="container-deploy-checklist">Container deploy checklist</h2>
+<ol>
+<li><strong>Build &amp; push image</strong>
+   <code>bash
+   cd "EISLAW System"
+   rm -rf build/container_context
+   mkdir -p build/container_context
+   cp Dockerfile.api build/container_context/
+   cp -r scoring_service config build/container_context/
+   az acr build -r eislawacr -t privacy-api:&lt;tag&gt; -f Dockerfile.api build/container_context</code></li>
+<li><strong>Point Web App to the new image</strong>
+   <code>bash
+   az webapp config set -g EISLAW-Dashboard -n eislaw-api-01 --linux-fx-version "DOCKER|eislawacr.azurecr.io/privacy-api:&lt;tag&gt;"
+   az webapp restart -g EISLAW-Dashboard -n eislaw-api-01</code></li>
+<li><strong>Verify</strong></li>
+<li><code>curl https://eislaw-api-01.azurewebsites.net/health</code> → expect 200.</li>
+<li>Leave <code>python tools/azure_log_stream.py ...</code> running for a few minutes to ensure the container stays healthy.</li>
+<li><strong>Log the attempt</strong> in the table above and update <code>docs/NEXT_ACTIONS.md</code> / <code>docs/Testing_Episodic_Log.md</code>.</li>
+</ol>
+<p>Update this table after each manual deploy attempt so the next session knows the last known state.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

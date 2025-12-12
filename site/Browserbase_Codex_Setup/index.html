@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/Browserbase_Codex_Setup/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Browserbase Codex Setup - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#browserbase-codex-streaming-sop" class="nav-link">Browserbase + Codex Streaming SOP</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#1-prerequisites" class="nav-link">1. Prerequisites</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#2-launch-sequence-run-on-the-user-desktop" class="nav-link">2. Launch sequence (run on the user desktop)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#3-using-browserbase-inside-codex" class="nav-link">3. Using Browserbase inside Codex</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#4-troubleshooting" class="nav-link">4. Troubleshooting</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<!-- Quick reference for future Codex agents on Browserbase streaming -->
+<h1 id="browserbase-codex-streaming-sop">Browserbase + Codex Streaming SOP</h1>
+<p>Use this guide whenever you need live UI access through Browserbase. The default assumption inside Codex is “I can’t see the user’s desktop”; following these steps removes that blocker.</p>
+<h2 id="1-prerequisites">1. Prerequisites</h2>
+<ol>
+<li>API credentials must exist in <code>secrets.local.json</code> under:
+   <code>json
+   "browserbase": {
+     "api_key": "&lt;BROWSERBASE_API_KEY&gt;",
+     "project_id": "&lt;BROWSERBASE_PROJECT_ID&gt;"
+   }</code></li>
+<li><code>~/.codex/config.toml</code> must define the Browserbase MCP:
+   <code>toml
+   [mcp_servers.Browserbase]
+   type = "stdio"
+   command = "npx"
+   args = ["@browserbasehq/mcp-server-browserbase"]
+   [mcp_servers.Browserbase.env]
+   BROWSERBASE_API_KEY = "{{browserbase.api_key}}"
+   BROWSERBASE_PROJECT_ID = "{{browserbase.project_id}}"
+   GEMINI_API_KEY = "{{llm.api_keys.gemini}}"</code><blockquote>
+<p>The GEMINI key is used by Stagehand inside Browserbase; it does <strong>not</strong> replace Codex.</p>
+</blockquote>
+</li>
+</ol>
+<h2 id="2-launch-sequence-run-on-the-user-desktop">2. Launch sequence (run on the user desktop)</h2>
+<h3 id="a-start-browserbase-mcp-keep-terminal-open">A. Start Browserbase MCP (keep terminal open)</h3>
+<p><strong>Quick option:</strong> run <code>C:\Coding Projects\start_browserbase_mcp.bat</code> (edit the file once to insert the real GEMINI key).<br />
+The script executes the commands below automatically.</p>
+<pre><code class="language-powershell">cd &quot;C:\Coding Projects\EISLAW System&quot;
+$env:BROWSERBASE_API_KEY  = 'bb_live_gR4gaHZCq-fGhRfpdVkYnxJQXfI'
+$env:BROWSERBASE_PROJECT_ID = 'b6b95dac-9c2e-4fee-bdc6-cbe5a52b90ce'
+$env:GEMINI_API_KEY = 'AIzaSyCHxGOlLlTUk6rii_PyM2iv8dnySMxsKGM'
+npx @browserbasehq/mcp-server-browserbase
+</code></pre>
+<ul>
+<li>This terminal must stay running. If the env vars are missing, Browserbase falls back to dummy keys and Codex cannot connect.</li>
+</ul>
+<h3 id="b-authenticate-codex-cli-one-time-per-session">B. Authenticate Codex CLI (one-time per session)</h3>
+<pre><code class="language-powershell">codex login
+</code></pre>
+<ul>
+<li>A URL prints to the console. Open it in your local browser, approve the request with your ChatGPT Plus/Pro account, and wait for “Login successful.”</li>
+<li>Codex now has the permissions needed to call the Browserbase MCP.</li>
+</ul>
+<h3 id="c-verify-mcp-availability">C. Verify MCP availability</h3>
+<pre><code class="language-powershell">codex mcp list
+</code></pre>
+<p>Ensure you see <code>Browserbase</code> listed as <code>enabled</code>.</p>
+<h2 id="3-using-browserbase-inside-codex">3. Using Browserbase inside Codex</h2>
+<ul>
+<li>From here, agents can call Browserbase MCP tools (e.g., <code>browserbase.open</code>, <code>browserbase.screenshot</code>, etc.) through the standard MCP interface. When a future agent claims “I can’t see the UI,” instruct them to follow the steps in this file before escalating.</li>
+<li>Quick-check list for new agents:</li>
+<li>[ ] Browserbase MCP terminal running with env vars set.</li>
+<li>[ ] <code>codex login</code> completed (session not expired).</li>
+<li>[ ] <code>codex mcp list</code> shows Browserbase as <code>enabled</code>.</li>
+<li>[ ] Manual notes or blockers recorded in <code>docs/Testing_Episodic_Log.md</code>.</li>
+</ul>
+<h2 id="4-troubleshooting">4. Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Browserbase MCP immediately exits with “command not found”</td>
+<td>Ensure <code>npx @browserbasehq/mcp-server-browserbase</code> is installed (Node 18+ required).</td>
+</tr>
+<tr>
+<td>MCP shows “Using dummy value” warnings</td>
+<td>Set the env vars <strong>before</strong> running <code>npx</code>. Strings typed by themselves are treated as commands.</td>
+</tr>
+<tr>
+<td>Codex still says “transport closed”</td>
+<td>Re-run <code>codex login</code>, then restart Codex CLI or reload MCP servers.</td>
+</tr>
+<tr>
+<td>Browserbase session idle timeout</td>
+<td>Re-launch step A; Stagehand sessions expire after ~10 minutes of inactivity.</td>
+</tr>
+</tbody>
+</table>
+<p>Keep this SOP handy so new agents can bootstrap Browserbase access without asking the user for instructions every time.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

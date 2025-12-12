@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/TASK_JOSEPH_BACKUP_UTILITY/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Task: Database Backup Utility - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#task-database-backup-utility" class="nav-link">Task: Database Backup Utility</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#objective" class="nav-link">Objective</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#background" class="nav-link">Background</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#task-checklist" class="nav-link">Task Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#success-criteria" class="nav-link">Success Criteria</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#completion-report" class="nav-link">Completion Report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="task-database-backup-utility">Task: Database Backup Utility</h1>
+<p><strong>Assigned To:</strong> Joseph (Database Developer)
+<strong>Date:</strong> 2025-12-05
+<strong>Priority:</strong> P2</p>
+<hr />
+<h2 id="objective">Objective</h2>
+<p>Create a backup and restore utility for the SQLite database (<code>eislaw.db</code>) to ensure data safety and enable easy recovery.</p>
+<hr />
+<h2 id="background">Background</h2>
+<p>Now that we have SQLite as our primary database with WAL mode, we need:
+1. Regular backup capability
+2. Restore capability for disaster recovery
+3. Backup verification</p>
+<hr />
+<h2 id="task-checklist">Task Checklist</h2>
+<h3 id="1-create-backup-script">1. Create Backup Script</h3>
+<p><strong>File:</strong> <code>backend/backup.py</code></p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;
+EISLAW Database Backup Utility
+&quot;&quot;&quot;
+import sqlite3
+import shutil
+import os
+from datetime import datetime
+
+DB_PATH = '/app/data/eislaw.db'
+BACKUP_DIR = '/app/data/backups'
+
+def create_backup():
+    &quot;&quot;&quot;Create a timestamped backup of the database.&quot;&quot;&quot;
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_path = f'{BACKUP_DIR}/eislaw_{timestamp}.db'
+
+    # Use SQLite backup API for consistency
+    source = sqlite3.connect(DB_PATH)
+    dest = sqlite3.connect(backup_path)
+    source.backup(dest)
+    source.close()
+    dest.close()
+
+    print(f'Backup created: {backup_path}')
+    return backup_path
+
+def list_backups():
+    &quot;&quot;&quot;List all available backups.&quot;&quot;&quot;
+    if not os.path.exists(BACKUP_DIR):
+        print('No backups found')
+        return []
+
+    backups = sorted([f for f in os.listdir(BACKUP_DIR) if f.endswith('.db')])
+    for b in backups:
+        size = os.path.getsize(f'{BACKUP_DIR}/{b}')
+        print(f'  {b} ({size} bytes)')
+    return backups
+
+def restore_backup(backup_name):
+    &quot;&quot;&quot;Restore database from backup.&quot;&quot;&quot;
+    backup_path = f'{BACKUP_DIR}/{backup_name}'
+    if not os.path.exists(backup_path):
+        print(f'Backup not found: {backup_name}')
+        return False
+
+    # Create safety backup before restore
+    safety_path = f'{DB_PATH}.before_restore'
+    shutil.copy2(DB_PATH, safety_path)
+    print(f'Safety backup: {safety_path}')
+
+    # Restore
+    shutil.copy2(backup_path, DB_PATH)
+    print(f'Restored from: {backup_name}')
+    return True
+
+def verify_backup(backup_name):
+    &quot;&quot;&quot;Verify backup integrity.&quot;&quot;&quot;
+    backup_path = f'{BACKUP_DIR}/{backup_name}'
+    try:
+        conn = sqlite3.connect(backup_path)
+        cursor = conn.cursor()
+
+        # Check tables exist
+        cursor.execute(&quot;SELECT name FROM sqlite_master WHERE type='table'&quot;)
+        tables = cursor.fetchall()
+        print(f'Tables in backup: {[t[0] for t in tables]}')
+
+        # Count records
+        for table in tables:
+            cursor.execute(f&quot;SELECT COUNT(*) FROM {table[0]}&quot;)
+            count = cursor.fetchone()[0]
+            print(f'  {table[0]}: {count} records')
+
+        conn.close()
+        return True
+    except Exception as e:
+        print(f'Verification failed: {e}')
+        return False
+
+if __name__ == '__main__':
+    import sys
+
+    if len(sys.argv) &lt; 2:
+        print('Usage: python backup.py [create|list|restore|verify] [backup_name]')
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == 'create':
+        create_backup()
+    elif cmd == 'list':
+        list_backups()
+    elif cmd == 'restore' and len(sys.argv) &gt; 2:
+        restore_backup(sys.argv[2])
+    elif cmd == 'verify' and len(sys.argv) &gt; 2:
+        verify_backup(sys.argv[2])
+    else:
+        print('Invalid command')
+</code></pre>
+<h3 id="2-add-api-endpoint-optional">2. Add API Endpoint (Optional)</h3>
+<p><strong>File:</strong> <code>backend/main.py</code> (or new router)</p>
+<pre><code class="language-python">@app.post(&quot;/api/admin/backup&quot;)
+async def create_backup():
+    &quot;&quot;&quot;Create database backup (admin only).&quot;&quot;&quot;
+    from backup import create_backup
+    path = create_backup()
+    return {&quot;status&quot;: &quot;ok&quot;, &quot;path&quot;: path}
+
+@app.get(&quot;/api/admin/backups&quot;)
+async def list_backups():
+    &quot;&quot;&quot;List available backups.&quot;&quot;&quot;
+    from backup import list_backups
+    return {&quot;backups&quot;: list_backups()}
+</code></pre>
+<h3 id="3-test-backuprestore">3. Test Backup/Restore</h3>
+<pre><code class="language-bash"># SSH to VM
+ssh -i ~/.ssh/eislaw-dev-vm.pem azureuser@20.217.86.4
+
+# Enter container
+docker exec -it eislawmanagerwebapp-api-1 bash
+
+# Create backup
+python backup.py create
+
+# List backups
+python backup.py list
+
+# Verify backup
+python backup.py verify eislaw_YYYYMMDD_HHMMSS.db
+
+# Test restore (careful!)
+python backup.py restore eislaw_YYYYMMDD_HHMMSS.db
+</code></pre>
+<hr />
+<h2 id="success-criteria">Success Criteria</h2>
+<ul>
+<li>[x] <code>backup.py</code> script created</li>
+<li>[x] <code>create</code> command works</li>
+<li>[x] <code>list</code> command works</li>
+<li>[x] <code>verify</code> command works</li>
+<li>[x] <code>restore</code> command works</li>
+<li>[x] Backup survives container restart</li>
+</ul>
+<hr />
+<h2 id="completion-report">Completion Report</h2>
+<p><strong>Date:</strong> 2025-12-05</p>
+<p><strong>Files Created:</strong>
+| File | Description |
+|------|-------------|
+| <code>backend/backup.py</code> | CLI backup utility with create/list/verify/restore commands |</p>
+<p><strong>Tests Passed:</strong>
+- [x] Create backup
+- [x] List backups
+- [x] Verify backup integrity
+- [x] Restore from backup
+- [x] Data survives restore
+- [x] Backups persist across container restart</p>
+<p><strong>Backup location:</strong> <code>/app/data/backups/</code></p>
+<p><strong>Current backups:</strong>
+- <code>eislaw_20251205_192253_pre-restore-test.db</code>
+- <code>eislaw_20251205_192231_test.db</code>
+- <code>eislaw_2025-12-05_16-16-27_post-migration.db</code>
+- <code>eislaw_2025-12-05_16-02-25_test.db</code></p>
+<p><strong>Issues Encountered:</strong> None</p>
+<hr />
+<p><strong>Assigned:</strong> 2025-12-05</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/DesignSystem/FIGMA_HANDOFF_PROTOCOL/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Figma → App Handoff Protocol (Preview Bundle) - EISLAW Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#figma-app-handoff-protocol-preview-bundle" class="nav-link">Figma → App Handoff Protocol (Preview Bundle)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="figma-app-handoff-protocol-preview-bundle">Figma → App Handoff Protocol (Preview Bundle)</h1>
+<p>Purpose
+- Eliminate visual drift and speed up integration by delivering a small, runnable React bundle that renders inside our app with no changes. Dev then swaps this component into the live screen and wires actions to APIs.</p>
+<p>Scope
+- Applies to every new or redesigned screen, starting with the Task Modal (case study).</p>
+<p>Deliverable: Preview Bundle
+- Location (repo): <code>frontend/src/design/&lt;screen&gt;/</code>
+- Entrypoint component: <code>&lt;ScreenName&gt;Preview.jsx</code> (export default React component)
+- No network calls; use mocked data in the component
+- RTL: wrap root with <code>dir="rtl"</code></p>
+<p>Allowed stack
+- React (function components + hooks)
+- Tailwind utility classes (no external CSS)
+- Icons: <code>lucide-react</code>
+- Fonts: Noto Sans Hebrew (already loaded by the app)</p>
+<p>Must use tokens (no raw hex)
+- Colors: <code>petrol</code>, <code>copper</code>, <code>offblack</code>, <code>cardGrey</code>, <code>bg</code>, <code>line</code>
+- Primitives: <code>rounded-2xl</code>, <code>shadow-md</code>, spacing via Tailwind
+- Helpers: <code>.heading</code>, <code>.subheading</code>, <code>.card</code> (see DESIGN_TOKENS.md)</p>
+<p>Identifiers (required on every interactive control)
+- <code>data-testid</code>: <code>tm.&lt;section&gt;.&lt;control&gt;[.&lt;variant&gt;]</code> (stable selectors)
+- <code>data-action</code>: <code>&lt;domain&gt;.&lt;verb&gt;[.&lt;variant&gt;]</code> (intent, used by app)
+- Dynamic ids as attributes if applicable: <code>data-task-id</code>, <code>data-subtask-id</code>, <code>data-asset-id</code>, <code>data-comment-id</code>, <code>data-reply-id</code></p>
+<p>Action manifest (attach JSON file)
+- File: <code>&lt;ScreenName&gt;.actions.json</code> next to the preview component
+- Contents: array of <code>{ testid, action, field?, value?, params? }</code>
+- Mirrors the IDs used in the JSX; used for wiring and tests</p>
+<p>Task Modal — minimum controls
+- Modal: <code>tm.modal.close</code> → <code>modal.close</code>
+- Tasks:
+  - <code>tm.task.list</code> (container)
+  - <code>tm.subtask.add</code> (button), <code>tm.task.item</code> (rows)
+  - <code>tm.task.complete</code> → <code>task.complete</code>
+  - <code>tm.task.priority.open</code> + <code>priority.set</code> values <code>high|medium|low</code>
+  - <code>tm.task.assignee.open</code> + <code>assignee.set</code> with <code>user.*</code> ids
+  - <code>tm.task.due.open</code> + <code>due.set</code> with ISO date
+- Assets:
+  - Toolbar: <code>tm.assets.add.file|link|folder|email</code> → <code>assets.add.&lt;type&gt;</code>
+  - Rows: <code>tm.asset.row</code>; email row: <code>tm.asset.email.open_outlook</code> → <code>email.open_in_outlook</code>
+- Details:
+  - <code>tm.details.due.open</code> + <code>details.due.set</code>
+  - <code>tm.details.calendar.sync</code> → <code>calendar.sync</code>
+  - <code>tm.details.owner.open|set</code> → <code>owner.open|owner.set</code>
+  - <code>tm.details.tags.add.open|confirm</code>, <code>tm.details.tags.remove</code>
+- Comments (optional pass-1):
+  - <code>tm.comment.create</code>, <code>tm.comment.reply</code>, <code>tm.comment.resolve</code>, <code>tm.comment.like</code></p>
+<p>Layout &amp; typography
+- Header bar: petrol background, white text
+- Progress bar: copper on <code>line</code> background
+- Two columns: Tasks (right), Assets + Details (left)
+- Cards use <code>.card</code>; headers use <code>.heading</code>/<code>.subheading</code></p>
+<p>Non-goals (Preview Bundle)
+- No backend wiring; all actions are placeholders emitting <code>data-action</code>
+- No external packages or CSS frameworks beyond Tailwind and lucide-react</p>
+<p>QA checklist for designers
+- [ ] Renders under <code>/design/&lt;screen&gt;</code> in the app without edits
+- [ ] All clickable elements have <code>data-testid</code> + <code>data-action</code>
+- [ ] Uses tokens (search for <code>#</code> — should be zero)
+- [ ] RTL correct; Hebrew labels sized like the mock; icons aligned
+- [ ] Action manifest present and matches the JSX</p>
+<p>Integration (dev)
+- Swap live screen with the Preview component
+- Map each <code>data-action</code> to existing endpoints; leave placeholders documented in Testing_Episodic_Log
+- Add a Playwright smoke that loads the screen and captures a screenshot</p>
+<p>Versioning
+- When Figma changes layout/IDs: bump a <code>version</code> field inside the JSON manifest and the component file comment.</p>
+<p>See also
+- Tokens: <code>docs/DesignSystem/DESIGN_TOKENS.md</code>
+- Components: <code>docs/DesignSystem/COMPONENT_LIBRARY.md</code>
+- IDs/actions spec: <code>docs/TaskManagement/FIGMA_TASK_MODAL_IDS.md</code></p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

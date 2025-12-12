@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/SQLITE_PHASE0_AUDIT/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>SQLite Phase 0 Audit Report - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#sqlite-phase-0-audit-report" class="nav-link">SQLite Phase 0 Audit Report</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#1-executive-summary" class="nav-link">1. Executive Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#2-database-inventory" class="nav-link">2. Database Inventory</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#3-json-files-current-state" class="nav-link">3. JSON Files (Current State)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#4-code-patterns-from-privacy_dbpy" class="nav-link">4. Code Patterns from privacy_db.py</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#5-activity-log-errors" class="nav-link">5. Activity Log Errors</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#6-backuprestore-test" class="nav-link">6. Backup/Restore Test</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#7-recommendations-for-phase-1" class="nav-link">7. Recommendations for Phase 1</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#8-phase-0-checklist" class="nav-link">8. Phase 0 Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#9-exit-criteria" class="nav-link">9. Exit Criteria</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="sqlite-phase-0-audit-report">SQLite Phase 0 Audit Report</h1>
+<p><strong>Date:</strong> 2025-12-05
+<strong>Auditor:</strong> Joseph (Database Developer)
+<strong>Status:</strong> COMPLETED</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>Phase 0 audit successfully completed. The existing SQLite implementation (privacy_db.py) is stable and provides good patterns for the unified database module.</p>
+<h3 id="key-findings">Key Findings</h3>
+<table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Status</th>
+<th>Action Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WAL mode not enabled</td>
+<td>Warning</td>
+<td>Enable in new db.py</td>
+</tr>
+<tr>
+<td>Database integrity</td>
+<td>OK</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Backup/restore</td>
+<td>Working</td>
+<td>Implement in db_backup.py</td>
+</tr>
+<tr>
+<td>1 error in activity log</td>
+<td>Info</td>
+<td>Monitor, not critical</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-database-inventory">2. Database Inventory</h2>
+<h3 id="21-privacydb">2.1 privacy.db</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Location</strong></td>
+<td>/app/data/privacy.db</td>
+</tr>
+<tr>
+<td><strong>Size</strong></td>
+<td>48 KB (49,152 bytes)</td>
+</tr>
+<tr>
+<td><strong>Tables</strong></td>
+<td>3</td>
+</tr>
+<tr>
+<td><strong>Integrity</strong></td>
+<td>OK</td>
+</tr>
+<tr>
+<td><strong>Journal Mode</strong></td>
+<td>delete (NOT WAL)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="tables">Tables</h4>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Records</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>privacy_submissions</td>
+<td>19</td>
+<td>Privacy form submissions</td>
+</tr>
+<tr>
+<td>activity_log</td>
+<td>10</td>
+<td>Audit trail</td>
+</tr>
+<tr>
+<td>sqlite_sequence</td>
+<td>-</td>
+<td>Auto-increment tracking</td>
+</tr>
+</tbody>
+</table>
+<h4 id="schema">Schema</h4>
+<pre><code class="language-sql">CREATE TABLE privacy_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id TEXT UNIQUE NOT NULL,
+    form_id TEXT NOT NULL,
+    submitted_at TEXT NOT NULL,
+    received_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    contact_name TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    business_name TEXT,
+    answers_json TEXT,
+    score_level TEXT,
+    score_color TEXT,
+    score_dpo BOOLEAN DEFAULT FALSE,
+    score_reg BOOLEAN DEFAULT FALSE,
+    score_report BOOLEAN DEFAULT FALSE,
+    score_requirements TEXT,
+    score_confidence INTEGER,
+    review_status TEXT DEFAULT 'pending',
+    reviewed_at TEXT,
+    override_level TEXT,
+    override_reason TEXT
+);
+
+CREATE TABLE activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+    event_type TEXT NOT NULL,
+    submission_id TEXT,
+    details TEXT,
+    duration_ms INTEGER,
+    success BOOLEAN DEFAULT TRUE
+);
+</code></pre>
+<h4 id="indexes">Indexes</h4>
+<ul>
+<li>idx_sub_id on privacy_submissions(submission_id)</li>
+<li>idx_sub_status on privacy_submissions(review_status)</li>
+<li>idx_sub_submitted on privacy_submissions(submitted_at)</li>
+<li>idx_activity_ts on activity_log(timestamp)</li>
+<li>idx_activity_type on activity_log(event_type)</li>
+</ul>
+<h3 id="22-marketingdb">2.2 marketing.db</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Location</strong></td>
+<td>/app/data/marketing.db</td>
+</tr>
+<tr>
+<td><strong>Size</strong></td>
+<td>92 KB</td>
+</tr>
+<tr>
+<td><strong>Tables</strong></td>
+<td>5</td>
+</tr>
+<tr>
+<td><strong>Integrity</strong></td>
+<td>OK</td>
+</tr>
+<tr>
+<td><strong>Journal Mode</strong></td>
+<td>delete (NOT WAL)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="tables_1">Tables</h4>
+<ul>
+<li>marketing_leads</li>
+<li>marketing_campaigns</li>
+<li>marketing_form_mapping</li>
+<li>lead_scoring_rules</li>
+<li>sqlite_sequence</li>
+</ul>
+<hr />
+<h2 id="3-json-files-current-state">3. JSON Files (Current State)</h2>
+<p>Located in ~/.eislaw/store/:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Size</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clients.json</td>
+<td>8.6 KB</td>
+<td>Client data (to be migrated Phase 2)</td>
+</tr>
+<tr>
+<td>tasks.json</td>
+<td>2.9 KB</td>
+<td>Task data (to be migrated Phase 3)</td>
+</tr>
+<tr>
+<td>privacy_cache.json</td>
+<td>2.9 KB</td>
+<td>Privacy cache</td>
+</tr>
+<tr>
+<td>zoom-manifest.json</td>
+<td>23.8 KB</td>
+<td>Zoom recordings metadata</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-code-patterns-from-privacy_dbpy">4. Code Patterns from privacy_db.py</h2>
+<h3 id="41-connection-management-reuse">4.1 Connection Management (REUSE)</h3>
+<pre><code class="language-python">@contextmanager
+def get_connection():
+    conn = sqlite3.connect(str(get_db_path()), timeout=30)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+</code></pre>
+<p><strong>Pattern Benefits:</strong>
+- Context manager ensures cleanup
+- Row factory enables dict-like access
+- Auto commit/rollback
+- 30-second timeout prevents hanging</p>
+<h3 id="42-schema-initialization-reuse">4.2 Schema Initialization (REUSE)</h3>
+<pre><code class="language-python">def init_db():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(&quot;CREATE TABLE IF NOT EXISTS...&quot;)
+        cursor.execute(&quot;CREATE INDEX IF NOT EXISTS...&quot;)
+
+# Initialize on import
+init_db()
+</code></pre>
+<p><strong>Pattern Benefits:</strong>
+- Idempotent (safe to run multiple times)
+- Tables created on first use
+- No migration needed for initial setup</p>
+<h3 id="43-json-storage-reuse">4.3 JSON Storage (REUSE)</h3>
+<pre><code class="language-python"># Store as JSON string
+answers_json = json.dumps(answers) if answers else None
+
+# Retrieve and parse
+if row.get(&quot;answers_json&quot;):
+    answers = json.loads(row[&quot;answers_json&quot;])
+</code></pre>
+<p><strong>Use Case:</strong> Store complex/variable data (types array, requirements list)</p>
+<hr />
+<h2 id="5-activity-log-errors">5. Activity Log Errors</h2>
+<h3 id="errors-found-1">Errors Found: 1</h3>
+<pre><code>ID: 6
+Timestamp: 2025-12-04 04:51:53
+Event: webhook_error
+Details: {&quot;error&quot;: &quot;Missing submissionId&quot;}
+Success: 0
+</code></pre>
+<p><strong>Assessment:</strong> Non-critical. Indicates a malformed webhook call.</p>
+<hr />
+<h2 id="6-backuprestore-test">6. Backup/Restore Test</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create backup (SQLite API)</td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>Verify backup integrity</td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>Record count match</td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>File size match</td>
+<td>Pass</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Method Used:</strong> SQLite's built-in backup API</p>
+<pre><code class="language-python">source = sqlite3.connect(source_path)
+dest = sqlite3.connect(dest_path)
+source.backup(dest)
+</code></pre>
+<p><strong>Recommendation:</strong> Use this method in db_backup.py for consistent backups.</p>
+<hr />
+<h2 id="7-recommendations-for-phase-1">7. Recommendations for Phase 1</h2>
+<h3 id="71-enable-wal-mode-high-priority">7.1 Enable WAL Mode (HIGH PRIORITY)</h3>
+<pre><code class="language-python">conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+</code></pre>
+<p><strong>Benefits:</strong>
+- Better concurrency (readers don't block writers)
+- Faster commits
+- Better crash recovery</p>
+<h3 id="72-add-foreign-keys-new">7.2 Add Foreign Keys (NEW)</h3>
+<pre><code class="language-python">conn.execute(&quot;PRAGMA foreign_keys=ON&quot;)
+</code></pre>
+<p><strong>Benefits:</strong>
+- Referential integrity (tasks to clients)
+- Cascade deletes
+- Prevents orphan records</p>
+<h3 id="73-unified-database-path">7.3 Unified Database Path</h3>
+<p><strong>Current:</strong> Multiple databases
+- privacy.db at /app/data/privacy.db
+- marketing.db at /app/data/marketing.db</p>
+<p><strong>Proposed:</strong> Single unified database
+- eislaw.db at ~/.eislaw/store/eislaw.db</p>
+<p><strong>Rationale:</strong>
+- Simpler backup (one file)
+- Cross-table queries
+- Unified transactions</p>
+<h3 id="74-index-strategy">7.4 Index Strategy</h3>
+<p>Keep existing indexes, add:
+- idx_clients_name
+- idx_clients_email
+- idx_clients_active
+- idx_tasks_client
+- idx_tasks_done
+- idx_tasks_due</p>
+<hr />
+<h2 id="8-phase-0-checklist">8. Phase 0 Checklist</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Check privacy.db file size</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Review table schema</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Count records</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Check for errors in activity_log</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Run integrity check</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Review privacy_db.py code</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Test backup/restore</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Document findings</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-exit-criteria">9. Exit Criteria</h2>
+<p><strong>Phase 0 Complete</strong> - No critical issues found. Ready for Phase 1.</p>
+<hr />
+<p><strong>Next Steps:</strong> Proceed to Phase 1 (Foundation)
+- Create backend/db.py with unified schema
+- Enable WAL mode
+- Implement backup/restore utilities
+- Create unit tests</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

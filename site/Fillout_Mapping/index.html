@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/Fillout_Mapping/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Fillout Mapping - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#fillout-mapping-plan-privacy-security-scoring" class="nav-link">Fillout Mapping Plan (Privacy Security Scoring)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<!-- Project: PrivacyExpress | Full Context: docs/System_Definition.md#privacy-deliverable-flow -->
+<h1 id="fillout-mapping-plan-privacy-security-scoring">Fillout Mapping Plan (Privacy Security Scoring)</h1>
+<hr />
+<p>Authoritative Mapping (Hidden Fields, v1)
+- Canonical keys expected by the scorer: owners, access, ethics, ppl, sensitive_people, sensitive_types, biometric_100k, transfer, directmail_biz, directmail_self, monitor_1000, processor, processor_large_org, employees_exposed, cameras.
+- Prefer hidden fields in Fillout for stable machine keys. Missing booleans are treated as false; missing numbers as 0.
+- Mapping file: <code>docs/fillout_field_mapping.json</code> holds the form question IDs currently in use.
+- Normalizations applied by the scorer:
+  - If <code>sensitive_people &gt; ppl</code>, effective <code>ppl = sensitive_people</code>.
+  - If <code>biometric_100k == true</code>, floor <code>ppl</code>, <code>sensitive_people</code>, <code>biometric_people</code> to 100,000.
+  - Derive <code>sensitive = true</code> if <code>sensitive_people &gt; 0</code> or <code>sensitive_types</code> non-empty.</p>
+<p>Hidden Fields We Use (current form)
+- owners (number), access (number), ppl (number), sensitive_people (number)
+- ethics (boolean), biometric_100k (boolean), transfer (boolean)
+- directmail_biz (boolean), directmail_self (boolean), monitor_1000 (boolean)
+- processor (boolean), processor_large_org (boolean)
+- employees_exposed (boolean), cameras (boolean)
+- sensitive_types (multi-select; optional)</p>
+<p>See <code>docs/Integrations.md</code> for API fetch instructions and <code>tools/fillout_fetch_and_score.py</code> usage.
+Scope
+- Ensure the questionnaire captures all inputs needed for the rules in <code>config/security_scoring_rules.json</code> and can compute outputs <code>level</code>, <code>reg</code>, <code>report</code>, <code>dpo</code>.
+- Start with simple fields (bool/numeric). We can add a post‑submit webhook to compute results via <code>tools/security_scoring_eval.py</code>.</p>
+<p>Required Inputs (field keys → type → purpose)
+- <code>ethics</code> → bool → Professional ethics applies (Yes/No). Used only to exclude <code>lone</code> when true.
+- <code>owners</code> → int → Number of owners/controllers.
+- <code>access</code> → int → Authorized users with access to the DB.
+- <code>ppl</code> → int → Total number of data subjects/records.
+- <code>sensitive</code> → bool → Sensitive data exists.
+- <code>sensitive_people</code> → int → People with sensitive data. (Report if ≥ 100,000.)
+- <code>biometric_people</code> → int → People with biometric data. (High/Report if ≥ 100,000.)
+- <code>transfer</code> → bool → Transfers data to others. (Reg with ppl ≥ 10,000.)
+- <code>directmail_biz</code> → bool → Direct marketing for a third party. (Reg with ppl ≥ 10,000.)
+- <code>directmail_self</code> → bool → Direct marketing for own business (compliance-only; does not affect level/obligations).
+- <code>place_info</code> → bool → Location data in material quantities. (DPO only.)
+- <code>sensitive_major</code> → bool → Sensitive data in material quantities. (DPO only.)
+- <code>processor</code> → bool → Holds/processes for others. (Reserved.)</p>
+<p>Evaluation Logic (summary)
+- Registration (reg): true iff (<code>transfer</code> OR <code>directmail_biz</code>) AND <code>ppl ≥ 10000</code>. Never otherwise.
+- Reporting (report): true iff <code>reg==false</code> AND (<code>sensitive_people ≥ 100000</code> OR <code>biometric_people ≥ 100000</code>).
+- DPO (dpo): true iff <code>reg</code> OR <code>report</code> OR <code>place_info</code> OR <code>sensitive_major</code>.
+- Level: High if biometric_people ≥ 100000 OR ppl &gt; 100000 OR (sensitive AND access ≥ 101); Lone if (ethics==false AND owners ≤ 2 AND access ≤ 2 AND directmail_biz==false AND transfer==false); Basic if (directmail_biz==false AND transfer==false AND (sensitive==false OR (sensitive AND access ≤ 10))); Mid otherwise.</p>
+<p>Integration Plan
+- Webhook (recommended): On submission, Fillout POSTs JSON to a local endpoint that calls <code>tools/security_scoring_eval.py</code> and returns outputs; appends to Airtable/registry.
+- Alternative: Fillout formula fields (more complex; not recommended for maintenance).</p>
+<p>Next Actions
+- Confirm the form contains or will contain all required inputs above.
+- Send me the field keys (or export). I’ll produce the final key→param mapping and a small webhook skeleton.
+\n+---
+\n+Update v0.2 (DPO rule change)
+- Removed the separate "sensitive_major" boolean. The questionnaire now uses <code>sensitive_people</code> only.
+- DPO rule: <code>dpo = true</code> if any of: <code>reg == true</code>, <code>report == true</code>, <code>place_info == true</code>, or <code>sensitive_people &gt;= 1000</code>.
+- Mapping impact: ensure the form collects a numeric <code>sensitive_people</code> value; do not include <code>sensitive_major</code>.
+- Examples and validations remain the same otherwise; update any payloads to omit <code>sensitive_major</code>.
+\n+Authoritative Mapping (v0.2.1)
+\n+Required inputs (key  type  purpose)
+- <code>ethics</code>  bool  Professional secrecy/ethics applies (Y/N). Used only to exclude <code>lone</code> when true.
+- <code>owners</code>  int  Number of owners/controllers (count couples as one per instruction).
+- <code>access</code>  int  Authorized users with access to the data (include owners; exclude cloud vendors).
+- <code>ppl</code>  int  Total people with personal data (approximate is fine).
+- <code>sensitive</code>  bool  Derived: true if any sensitive type selected OR if <code>sensitive_people &gt; 0</code>.
+- <code>sensitive_people</code>  int  People with sensitive data (report at =100,000; DPO at =1,000).
+- <code>biometric_100k</code>  bool  Biometric data held for 100,000+ people (High/Report trigger).
+- <code>transfer</code>  bool  Transfers data to others as a business activity (core practice).
+- <code>directmail_biz</code>  bool  Segmented direct marketing for another party.
+- <code>directmail_self</code>  bool  Segmented direct marketing for own business (compliance-only; does not affect level/obligations here).
+- <code>processor</code>  bool  Processes/holds data for another controller (material scope).</p>
+<p>Evaluation Logic (summary)
+- Registration (reg): true iff (<code>transfer</code> OR <code>directmail_biz</code>) AND <code>ppl = 10000</code>.
+- Reporting (report): true iff <code>reg==false</code> AND (<code>sensitive_people = 100000</code> OR <code>biometric_100k == true</code>).
+- DPO (dpo): true iff <code>reg</code> OR <code>report</code> OR (<code>sensitive_people = 1000</code>).
+- Level:
+  - High if: <code>biometric_100k == true</code> OR <code>ppl &gt; 100000</code> OR (<code>sensitive==true</code> AND <code>access = 101</code>).
+  - Lone if: <code>ethics==false</code> AND <code>owners = 2</code> AND <code>access = 2</code> AND <code>directmail_biz==false</code> AND <code>transfer==false</code>.
+  - Basic if: <code>directmail_biz==false</code> AND <code>transfer==false</code> AND (<code>sensitive==false</code> OR (<code>sensitive==true</code> AND <code>access = 10</code>)).
+  - Mid otherwise (default).</p>
+<p>Sample payload (for webhook/tests)
+{
+  "ethics": false,
+  "owners": 2,
+  "access": 10,
+  "ppl": 12000,
+  "sensitive": true,
+  "sensitive_people": 1500,
+  "biometric_100k": false,
+  "transfer": false,
+  "directmail_biz": true,
+  "directmail_self": false,
+  "processor": false
+}</p>
+<p>Expected result (illustrative): { "level": "mid", "reg": true, "report": false, "dpo": true }</p>
+<p>Notes
+- Do not include <code>sensitive_major</code> or <code>place_info</code> — not part of the current questionnaire.
+- If the form only stores the sensitive multi-select, derive <code>sensitive = (selected_count &gt; 0)</code>.</p>
+<hr />
+<p>Update v0.2.3 (High + Lone clarification)
+- High level: also when <code>sensitive_people &gt;= 100000</code> (not just biometric/ppl/access).
+- Lone level: add <code>ppl &lt; 10000</code> constraint in addition to ethics=false, owners&lt;=2, access&lt;=2, and no transfer/directmail_biz.
+- Registration threshold is <code>ppl &gt;= 10000</code> (clarified).
+\n+---
+\n+Update v0.2.4 (Requirements outputs)
+- New keys and requirement outputs:
+  - <code>employees_exposed</code> (Q13) → add requirement <code>worker_security_agreement</code>.
+  - <code>cameras</code> (Q14) → add requirement <code>cameras_policy</code>.
+  - <code>processor</code> (Q12) → enforce <code>level_min = mid</code>, add requirements <code>consultation_call</code> and <code>outsourcing_text</code>.
+  - <code>processor_sensitive_org</code> (Q12 follow-up) → set <code>level = high</code>, <code>dpo = true</code>, add requirements <code>consultation_call</code>, <code>outsourcing_text</code>.
+  - <code>directmail_biz</code> (Q9) or <code>directmail_self</code> (Q10) → add requirement <code>direct_marketing_rules</code>.
+\n+Response schema now includes <code>requirements: string[]</code> alongside <code>level</code>, <code>reg</code>, <code>report</code>, <code>dpo</code>.
+Update v0.2.5 (Processor large org → DPO)
+- Add follow-up key: <code>processor_large_org</code> (bool). When true, DPO is required (even if not a sensitive/public body), and outsourcing text is needed.
+- Existing follow-up <code>processor_sensitive_org</code> continues to set High + DPO and also requires outsourcing text.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

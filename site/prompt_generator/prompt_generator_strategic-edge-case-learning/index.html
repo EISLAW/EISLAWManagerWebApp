@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/prompt_generator/prompt_generator_strategic-edge-case-learning/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Prompt Generator — Strategic Edge Case Learning (SECL) - EISLAW Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<p>Purpose
+- Systematically discover and probe decision boundaries by generating boundary‑focused scenarios, evaluating outcomes, and tightening where failures occur.
+- Reduce gray‑area errors and expose hidden risks before deployment.</p>
+<p>When To Use
+- Ambiguous correctness, complex policies, safety/privacy/security review, fairness/compliance checks, product eligibility rules, threshold logic, algorithmic boundaries.</p>
+<p>Definitions
+- Edge Case: scenario near/beyond intended operating boundaries, likely to cause failure/uncertainty.
+- Decision Boundary: threshold/rule separating outputs (e.g., approve/deny; lone/basic/mid/high).
+- Scenario Class: family of scenarios defined by parameters.
+- Oracle/Proxy: ground‑truth rule (or high‑quality approximation) to judge correctness.
+- Evaluation Rule: pass/fail/uncertain rubric applied to each scenario.</p>
+<p>Inputs (caller supplies)
+- Goal (what logic/decision to stress‑test).
+- Constraints (audience, jurisdiction, privacy/safety, formatting).
+- Domain assumptions (explicit assumptions affecting answers).
+- Risk criteria (what counts as material failure: legal, safety, privacy, fairness).
+- Boundary hypotheses (where failures might occur).
+- Parameterization (scenario parameters + ranges).
+- Seed examples (representative + borderline cases).
+- Stop criteria (min coverage %, max failure/uncertain %, max tokens).
+- Token budget (cap by mode) and Random seed (reproducible sampling).</p>
+<p>Scenario Generation Plan
+- Class coverage: enumerate scenario classes; ensure balance; include negative controls.
+- Boundary hypotheses: identify parameters near thresholds per class.
+- Perturbations:
+  - Grid: sweep parameters around hypotheses (± deltas).
+  - Mutation: perturb inputs to create plausible near‑misses.
+  - Counterfactual: minimal edits to cross boundary (trace original_id + delta).
+  - OOD: include a small set of out‑of‑distribution stressors.
+- Balance &amp; controls: per‑class quotas; include benign scenarios to detect over‑triggering.</p>
+<p>Evaluation &amp; Confidence
+- Oracle/proxy rules produce pass/fail/uncertain with justification.
+- Confidence score per scenario with evidence (quote, calculation, or source).
+- “Uncertain” is first‑class; escalates if critical.</p>
+<p>Metrics &amp; Stop Rules (defaults; override via inputs)
+- Defaults: coverage_target = 0.80; edge_density_target ≥ 0.50; fail_rate_alert ≥ 0.10; uncertain_rate_alert ≥ 0.10.
+- Coverage: % classes tested; # scenarios per class; edge density (# near boundary / total).
+- Outcomes: fail rate; uncertain rate; confusion patterns; top failure modes.
+- Stop: when coverage ≥ target OR max tokens hit OR failures exceed threshold (or other stop conditions) — else escalate for input.</p>
+<p>Privacy &amp; Safety
+- PII minimization in scenarios; use synthetic placeholders.
+- Jurisdiction flags per scenario; avoid unsafe instructions.
+- PII lint: reject any scenario containing real PII; report pii_rejected_count.</p>
+<p>SECL Result JSON (emit at end of a run)
+{
+  "seed": 1234,
+  "boundary_hypotheses": ["…"],
+  "scenario_classes": [{"name":"ClassA","quota":10},{"name":"ClassB","quota":10}],
+  "sampling_table": [{"class":"ClassA","quota":10,"generated":10}],
+  "scenarios": [
+    {
+      "id":"s1",
+      "class":"ClassA",
+      "input":"(synthetic/redacted)",
+      "parameters":{"p1":0.49,"p2":true},
+      "expected":"deny",
+      "oracle":"rule-13-sec17",
+      "outcome":"pass|fail|uncertain",
+      "confidence":0.78,
+      "evidence":"quote|calc|source",
+      "notes":"…",
+      "is_boundary": true,
+      "is_counterfactual": false
+    }
+  ],
+  "counterfactual_links": [{"id":"s7","original_id":"s3","delta":"p1:+0.02"}],
+  "coverage":{"classes_tested":2,"edge_density":0.6,"fail_rate":0.15,"uncertain_rate":0.10},
+  "top_fail_modes":["…"],
+  "pii_rejected_count": 0,
+  "fairness_note": "(if applicable)",
+  "stop_conditions_met": true
+}</p>
+<p>Modes
+- Short: ≤ 4 classes; ≤ 12 scenarios; top failures only; still emit full SECL Result JSON.
+- Deep: ≤ 8 classes; ≤ 48 scenarios; allow 2 perturbation passes; still emit full SECL Result JSON.</p>
+<p>Copy/Paste Prompt Template (one‑turn; fill brackets)
+System
+- You are a rigorous analyst. Run Strategic Edge Case Learning (SECL) to probe decision boundaries and report structured results. Follow all formatting and JSON rules exactly.</p>
+<p>User
+- Goal: [what logic/decision to stress‑test].
+- Constraints: [audience, jurisdiction, privacy/safety, formatting].
+- Domain assumptions: [key assumptions].
+- Boundary hypotheses: [where failures may occur].
+- Parameterization: [parameters and ranges].
+- Seed examples (optional): [few seeds].
+- Stop criteria: [min coverage %, max failures %, max uncertain %, max tokens].
+- Mode: [short|deep]; Random seed: [int].
+- Process
+  - Generate scenario classes and balanced quotas with negative controls.
+  - For each class, create boundary‑focused scenarios via grid, mutations, counterfactuals (record original_id + delta), and a small OOD sample.
+  - Evaluate each scenario with oracle/proxy: outcome pass/fail/uncertain, confidence, evidence.
+  - Compute coverage + failure metrics; apply stop rules; highlight top failure modes.
+  - Emit SECL Result JSON exactly as specified. Do not include PII; use synthetic content. Include sampling_table and pii_rejected_count.
+- Output
+  - Sections: “SECL Run — Scenarios &amp; Evaluation”, “Metrics &amp; Coverage”, “Top Failure Modes”, “SECL Result JSON”.</p>
+<p>Adversarial summary (design decisions &amp; mitigations)
+- Set metrics defaults and explicit mode caps.
+- Enforce class balance via per‑class quotas and sampling_table.
+- Add PII‑lint rejection count; fairness note when relevant.
+- Define minimal‑edit counterfactual rule and links.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

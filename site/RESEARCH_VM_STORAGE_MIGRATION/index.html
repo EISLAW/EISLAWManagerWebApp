@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/RESEARCH_VM_STORAGE_MIGRATION/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>VM Storage Migration Research - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="./" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#vm-storage-migration-research-storage-001" class="nav-link">VM Storage Migration Research (STORAGE-001)</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#1-executive-summary" class="nav-link">1. Executive Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#2-current-state-analysis-vm" class="nav-link">2. Current State Analysis (VM)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#3-file-categorization-decision-matrix" class="nav-link">3. File Categorization &amp; Decision Matrix</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#4-database-impact-path-url-mapping" class="nav-link">4. Database Impact (path ↔ URL mapping)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#5-azure-blob-architecture" class="nav-link">5. Azure Blob Architecture</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#6-migration-plan-phased" class="nav-link">6. Migration Plan (Phased)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#7-cost-analysis-rough-azure-east-us" class="nav-link">7. Cost Analysis (rough, Azure East US)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#8-risks-mitigations" class="nav-link">8. Risks &amp; Mitigations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#9-recommendations-next-steps" class="nav-link">9. Recommendations &amp; Next Steps</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="vm-storage-migration-research-storage-001">VM Storage Migration Research (STORAGE-001)</h1>
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<ul>
+<li>VM disk (<code>/dev/root</code>) is 69% used (20G/29G). The dominant movable data is <strong>2.2G of Outlook email <code>.eml</code> archives</strong> under <code>clients/Unassigned/emails</code> (≈1,799 files). Other notable consumers: Git repo objects (1.2G), system logs (289M under <code>/var/log</code>, 231M journal), and lingering npm/node/playwright caches (~48M). Application databases are small (&lt;5M).</li>
+<li>No evidence of SharePoint or Blob offloading for email content; email JSON/EML and indexes are stored on the VM filesystem. Database schemas already anticipate remote storage (<code>azure_blob</code> in <code>recordings</code>, SharePoint URLs), so introducing Blob URLs aligns with current patterns.</li>
+<li>Docker storage usage could not be measured (docker CLI timed out), but expect additional footprint in <code>/var/lib/docker</code> from images/volumes. Include Docker cleanup in the plan to reclaim space.</li>
+<li>Recommendation: Move email payloads (EML/JSON) and any future file exports/backups to Azure Blob (Hot tier) with lifecycle policies to Cool after 30–60 days. Keep DB/indexes locally; store blob URLs in DB tables. Target disk use drop to &lt;40% with recurring log/docker cleanup.</li>
+</ul>
+<h2 id="2-current-state-analysis-vm">2. Current State Analysis (VM)</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Size</th>
+<th>Contents</th>
+<th>Purpose</th>
+<th>Move?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/home/azureuser/EISLAWManagerWebApp/clients/Unassigned/emails</code></td>
+<td>2.2G</td>
+<td>Outlook <code>.eml</code> payloads + nested folders (≈1,799 files)</td>
+<td>Email archive per client</td>
+<td><strong>Yes → Blob</strong></td>
+</tr>
+<tr>
+<td><code>/home/azureuser/EISLAWManagerWebApp/.git/objects</code></td>
+<td>1.2G</td>
+<td>Git packs</td>
+<td>Source control</td>
+<td>No (run <code>git gc</code> to slim)</td>
+</tr>
+<tr>
+<td><code>/home/azureuser/EISLAWManagerWebApp/data</code></td>
+<td>4.1M</td>
+<td>SQLite DBs (<code>eislaw.db</code> 3.8M), backups, tasks.json</td>
+<td>App data</td>
+<td>Keep (DB stays on disk)</td>
+</tr>
+<tr>
+<td><code>/home/azureuser/EISLAWManagerWebApp/rag_local/chroma_legal</code></td>
+<td>17M</td>
+<td>Chroma SQLite/vector data</td>
+<td>Local RAG cache</td>
+<td>Maybe (could move to managed search later)</td>
+</tr>
+<tr>
+<td><code>/home/azureuser/langfuse/.git</code></td>
+<td>64M</td>
+<td>Langfuse repo</td>
+<td>Observability tooling</td>
+<td>Keep</td>
+</tr>
+<tr>
+<td><code>/home/azureuser/.local/lib</code>, <code>.npm</code>, <code>node_modules</code></td>
+<td>~48M combined</td>
+<td>Python/npm caches, playwright-core</td>
+<td>Tooling caches</td>
+<td>Clean periodically</td>
+</tr>
+<tr>
+<td><code>/var/log/journal</code></td>
+<td>231M</td>
+<td>Systemd journals</td>
+<td>OS logs</td>
+<td>Trim/rotate; optionally ship to Blob</td>
+</tr>
+<tr>
+<td><code>/var/log</code> (other)</td>
+<td>58M</td>
+<td>sysstat, azure agent, apt</td>
+<td>OS logs</td>
+<td>Trim/rotate</td>
+</tr>
+<tr>
+<td><code>/home/azureuser/EISLAWManagerWebApp/tests</code>, <code>frontend</code>, <code>docs</code></td>
+<td>&lt;15M each</td>
+<td>Code/tests/docs</td>
+<td>Keep</td>
+<td></td>
+</tr>
+<tr>
+<td>Docker data (<code>/var/lib/docker</code>, unknown)</td>
+<td>(unmeasured)</td>
+<td>Images, volumes, logs</td>
+<td>Runtime</td>
+<td><strong>Cleanup</strong> (prune images/volumes once measured)</td>
+</tr>
+</tbody>
+</table>
+<p>Disk commands executed:
+- <code>df -h</code> → <code>/dev/root</code> 20G used / 9.1G free (69%).
+- <code>du -h --max-depth=2 /home/azureuser | sort -hr | head -20</code> (see sizes above).
+- <code>du -h --max-depth=2 ~/EISLAWManagerWebApp | sort -hr | head -20</code> (clients/emails dominates).
+- <code>find ~/EISLAWManagerWebApp -type f (eml|pdf|docx)</code> → EML files in clients tree.
+- <code>find /home/azureuser -type f -size +10M</code> → large EMLs and <code>rag_local/chroma.sqlite3</code>.
+- <code>sudo du -h --max-depth=1 /var/log</code> → 289M total (231M journal).
+- <code>docker system df</code> and <code>/var/lib/docker</code> sizing timed out (needs follow-up with sudo and longer timeout).</p>
+<h2 id="3-file-categorization-decision-matrix">3. File Categorization &amp; Decision Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>File Type / Location</th>
+<th>Current Location</th>
+<th>Should Move?</th>
+<th>Target</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Email EML payloads</td>
+<td><code>clients/*/emails/*.eml</code></td>
+<td>Yes</td>
+<td>Azure Blob (<code>eislaw-emails</code>)</td>
+<td>Largest movable set; immutable; safe to URL-reference</td>
+</tr>
+<tr>
+<td>Email JSON bodies</td>
+<td><code>clients/*/emails/*.json</code></td>
+<td>Yes</td>
+<td>Azure Blob (<code>eislaw-emails/json</code>)</td>
+<td>Same lifecycle as EML; reduces disk churn</td>
+</tr>
+<tr>
+<td>Email index DB</td>
+<td><code>clients/email_index.sqlite</code></td>
+<td>Keep local</td>
+<td>VM disk</td>
+<td>Small (FTS), benefits from low latency; rebuildable</td>
+</tr>
+<tr>
+<td>Client folder pointers</td>
+<td><code>clients/*</code> folder metadata</td>
+<td>Keep</td>
+<td>DB only</td>
+<td>Store SharePoint/Blob URLs, not files</td>
+</tr>
+<tr>
+<td>Recording media</td>
+<td><code>recordings/</code> or <code>local_path</code> in DB (future)</td>
+<td>Yes (new writes)</td>
+<td>Azure Blob (<code>eislaw-media</code>)</td>
+<td>Already modeled with <code>azure_blob</code>; heavy files</td>
+</tr>
+<tr>
+<td>Transcript text files</td>
+<td><code>transcripts/*.txt</code> (if generated)</td>
+<td>Yes (new writes)</td>
+<td>Azure Blob (<code>eislaw-transcripts</code>)</td>
+<td>Durable storage; keep DB references</td>
+</tr>
+<tr>
+<td>Backups/exports</td>
+<td><code>data/backups</code>, ad-hoc exports</td>
+<td>Yes</td>
+<td>Azure Blob (<code>eislaw-backups/exports</code>)</td>
+<td>Free disk + centralizes retention</td>
+</tr>
+<tr>
+<td>Logs (archives)</td>
+<td>Rotated <code>/var/log</code> / app logs</td>
+<td>Maybe</td>
+<td>Azure Blob (<code>eislaw-logs</code>)</td>
+<td>Keep 7–14 days locally; archive to Blob</td>
+</tr>
+<tr>
+<td>Databases (<code>data/*.db</code>)</td>
+<td>VM disk</td>
+<td>Keep</td>
+<td>VM disk</td>
+<td>Small, transactional; avoid latency</td>
+</tr>
+<tr>
+<td>Git/Repos</td>
+<td>VM disk</td>
+<td>Keep</td>
+<td>VM disk</td>
+<td>Source control; can be GC’d</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-database-impact-path-url-mapping">4. Database Impact (path ↔ URL mapping)</h2>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Column(s)</th>
+<th>Current Use</th>
+<th>Proposed Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messages</code> (email_index.sqlite)</td>
+<td><code>json_path</code>, <code>eml_path</code></td>
+<td>Local filesystem paths</td>
+<td>Store Blob URL in new <code>json_url</code>, <code>eml_url</code>; keep local path optional until cutover</td>
+</tr>
+<tr>
+<td><code>recordings</code></td>
+<td><code>local_path</code>, <code>azure_blob</code></td>
+<td>Local file path + optional blob field</td>
+<td>Make <code>azure_blob</code> required for new items; migrate <code>local_path</code> files to Blob and backfill <code>azure_blob</code></td>
+</tr>
+<tr>
+<td><code>transcripts</code></td>
+<td><code>file_path</code>, <code>audio_path</code></td>
+<td>Local file references</td>
+<td>Add <code>file_url</code>, <code>audio_url</code>; migrate files to Blob; keep hash/duration in DB</td>
+</tr>
+<tr>
+<td><code>clients</code></td>
+<td><code>sharepoint_url</code>, <code>local_folder</code></td>
+<td>Folder pointers</td>
+<td>Ensure SharePoint remains source for docs; no migration needed</td>
+</tr>
+<tr>
+<td><code>tasks</code></td>
+<td><code>attachments</code> JSON (may include <code>local_path</code>), <code>client_folder_path</code></td>
+<td>Potential file references</td>
+<td>Enforce attachments as SharePoint/Blob links; deprecate local paths</td>
+</tr>
+<tr>
+<td><code>agent_audit_log</code></td>
+<td><code>output_data</code> may include temp file refs</td>
+<td>No schema change</td>
+<td>Ensure blob URLs logged, not temp paths</td>
+</tr>
+</tbody>
+</table>
+<p>Migration note: keep dual columns during transition (path + url) and add data migration scripts to backfill URLs before removing path usage in code.</p>
+<h2 id="5-azure-blob-architecture">5. Azure Blob Architecture</h2>
+<ul>
+<li><strong>Storage account</strong>: <code>eislawstorage</code> (or dedicated <code>eislawfiles</code>) with private endpoints enabled.</li>
+<li><strong>Containers &amp; layout</strong></li>
+<li><code>eislaw-emails/{client_slug}/{thread_id}/{message_id}.eml</code></li>
+<li><code>eislaw-emails-json/{client_slug}/{thread_id}/{message_id}.json</code></li>
+<li><code>eislaw-media/{client_slug}/{recording_id}.{ext}</code></li>
+<li><code>eislaw-transcripts/{client_slug}/{transcript_id}.txt</code></li>
+<li><code>eislaw-backups/{date}/eislaw.db</code>, <code>tasks.json</code>, exports</li>
+<li><code>eislaw-logs/{service}/{yyyy}/{mm}/{dd}/...</code></li>
+<li><strong>Access/auth</strong>: Prefer managed identity from VM/app; fall back to connection string stored in <code>secrets.local.json</code>. Use user delegation SAS for signed URLs to clients.</li>
+<li><strong>Lifecycle</strong>: Hot tier default; transition to Cool after 30–60 days for emails/media; optional delete after 1–2 years for logs/exports. Enable versioning + soft delete on containers.</li>
+<li><strong>Python pattern</strong></li>
+</ul>
+<pre><code class="language-python">from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timedelta
+
+blob_service = BlobServiceClient.from_connection_string(CONN_STR)
+blob = blob_service.get_blob_client(&quot;eislaw-emails&quot;, f&quot;{client_slug}/{msg_id}.eml&quot;)
+blob.upload_blob(eml_bytes, overwrite=True, content_type=&quot;message/rfc822&quot;)
+blob_url = blob.url  # store in DB
+
+sas = generate_blob_sas(
+    account_name=blob_service.account_name,
+    container_name=&quot;eislaw-emails&quot;,
+    blob_name=f&quot;{client_slug}/{msg_id}.eml&quot;,
+    account_key=blob_service.credential.account_key,
+    permission=BlobSasPermissions(read=True),
+    expiry=datetime.utcnow() + timedelta(hours=24),
+)
+signed_url = f\&quot;{blob_url}?{sas}\&quot;
+</code></pre>
+<ul>
+<li><strong>SDKs</strong>: <code>azure-storage-blob&gt;=12</code>; retry policy enabled; multipart upload for &gt;256MB.</li>
+<li><strong>Security</strong>: Private containers, IP allowlist to app/CI, encryption-at-rest on, require HTTPS, rotate keys quarterly if using connection strings.</li>
+</ul>
+<h2 id="6-migration-plan-phased">6. Migration Plan (Phased)</h2>
+<p><strong>Phase 0 – Preparation (1–2 days)</strong>
+- Measure Docker footprint (<code>sudo docker system df --verbose</code>) and set target free space (&gt;50%).
+- Enable/verify log rotation (<code>journalctl --vacuum-time=30d</code>, app logrotate).
+- Create inventory of file refs: export list of EML/JSON files and counts per client.</p>
+<p><strong>Phase 1 – Blob Setup (0.5 day)</strong>
+- Provision storage account + containers above; enable lifecycle rules (Hot→Cool 45d, delete logs after 180d).
+- Add secrets/managed identity bindings; add config entries in <code>secrets.local.json</code> and <code>.env</code>.</p>
+<p><strong>Phase 2 – Code Updates (1–2 days)</strong>
+- Add <code>backend/services/blob_storage.py</code> helper (upload/download, signed URLs, content-type mapping).
+- Update email ingestion to write EML/JSON to Blob and persist blob URLs in <code>messages</code> table (new columns).
+- Update recording/transcript writers to prefer Blob; expose signed URLs via API.
+- Extend tests for blob URL presence and fallback handling.</p>
+<p><strong>Phase 3 – Database &amp; Backfill (1–2 days)</strong>
+- Schema migrations: add <code>json_url</code>, <code>eml_url</code> to <code>messages</code>; <code>file_url</code>, <code>audio_url</code> to <code>transcripts</code>; enforce <code>azure_blob</code> in <code>recordings</code>.
+- Backfill: stream EML/JSON files to Blob, update DB rows; verify hashes/sizes.
+- Rebuild <code>email_index.sqlite</code> to reference blob URLs (keep local paths temporarily for rollback).</p>
+<p><strong>Phase 4 – Cleanup &amp; Observability (0.5–1 day)</strong>
+- Delete/move local EML/JSON after checksum verification and backup snapshot.
+- Prune Docker images/volumes; vacuum Git repo (<code>git gc</code>).
+- Trim journals (<code>journalctl --vacuum-time=30d</code>); set logrotate for app logs.
+- Add monitoring: alert on disk &gt;80%, blob failures, upload latency.</p>
+<p><strong>Phase 5 – Rollout &amp; Policy</strong>
+- Document operator runbook for blob issues/rotations.
+- Schedule weekly cron to vacuum logs and monthly Docker prune.
+- Optional: blob inventory reports and cost alerts at $10/month threshold.</p>
+<h2 id="7-cost-analysis-rough-azure-east-us">7. Cost Analysis (rough, Azure East US)</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Current (VM disk)</th>
+<th>Proposed (Blob Hot+Cool)</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VM managed disk (128GB)</td>
+<td>~$25–40/mo</td>
+<td>Could downsize after cleanup</td>
+<td>Based on standard SSD pricing</td>
+</tr>
+<tr>
+<td>Blob storage 5GB (initial email move)</td>
+<td>$0</td>
+<td>~$0.09/mo (Hot)</td>
+<td>$0.018/GB-month</td>
+</tr>
+<tr>
+<td>Blob storage 50GB (emails+media)</td>
+<td>$0</td>
+<td>~$0.92/mo (Hot)</td>
+<td>Cool tier: ~$0.51/mo after 45d</td>
+</tr>
+<tr>
+<td>Egress (internal use)</td>
+<td>$0</td>
+<td>~$0 (same region)</td>
+<td></td>
+</tr>
+<tr>
+<td>Transactions</td>
+<td>$0</td>
+<td>&lt;$0.50/mo</td>
+<td>Assuming light access patterns</td>
+</tr>
+<tr>
+<td><strong>Estimated net</strong></td>
+<td>~$25–40/mo</td>
+<td>~$12–20/mo after disk downsize</td>
+<td>Save ~$13–20/mo; + durability</td>
+</tr>
+</tbody>
+</table>
+<p>Assumptions: 50GB total movable data (emails + future media); Cool after 45d for 80% of objects; same-region access; no CDN.</p>
+<h2 id="8-risks-mitigations">8. Risks &amp; Mitigations</h2>
+<ul>
+<li><strong>Data loss during migration</strong> → Mitigate with checksums (MD5) before delete, keep 30-day local backup, run in batches with retry logging.</li>
+<li><strong>URL breakage</strong> → Dual-write period (path + blob URL) with feature flag; backfill updates DB before cleanup.</li>
+<li><strong>Access/latency issues</strong> → Use managed identity and retry policies; cache signed URLs; consider CDN if public sharing grows.</li>
+<li><strong>Docker/log bloat persists</strong> → Add scheduled <code>docker system prune --volumes</code> (with allowlist) and journal vacuum cron; monitor disk.</li>
+<li><strong>Compliance/privacy</strong> → Private containers, time-bound SAS, lifecycle deletion for sensitive content; audit logging of downloads.</li>
+</ul>
+<h2 id="9-recommendations-next-steps">9. Recommendations &amp; Next Steps</h2>
+<ul>
+<li>Approve Blob storage account + containers; decide lifecycle (30 vs 60 days to Cool).</li>
+<li>Implement Phase 0–2 immediately; prioritize email ingestion dual-write and schema additions.</li>
+<li>Schedule backfill of existing EML/JSON within a maintenance window; take backup of <code>data/</code> and <code>clients/email_index.sqlite</code> before move.</li>
+<li>After cleanup, reassess disk; consider shrinking root disk or moving to stateless container + mounted data disk/Blobfuse2 for email cache if needed.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

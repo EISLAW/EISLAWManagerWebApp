@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/prompt_generator/prompt_generator_recursive-prompt-optimization/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Prompt Generator — Recursive Prompt Optimization (RPO) - EISLAW Docs</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<p>Purpose
+- Maintain and continuously improve prompt quality across many executions by iteratively generating variants, testing against a rubric + test set, and selecting the best prompt version.
+- Reduce manual QC while keeping outputs consistent, compliant, and performant (accuracy, format, latency/cost).</p>
+<p>When To Use
+- Batch generation (reports, emails, summaries), long‑lived assistants, CI for prompts, or any workflow where drift/regressions are costly.</p>
+<p>Definitions
+- RPO Loop: repeat (generate variants → evaluate → select → accept/stop).
+- Prompt Version (vᵢ): a concrete prompt spec (system/role/context/constraints/steps/examples/output schema).
+- Test Set: representative inputs (and expected signals) used to score variants; include a holdout for overfitting checks.
+- Rubric: scoring rules (e.g., accuracy/compliance/format/conciseness/latency/cost) with weights and pass thresholds.
+- Mutation Operator: a change to the prompt (ordering, specificity, role priming, examples, constraints, output schemas, instruction brevity).
+- Acceptance Criteria: when a new version becomes “best” (e.g., composite score gain ≥ ε and no regression on critical metrics).
+- Budget: limits (max variants/iteration, max iterations, token/time caps).</p>
+<p>Inputs (caller supplies)
+- Objective + success criteria (what the prompt must achieve).
+- Constraints (compliance/privacy/brand/style/format; must‑include headings/JSON).
+- Test set (N inputs) + holdout set (M inputs); seeds for reproducibility.
+- Rubric (metrics + weights + pass thresholds); critical metrics that must not regress.
+- Budget (max iters, max variants/iter, token/time caps); exploration vs exploitation ratio.
+- Environment/tools context (APIs/features available) or “none”.</p>
+<p>SOP v1 — Procedure
+1) Bootstrap
+   - Build Prompt v0 from the objective/constraints.
+   - Freeze test set (T) + holdout (H); set random seed; record baseline metrics on v0.
+2) Generate Variants (explore)
+   - Create K variants using mutation operators, e.g.:
+     - Constraint ordering; stronger specificity; role priming; examples (few‑shot vs minimal); output schema clarity; hallucination safeguards; brevity.
+   - Ensure diversity; tag each variant with the applied mutations.
+3) Evaluate
+   - Run each variant on T; score per rubric (accuracy/compliance/format/conciseness/latency/cost) → composite score.
+   - Penalize violations (hallucinations, format errors) and high latency/cost.
+4) Select &amp; Accept
+   - Pick top variant(s). Run on holdout H to check generalization.
+   - Accept if composite gain ≥ ε AND no regression on critical metrics; else keep v<em>.
+5) Early Stop &amp; Budget
+   - Stop if: max iters reached OR improvement &lt; ε for K rounds OR token/time cap exceeded.
+6) Overfitting Guards
+   - Maintain class balance; rotate holdout; compare failure patterns; keep a small adversarial slice.
+7) Artifacts
+   - Save best prompt v</em>; metrics table; changelog (diff vs previous); mutation history; seeds; environment info.</p>
+<p>Defaults (override as needed)
+- Weights: accuracy 0.5, compliance 0.25, format 0.15, latency/cost 0.10.
+- Critical metrics: compliance, format (no regressions allowed).
+- Budget (short): iters≤2, variants/iter≤4. Budget (deep): iters≤5, variants/iter≤8.
+- ε (min improvement): short 1–2 pts (on 0–100 scale); deep 0.5–1 pt.</p>
+<p>Privacy &amp; Safety
+- Use synthetic/test data; no real PII. Record seeds; sanitize logs before persistence.
+- Honor jurisdiction/brand constraints in prompts and tests.</p>
+<p>RPO Result JSON (emit at end of an RPO run)
+{
+  "seed": 1234,
+  "budget": {"iters": 3, "variants_per_iter": 6, "token_cap": 150000},
+  "rubric": {"weights": {"accuracy":0.5, "compliance":0.25, "format":0.15, "latency_cost":0.10}, "critical":["compliance","format"]},
+  "baseline": {"version":"v0","score":72.4,"metrics":{"accuracy":0.71,"compliance":0.95,"format":0.92,"latency_cost":0.60}},
+  "iterations": [
+    {
+      "iter": 1,
+      "variants": [
+        {"id":"v1a","mutations":["reordered_constraints","explicit_schema"],"score":78.1},
+        {"id":"v1b","mutations":["role_priming","fewer_examples"],"score":75.0}
+      ],
+      "selected": "v1a",
+      "holdout": {"score":77.5, "no_critical_regressions": true}
+    }
+  ],
+  "best": {"version":"v1a","score":77.5},
+  "changelog": [
+    {"from":"v0","to":"v1a","diff":"constraints reordered; schema clarified; evidence required"}
+  ],
+  "stop_reason": "improvement_below_epsilon"
+}</p>
+<p>Modes
+- Short: iters≤2, variants/iter≤4; test set size small; prioritize low‑cost mutations.
+- Deep: iters≤5, variants/iter≤8; larger test/holdout; allow multiple mutation families per iter.</p>
+<p>Copy/Paste Prompt Template (one‑turn; fill brackets)
+System
+- You are a prompt optimization engine. Run Recursive Prompt Optimization (RPO): generate prompt variants, evaluate against a rubric + test set, select the best, and emit RPO Result JSON. Follow all constraints and JSON exactly.</p>
+<p>User
+- Objective: [what the prompt must achieve].
+- Constraints: [jurisdiction/privacy/brand/style/format; headings/JSON requirements].
+- Environment/tools: [APIs/features] or “none”.
+- Test set: [N representative inputs]; Holdout: [M inputs]; Random seed: [int].
+- Rubric: weights {accuracy, compliance, format, latency/cost}; critical metrics; pass thresholds.
+- Budget: {iters, variants/iter, token_cap}; ε (min improvement).</p>
+<p>Process
+1) Build Prompt v0 from Objective + Constraints; run baseline on Test set.
+2) Generate diverse variants via mutation operators (ordering, specificity, role priming, examples, schemas, safeguards, brevity).
+3) Evaluate each variant on Test set; compute scores; penalize violations + high latency/cost.
+4) Select top; validate on Holdout; accept only if gain≥ε and no regression on critical metrics; else keep current best.
+5) Early stop when Budget reached or improvement &lt; ε; keep best prompt v*.
+6) Emit RPO Result JSON exactly as specified (include seeds, weights, budget, iterations, best, changelog, stop_reason).</p>
+<p>Adversarial summary (design decisions &amp; mitigations)
+- Prevent regressions on critical metrics; holdout validation; budget + ε; mutation diversity; logging artifacts; PII‑safe tests.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

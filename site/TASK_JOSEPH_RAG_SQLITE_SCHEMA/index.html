@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://example.local/TASK_JOSEPH_RAG_SQLITE_SCHEMA/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>TASK: RAG SQLite Schema & Data Migration - EISLAW Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">EISLAW Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../INDEX/" class="nav-link">Index</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKING_MEMORY/" class="nav-link">Working Memory</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../Testing_Episodic_Log/" class="nav-link">Episodic Log</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../TEAM_INBOX/" class="nav-link">Team Inbox</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../DEV_WORKFLOW_DIAGRAM/" class="nav-link">Development Workflow Diagram</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../WORKFLOW_UPDATE_ANALYSIS/" class="nav-link">Workflow Update Analysis</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_SKILLS_ARCHITECTURE/" class="nav-link">Skills Architecture Research</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../RESEARCH_VM_STORAGE_MIGRATION/" class="nav-link">VM Storage Migration Research</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#task-rag-sqlite-schema-data-migration" class="nav-link">TASK: RAG SQLite Schema &amp; Data Migration</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#objective" class="nav-link">Objective</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#context" class="nav-link">Context</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#checklist" class="nav-link">Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#schema-definitions" class="nav-link">Schema Definitions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#migration-scripts" class="nav-link">Migration Scripts</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#verification-queries" class="nav-link">Verification Queries</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#post-migration-update-data_storesmd" class="nav-link">Post-Migration: Update DATA_STORES.md</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#completion-report" class="nav-link">Completion Report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#questions-for-cto" class="nav-link">Questions for CTO</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="task-rag-sqlite-schema-data-migration">TASK: RAG SQLite Schema &amp; Data Migration</h1>
+<p><strong>Assigned To:</strong> Joseph (Database Developer)
+<strong>Created:</strong> 2025-12-07
+<strong>Priority:</strong> P1 - Critical
+<strong>Status:</strong> NOT STARTED</p>
+<hr />
+<h2 id="objective">Objective</h2>
+<p>Create SQLite tables for the RAG module and migrate existing data from JSON files. This is blocking the entire RAG tab functionality.</p>
+<hr />
+<h2 id="context">Context</h2>
+<p>The RAG module currently stores data in JSON files:
+- <code>data/transcripts/recordings_cache.json</code> - 32 Zoom recordings
+- <code>data/transcripts/index.json</code> - Empty <code>[]</code> (should have transcript entries)
+- <code>RAG_Pilot/transcripts/*.txt</code> - 32 transcript text files</p>
+<p>This breaks the system pattern where all data should be in SQLite. The RAG tab shows empty because <code>index.json</code> is empty.</p>
+<p><strong>Reference Documents:</strong>
+- <code>docs/RAG_FEATURES_SPEC.md</code> - Full feature audit
+- <code>docs/DATA_STORES.md</code> - Data Bible (needs update after this task)
+- <code>docs/INSIGHTS_RAG_PRD.md</code> - Original PRD</p>
+<hr />
+<h2 id="checklist">Checklist</h2>
+<h3 id="phase-1-schema-creation">Phase 1: Schema Creation</h3>
+<ul>
+<li>[ ] <strong>1.1</strong> Add <code>recordings</code> table to <code>eislaw.db</code></li>
+<li>[ ] <strong>1.2</strong> Add <code>transcripts</code> table to <code>eislaw.db</code></li>
+<li>[ ] <strong>1.3</strong> Add <code>rag_documents</code> table to <code>eislaw.db</code></li>
+<li>[ ] <strong>1.4</strong> Verify tables created with correct schema</li>
+<li>[ ] <strong>1.5</strong> Update <code>docs/DATA_STORES.md</code> with new schema</li>
+</ul>
+<h3 id="phase-2-data-migration">Phase 2: Data Migration</h3>
+<ul>
+<li>[ ] <strong>2.1</strong> Migrate <code>recordings_cache.json</code> (32 entries) → <code>recordings</code> table</li>
+<li>[ ] <strong>2.2</strong> Import Zoom cloud recordings (36 entries from API) → <code>recordings</code> table</li>
+<li>[ ] <strong>2.3</strong> Import pilot transcripts (32 .txt files) → <code>transcripts</code> table</li>
+<li>[ ] <strong>2.4</strong> Verify row counts match expected</li>
+</ul>
+<h3 id="phase-3-verification">Phase 3: Verification</h3>
+<ul>
+<li>[ ] <strong>3.1</strong> Query <code>recordings</code> table - should return 68 rows (32 + 36)</li>
+<li>[ ] <strong>3.2</strong> Query <code>transcripts</code> table - should return 32 rows</li>
+<li>[ ] <strong>3.3</strong> Test foreign key relationships</li>
+<li>[ ] <strong>3.4</strong> Backup database after migration</li>
+</ul>
+<hr />
+<h2 id="schema-definitions">Schema Definitions</h2>
+<h3 id="table-recordings">Table: <code>recordings</code></h3>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS recordings (
+    id TEXT PRIMARY KEY,
+    zoom_id TEXT UNIQUE,
+    zoom_meeting_id TEXT,
+    topic TEXT NOT NULL,
+    date TEXT,
+    start_time TEXT,
+    duration_minutes INTEGER,
+    file_type TEXT,           -- M4A, MP4, WAV, etc.
+    file_size_mb REAL,
+    download_url TEXT,
+    azure_blob TEXT,          -- Path in Azure Blob Storage
+    local_path TEXT,          -- Path on VM filesystem
+    status TEXT DEFAULT 'pending',  -- in_zoom, downloading, downloaded, transcribing, completed, error, skipped
+    error TEXT,
+    client_id TEXT,           -- FK to clients.id (nullable)
+    domain TEXT,              -- Client_Work, Personal, Webinar
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    downloaded_at TEXT,
+    transcribed_at TEXT,
+    synced_at TEXT,
+    FOREIGN KEY (client_id) REFERENCES clients(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recordings_zoom_id ON recordings(zoom_id);
+CREATE INDEX IF NOT EXISTS idx_recordings_status ON recordings(status);
+CREATE INDEX IF NOT EXISTS idx_recordings_date ON recordings(date);
+CREATE INDEX IF NOT EXISTS idx_recordings_client ON recordings(client_id);
+</code></pre>
+<h3 id="table-transcripts">Table: <code>transcripts</code></h3>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS transcripts (
+    id TEXT PRIMARY KEY,
+    recording_id TEXT,        -- FK to recordings.id (nullable for manual uploads)
+    title TEXT,               -- Display name
+    content TEXT,             -- Full transcript text
+    segments TEXT,            -- JSON array: [{speaker, start, end, text}, ...]
+    language TEXT DEFAULT 'he',
+    model_used TEXT,          -- gemini-1.5-flash, gemini-1.5-pro, whisper, manual
+    status TEXT DEFAULT 'draft',  -- draft, reviewed, published
+    domain TEXT,              -- Client_Work, Personal, Webinar
+    client_id TEXT,           -- FK to clients.id (nullable)
+    tags TEXT,                -- JSON array of tag strings
+    file_path TEXT,           -- Path to source .txt file
+    audio_path TEXT,          -- Path to source audio file
+    word_count INTEGER,
+    duration_seconds INTEGER,
+    hash TEXT,                -- MD5 hash of first 1MB (for dedup)
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    published_at TEXT,
+    reviewed_by TEXT,
+    FOREIGN KEY (recording_id) REFERENCES recordings(id),
+    FOREIGN KEY (client_id) REFERENCES clients(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transcripts_recording ON transcripts(recording_id);
+CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts(status);
+CREATE INDEX IF NOT EXISTS idx_transcripts_client ON transcripts(client_id);
+CREATE INDEX IF NOT EXISTS idx_transcripts_hash ON transcripts(hash);
+</code></pre>
+<h3 id="table-rag_documents">Table: <code>rag_documents</code></h3>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS rag_documents (
+    id TEXT PRIMARY KEY,
+    transcript_id TEXT NOT NULL,  -- FK to transcripts.id
+    chunk_index INTEGER,          -- Order within transcript
+    chunk_text TEXT NOT NULL,     -- Text chunk for embedding
+    meilisearch_id TEXT,          -- ID in Meilisearch index
+    embedding_model TEXT,         -- Model used for embedding
+    indexed_at TEXT,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_rag_docs_transcript ON rag_documents(transcript_id);
+CREATE INDEX IF NOT EXISTS idx_rag_docs_meili ON rag_documents(meilisearch_id);
+</code></pre>
+<hr />
+<h2 id="migration-scripts">Migration Scripts</h2>
+<h3 id="21-migrate-recordings_cachejson">2.1 Migrate recordings_cache.json</h3>
+<p>Location: <code>~/EISLAWManagerWebApp/data/transcripts/recordings_cache.json</code></p>
+<pre><code class="language-python">import json
+import sqlite3
+import uuid
+from pathlib import Path
+
+# Load JSON
+cache_path = Path(&quot;/app/data/transcripts/recordings_cache.json&quot;)
+data = json.loads(cache_path.read_text())
+
+# Connect to DB
+conn = sqlite3.connect(&quot;/app/data/eislaw.db&quot;)
+cursor = conn.cursor()
+
+# Insert each recording
+for zoom_id, rec in data.items():
+    cursor.execute(&quot;&quot;&quot;
+        INSERT OR IGNORE INTO recordings
+        (id, zoom_id, topic, date, duration_minutes, file_type, status, download_url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    &quot;&quot;&quot;, (
+        str(uuid.uuid4()),
+        rec.get(&quot;zoom_id&quot;),
+        rec.get(&quot;topic&quot;),
+        rec.get(&quot;date&quot;),
+        rec.get(&quot;duration&quot;),
+        rec.get(&quot;file_type&quot;),
+        rec.get(&quot;status&quot;, &quot;pending&quot;),
+        rec.get(&quot;download_url&quot;)
+    ))
+
+conn.commit()
+print(f&quot;Migrated {len(data)} recordings from cache&quot;)
+</code></pre>
+<h3 id="22-import-zoom-cloud-recordings">2.2 Import Zoom Cloud Recordings</h3>
+<p>Fetch from <code>/api/zoom/recordings</code> and insert those not already in DB.</p>
+<h3 id="23-import-pilot-transcripts">2.3 Import Pilot Transcripts</h3>
+<p>Location: <code>~/EISLAWManagerWebApp/RAG_Pilot/transcripts/*.txt</code></p>
+<pre><code class="language-python">import sqlite3
+import uuid
+from pathlib import Path
+import re
+
+transcripts_dir = Path(&quot;/home/azureuser/EISLAWManagerWebApp/RAG_Pilot/transcripts&quot;)
+conn = sqlite3.connect(&quot;/app/data/eislaw.db&quot;)
+cursor = conn.cursor()
+
+for txt_file in transcripts_dir.glob(&quot;*.txt&quot;):
+    content = txt_file.read_text(encoding=&quot;utf-8&quot;)
+
+    # Parse filename: &quot;תמלול - אישי - זום_שם - DD.MM.YY HH-MM.txt&quot;
+    filename = txt_file.stem
+
+    # Extract date from filename (pattern: DD.MM.YY)
+    date_match = re.search(r&quot;(\d{2})\.(\d{2})\.(\d{2})&quot;, filename)
+    if date_match:
+        day, month, year = date_match.groups()
+        date = f&quot;20{year}-{month}-{day}&quot;
+    else:
+        date = None
+
+    # Extract name/topic
+    topic = filename.replace(&quot;תמלול - אישי - &quot;, &quot;&quot;).strip()
+
+    cursor.execute(&quot;&quot;&quot;
+        INSERT INTO transcripts
+        (id, title, content, language, status, domain, file_path, word_count, created_at)
+        VALUES (?, ?, ?, 'he', 'draft', 'Personal', ?, ?, datetime('now'))
+    &quot;&quot;&quot;, (
+        str(uuid.uuid4()),
+        topic,
+        content,
+        str(txt_file),
+        len(content.split())
+    ))
+
+conn.commit()
+print(f&quot;Imported {len(list(transcripts_dir.glob('*.txt')))} transcripts&quot;)
+</code></pre>
+<hr />
+<h2 id="verification-queries">Verification Queries</h2>
+<p>After migration, run these to verify:</p>
+<pre><code class="language-sql">-- Check recordings count
+SELECT COUNT(*) as total, status, file_type
+FROM recordings
+GROUP BY status, file_type;
+
+-- Check transcripts count
+SELECT COUNT(*) as total, status, domain
+FROM transcripts
+GROUP BY status, domain;
+
+-- Check for orphaned transcripts (no recording)
+SELECT COUNT(*) FROM transcripts WHERE recording_id IS NOT NULL
+AND recording_id NOT IN (SELECT id FROM recordings);
+
+-- Sample recordings
+SELECT id, zoom_id, topic, date, status FROM recordings LIMIT 5;
+
+-- Sample transcripts
+SELECT id, title, status, word_count FROM transcripts LIMIT 5;
+</code></pre>
+<hr />
+<h2 id="post-migration-update-data_storesmd">Post-Migration: Update DATA_STORES.md</h2>
+<p>Add this section to DATA_STORES.md after completing migration:</p>
+<pre><code class="language-markdown">#### recordings (X rows)
+Stores Zoom cloud recordings and uploaded audio files.
+- Primary source: Zoom API sync + manual uploads
+- Status flow: in_zoom → downloading → downloaded → transcribing → completed
+
+#### transcripts (X rows)
+Stores transcript text and metadata.
+- Primary source: Gemini/Whisper transcription + manual imports
+- Status flow: draft → reviewed → published
+
+#### rag_documents (X rows)
+Stores chunked text for Meilisearch indexing.
+- Created when transcript is published
+- Links to Meilisearch document IDs
+</code></pre>
+<hr />
+<h2 id="completion-report">Completion Report</h2>
+<p>When done, update this section:</p>
+<pre><code>Completed: [DATE]
+Completed By: Joseph
+
+Results:
+- recordings table: X rows
+- transcripts table: X rows
+- rag_documents table: X rows
+
+Backup created: [BACKUP_FILENAME]
+
+Notes:
+[Any issues or observations]
+</code></pre>
+<hr />
+<h2 id="questions-for-cto">Questions for CTO</h2>
+<p>Before starting, confirm:</p>
+<ol>
+<li>Should <code>rag_documents</code> be populated now, or wait for Meilisearch integration?</li>
+<li>Should we keep the JSON files as backup after migration?</li>
+<li>Any additional fields needed for future features?</li>
+</ol>
+<hr />
+<p><em>Task created by Joe (CTO) on 2025-12-07</em></p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
