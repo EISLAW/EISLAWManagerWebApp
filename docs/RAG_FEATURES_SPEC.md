@@ -1,8 +1,8 @@
 # RAG Module - Feature Specification
 
-**Last Updated:** 2025-12-07
+**Last Updated:** 2025-12-12
 **Owner:** David (Product) + Joe (CTO)
-**Status:** INITIAL AUDIT
+**Status:** IN PROGRESS - PHASE 1 COMPLETE (RAG-FIX-001 through RAG-FIX-004)
 
 This document is the **Feature Bible** for the RAG module - the single source of truth for what exists, what works, and what is broken.
 
@@ -13,11 +13,15 @@ This document is the **Feature Bible** for the RAG module - the single source of
 | Metric | Count |
 |--------|-------|
 | **Total Features** | ~42 |
-| **Working** | ~28 |
-| **Broken/Partial** | ~6 |
-| **Not Implemented** | ~8 |
+| **Working** | ~35 |
+| **Broken/Partial** | ~3 |
+| **Not Implemented** | ~4 |
 
-**Critical Issue:** No SQLite schema for recordings/transcripts. Data stored in JSON files which breaks the system pattern.
+**Status Update:** ✅ Phase 1 fixes complete. RAG-FIX-001 through RAG-FIX-004 implemented. Core pipeline now functional:
+- SQLite backend ✅ (RAG-FIX-001)
+- Meilisearch indexing ✅ (RAG-FIX-002)
+- Search endpoint functional ✅ (RAG-FIX-003)
+- 32 pilot transcripts indexed ✅ (RAG-FIX-004)
 
 ---
 
@@ -202,33 +206,35 @@ CREATE TABLE rag_documents (
 
 ## 4. Known Bugs
 
-| ID | Severity | Description | Root Cause |
-|----|----------|-------------|------------|
-| RAG-001 | Critical | Transcribe button does nothing | `/api/zoom/transcribe/{id}` endpoint missing |
-| RAG-002 | Critical | Inbox shows empty | `index.json` is `[]`, no data migrated |
-| RAG-003 | High | Search returns empty | Stub implementation, no actual search |
-| RAG-004 | High | 32 pilot transcripts not visible | Files exist but not in index |
-| RAG-005 | Medium | Some downloads fail | Azure Blob client errors |
-| RAG-006 | Medium | Assistant has no sources | No documents indexed in Meilisearch |
+| ID | Severity | Description | Root Cause | Status |
+|----|----------|-------------|------------|--------|
+| RAG-001 | Critical | Transcribe button does nothing | `/api/zoom/transcribe/{id}` endpoint missing | ⏳ P1 |
+| RAG-002 | Critical | Inbox shows empty | JSON backend - FIXED with SQLite | ✅ FIXED (RAG-FIX-001) |
+| RAG-003 | High | Search returns empty | Stub implementation - FIXED with Meilisearch | ✅ FIXED (RAG-FIX-003) |
+| RAG-004 | High | 32 pilot transcripts not visible | Not indexed in Meilisearch | ✅ FIXED (RAG-FIX-004) |
+| RAG-005 | Medium | Some downloads fail | Azure Blob client errors | ⏳ P2 |
+| RAG-006 | Medium | Assistant has no sources | Transcripts now indexed | ✅ FIXED (RAG-FIX-004) |
 
 ---
 
 ## 5. PRD Compliance Check
 
-| PRD Requirement | Implemented | Notes |
-|-----------------|-------------|-------|
-| Drop & Go upload | Yes | Works well |
-| MD5 duplicate check | Yes | First 1MB |
-| Background transcription | No | Endpoint missing |
-| Gemini 1.5 Flash/Pro | Partial | Models listed, transcription broken |
-| Whisper fallback | No | Not implemented |
-| Inbox with badges | Yes | But empty |
-| WhatsApp chat view | Yes | Well implemented |
-| Global speaker rename | Yes | Works |
-| Audio timestamp sync | Yes | Works |
-| Hard delete | Yes | Works |
-| SQLite storage | No | Uses JSON files |
-| Meilisearch indexing | No | Not implemented |
+| PRD Requirement | Implemented | Notes | Updated |
+|-----------------|-------------|-------|---------|
+| Drop & Go upload | Yes | Works well | ✅ |
+| MD5 duplicate check | Yes | First 1MB | ✅ |
+| Background transcription | No | Endpoint missing - P1 task | ⏳ |
+| Gemini 1.5 Flash/Pro | Partial | Models listed, transcription broken | ⏳ |
+| Whisper fallback | No | Not implemented - P1 task | ⏳ |
+| Inbox with badges | Yes | Now working with SQLite backend | ✅ |
+| WhatsApp chat view | Yes | Well implemented | ✅ |
+| Global speaker rename | Yes | Works | ✅ |
+| Audio timestamp sync | Yes | Works | ✅ |
+| Hard delete | Yes | Works | ✅ |
+| SQLite storage | **Yes** | ✅ IMPLEMENTED (RAG-FIX-001) | ✅ |
+| Meilisearch indexing | **Yes** | ✅ IMPLEMENTED (RAG-FIX-002) | ✅ |
+| Search functionality | **Yes** | ✅ WORKING (RAG-FIX-003) | ✅ |
+| Transcript indexing | **Yes** | ✅ 32 TRANSCRIPTS INDEXED (RAG-FIX-004) | ✅ |
 
 ---
 
@@ -280,6 +286,10 @@ From `RAG_Pilot/transcripts/`:
 
 | Date | Change | By |
 |------|--------|-----|
+| 2025-12-12 | RAG-FIX-004: Backfilled 32 pilot transcripts to Meilisearch (verified search working) | Alex (Backend) |
+| 2025-12-12 | RAG-FIX-003: Search endpoint implemented using Meilisearch | (from RAG-FIX-001 review) |
+| 2025-12-12 | RAG-FIX-002: Meilisearch indexing integrated in publish flow | (from RAG-FIX-001 review) |
+| 2025-12-12 | RAG-FIX-001: SQLite backend migration complete, verified all 12 endpoints use SQLite | Jacob (CTO) approved |
 | 2025-12-07 | Initial Feature Spec created from audit | David (Product) |
 
 ---
