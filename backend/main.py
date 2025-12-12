@@ -689,7 +689,32 @@ app.include_router(templates_api.router)
 app.include_router(word_api.router)
 
 BASE_DIR = Path(__file__).resolve().parent
-TRANSCRIPTS_DIR = BASE_DIR / "Transcripts"
+
+
+def get_transcripts_dir() -> Path:
+    """Return a writable transcripts directory (works in Docker)."""
+    candidates = []
+    env_dir = os.environ.get("EISLAW_TRANSCRIPTS_DIR")
+    if env_dir:
+        candidates.append(Path(env_dir))
+    candidates.extend([
+        Path("/app/data/transcripts"),
+        Path.home() / ".eislaw" / "transcripts",
+        BASE_DIR / "Transcripts",
+    ])
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            test_file = candidate / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+            return candidate
+        except Exception:
+            continue
+    return BASE_DIR / "Transcripts"
+
+
+TRANSCRIPTS_DIR = get_transcripts_dir()
 INBOX_DIR = TRANSCRIPTS_DIR / "Inbox"
 LIBRARY_DIR = TRANSCRIPTS_DIR / "Library"
 INDEX_PATH = TRANSCRIPTS_DIR / "index.json"
@@ -1593,8 +1618,12 @@ def privacy_report_html(token: str):
 
 @app.get("/api/rag/search")
 def rag_search(q: str, client: Optional[str] = None, domain: Optional[str] = None, limit: int = 20):
-    """Search transcripts using SQLite."""
-    return rag_sqlite.rag_search_sqlite(q, client, domain, limit)
+    """Search transcripts using Meilisearch with SQLite fallback."""
+    try:
+        rag_sqlite.ensure_meilisearch_index()
+    except Exception as e:
+        print(f"Meilisearch index setup failed: {e}")
+    return rag_sqlite.search_meilisearch(q, client, domain, limit)
 
 @app.get("/api/rag/inbox")
 def rag_inbox():
@@ -1620,12 +1649,56 @@ async def rag_ingest(
     Duplicate hashes return existing entry without re-processing.
     """
     ensure_dirs()
-    safe_name = filename or file.filename or "upload.bin"
-    target_path = INBOX_DIR / f"{hash}_{safe_name}"
 
-    # Save file to disk
-    with target_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    import re
+    from starlette.concurrency import run_in_threadpool
+
+    max_upload_bytes = int(os.environ.get("RAG_MAX_UPLOAD_BYTES", 100 * 1024 * 1024))
+    if not re.fullmatch(r"[a-fA-F0-9]{32}", (hash or "")):
+        raise HTTPException(status_code=400, detail="Invalid hash format")
+    file_hash = hash.lower()
+
+    raw_name = filename or file.filename or "upload.bin"
+    raw_name = Path(raw_name).name  # strip any path components
+    safe_name = re.sub(r"[^\w\-. ]+", "_", raw_name, flags=re.UNICODE).strip(" ._")
+    if not safe_name:
+        safe_name = "upload.bin"
+    if len(safe_name) > 120:
+        safe_name = safe_name[:120]
+
+    declared_size = None
+    if size:
+        try:
+            declared_size = int(size)
+        except Exception:
+            declared_size = None
+    if declared_size is not None and declared_size > max_upload_bytes:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    target_path = INBOX_DIR / f"{file_hash}_{safe_name}"
+
+    def _copy_with_limit(src, dst, max_bytes: int, chunk_size: int = 1024 * 1024) -> int:
+        total = 0
+        while True:
+            chunk = src.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise ValueError("File too large")
+            dst.write(chunk)
+        return total
+
+    # Save file to disk (avoid blocking the event loop on large uploads)
+    try:
+        with target_path.open("wb") as f:
+            await run_in_threadpool(_copy_with_limit, file.file, f, max_upload_bytes)
+    except ValueError:
+        try:
+            target_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise HTTPException(status_code=413, detail="File too large")
 
     # Transcribe
     segments, note, status = [], "Saved to inbox; transcription pending", "draft"
@@ -1633,15 +1706,14 @@ async def rag_ingest(
     try:
         segments = gemini_transcribe_audio(str(target_path), model=model)
         content_text = "\n".join(seg.get("text", "") for seg in segments)
-        # note variable removed - using model_used directly
         status = "ready"
-    except Exception as exc:
-        note = f"Transcription failed: {exc}"
+    except Exception:
+        note = "Transcription failed"
         status = "error"
 
     # Store in SQLite
     result = rag_sqlite.ingest_transcript_sqlite(
-        file_hash=hash,
+        file_hash=file_hash,
         filename=safe_name,
         file_path=str(target_path),
         content=content_text,
@@ -1658,7 +1730,6 @@ async def rag_ingest(
     result["transcript"] = segments
 
     return result
-
 
 @app.post("/api/rag/transcribe_doc")
 async def rag_transcribe_doc(
@@ -1804,8 +1875,15 @@ def rag_audio(item_id: str):
     if not path or not Path(path).exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
 
-    return FileResponse(path, filename=Path(path).name)
+    candidate = Path(path)
+    resolved = candidate.expanduser().resolve()
+    allowed_dirs = [INBOX_DIR.resolve(), LIBRARY_DIR.resolve()]
+    if not any(resolved.is_relative_to(d) for d in allowed_dirs):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
 
+    return FileResponse(str(resolved), filename=resolved.name)
 
 @app.post("/api/rag/assistant")
 def rag_assistant(payload: dict = Body(default=None)):
