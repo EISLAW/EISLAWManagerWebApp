@@ -1,6 +1,6 @@
 # EISLAW Data Bible
 
-**Last Updated:** 2025-12-08
+**Last Updated:** 2025-12-13
 **Owner:** Joseph (Database) + Joe (CTO)
 **Status:** AUTHORITATIVE SOURCE OF TRUTH
 
@@ -19,6 +19,7 @@ AI agents and developers MUST reference this document before accessing any data.
 | **Tasks** | JSON | `~/.eislaw/store/tasks.json` | ✅ Active |
 | **Task Attachments** | JSON (in task) | `tasks.attachments[]` array | ✅ Active |
 | **Quote Templates** | SQLite | `data/eislaw.db` → `quote_templates` | ✅ Active |
+| **AI Studio Artifacts** | SQLite | `data/eislaw.db` → `ai_artifacts` | 🆕 Active |
 | **Agent Approvals** | SQLite | `data/eislaw.db` → `agent_approvals` | ✅ Active |
 | **Agent Settings** | SQLite | `data/eislaw.db` → `agent_settings` | ✅ Active |
 | **Activity Log** | SQLite | `data/eislaw.db` → `activity_log` | ✅ Active |
@@ -44,7 +45,7 @@ AI agents and developers MUST reference this document before accessing any data.
 
 ### Main Database: `eislaw.db`
 **Location:** `data/eislaw.db` (Docker: `/app/data/eislaw.db`)
-**Tables:** 15 total (privacy moved to separate privacy.db)
+**Tables:** 19 total (privacy moved to separate privacy.db)
 
 #### 1. clients (22 columns)
 ```sql
@@ -301,6 +302,50 @@ CREATE TABLE IF NOT EXISTS rag_documents (
 
 CREATE INDEX IF NOT EXISTS idx_rag_docs_transcript ON rag_documents(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_rag_docs_meili ON rag_documents(meilisearch_id);
+```
+
+
+#### 13. ai_artifacts (0 rows)
+AI Studio saved artifacts (drafts, summaries, insight cards, docs).
+
+```sql
+CREATE TABLE IF NOT EXISTS ai_artifacts (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT,
+    content TEXT NOT NULL,
+    content_format TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    created_by_user_id TEXT
+);
+```
+
+#### 14. ai_artifact_entity_refs (0 rows)
+Links artifacts to entities (client/task/transcript/email, etc.).
+
+```sql
+CREATE TABLE IF NOT EXISTS ai_artifact_entity_refs (
+    artifact_id TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    created_at TEXT
+);
+```
+
+#### 15. ai_artifact_versions (optional early) (0 rows)
+Optional version history for artifacts.
+
+```sql
+CREATE TABLE IF NOT EXISTS ai_artifact_versions (
+    artifact_id TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    content_format TEXT,
+    created_at TEXT,
+    created_by_user_id TEXT
+);
 ```
 
 ### Privacy Database: `privacy.db`

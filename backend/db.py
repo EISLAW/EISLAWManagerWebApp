@@ -141,6 +141,48 @@ CREATE TABLE IF NOT EXISTS quote_templates (
 
 CREATE INDEX IF NOT EXISTS idx_templates_category ON quote_templates(category);
 CREATE INDEX IF NOT EXISTS idx_templates_name ON quote_templates(name);
+
+-- AI STUDIO ARTIFACTS
+CREATE TABLE IF NOT EXISTS ai_artifacts (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    conversation_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT,
+    content TEXT NOT NULL,
+    content_format TEXT NOT NULL DEFAULT 'markdown' CHECK (content_format IN ('markdown', 'html', 'text', 'json')),
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    created_by_user_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_artifacts_conversation ON ai_artifacts(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ai_artifacts_type ON ai_artifacts(type);
+CREATE INDEX IF NOT EXISTS idx_ai_artifacts_created_at ON ai_artifacts(created_at);
+
+CREATE TABLE IF NOT EXISTS ai_artifact_entity_refs (
+    artifact_id TEXT NOT NULL REFERENCES ai_artifacts(id) ON DELETE CASCADE,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (artifact_id, entity_type, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_artifact_entity_refs_artifact ON ai_artifact_entity_refs(artifact_id);
+CREATE INDEX IF NOT EXISTS idx_ai_artifact_entity_refs_entity ON ai_artifact_entity_refs(entity_type, entity_id);
+
+-- Optional early: versions/history
+CREATE TABLE IF NOT EXISTS ai_artifact_versions (
+    artifact_id TEXT NOT NULL REFERENCES ai_artifacts(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    content_format TEXT NOT NULL DEFAULT 'markdown' CHECK (content_format IN ('markdown', 'html', 'text', 'json')),
+    created_at TEXT DEFAULT (datetime('now')),
+    created_by_user_id TEXT,
+    PRIMARY KEY (artifact_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_artifact_versions_artifact ON ai_artifact_versions(artifact_id);
+
 """
 
 
@@ -501,6 +543,124 @@ def get_stats(db: Database) -> Dict:
 # Agent System Database Helpers
 # =========================================
 
+class AIArtifactsDB:
+    """AI Studio artifact operations namespace."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def get(self, artifact_id: str) -> Optional[Dict]:
+        return self.db.execute_one(
+            "SELECT * FROM ai_artifacts WHERE id = ?",
+            (artifact_id,),
+        )
+
+    def list(
+        self,
+        conversation_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict]:
+        if conversation_id:
+            return self.db.execute(
+                "SELECT * FROM ai_artifacts WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+                (conversation_id, limit, offset),
+            )
+        return self.db.execute(
+            "SELECT * FROM ai_artifacts ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+
+    def create(
+        self,
+        conversation_id: str,
+        artifact_type: str,
+        title: Optional[str],
+        content: str,
+        content_format: str = "markdown",
+        created_by_user_id: Optional[str] = None,
+        entity_refs: Optional[List[Dict]] = None,
+    ) -> str:
+        artifact_id = str(uuid.uuid4())
+        self.db.execute(
+            "INSERT INTO ai_artifacts (id, conversation_id, type, title, content, content_format, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                artifact_id,
+                conversation_id,
+                artifact_type,
+                title,
+                content,
+                content_format,
+                created_by_user_id,
+            ),
+        )
+
+        if entity_refs:
+            self.set_entity_refs(artifact_id, entity_refs)
+
+        return artifact_id
+
+    def update(
+        self,
+        artifact_id: str,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        content_format: Optional[str] = None,
+        artifact_type: Optional[str] = None,
+        entity_refs: Optional[List[Dict]] = None,
+    ) -> bool:
+        fields: List[str] = []
+        values: List[Any] = []
+
+        if title is not None:
+            fields.append("title = ?")
+            values.append(title)
+        if content is not None:
+            fields.append("content = ?")
+            values.append(content)
+        if content_format is not None:
+            fields.append("content_format = ?")
+            values.append(content_format)
+        if artifact_type is not None:
+            fields.append("type = ?")
+            values.append(artifact_type)
+
+        if fields:
+            fields.append("updated_at = datetime('now')")
+            values.append(artifact_id)
+            sql = f"UPDATE ai_artifacts SET {', '.join(fields)} WHERE id = ?"
+            self.db.execute(sql, tuple(values))
+
+        if entity_refs is not None:
+            self.set_entity_refs(artifact_id, entity_refs)
+
+        return True
+
+    def get_entity_refs(self, artifact_id: str) -> List[Dict]:
+        return self.db.execute(
+            "SELECT entity_type, entity_id, created_at FROM ai_artifact_entity_refs WHERE artifact_id = ? ORDER BY entity_type, entity_id",
+            (artifact_id,),
+        )
+
+    def set_entity_refs(self, artifact_id: str, entity_refs: List[Dict]) -> None:
+        self.db.execute(
+            "DELETE FROM ai_artifact_entity_refs WHERE artifact_id = ?",
+            (artifact_id,),
+        )
+
+        rows: List[tuple] = []
+        for ref in entity_refs:
+            entity_type = ref.get("entity_type") or ref.get("type")
+            entity_id = ref.get("entity_id") or ref.get("id")
+            if not entity_type or not entity_id:
+                continue
+            rows.append((artifact_id, str(entity_type), str(entity_id)))
+
+        if rows:
+            self.db.execute_many(
+                "INSERT OR IGNORE INTO ai_artifact_entity_refs (artifact_id, entity_type, entity_id) VALUES (?, ?, ?)",
+                rows,
+            )
 class AgentApprovalsDB:
     """Database operations for agent approvals."""
 
@@ -765,15 +925,17 @@ _db: Database = None
 clients: ClientsDB = None
 tasks: TasksDB = None
 contacts: ContactsDB = None
+artifacts: AIArtifactsDB = None
 
 
 def init_global_db(db_path: Path = None):
     """Initialize or reinitialize global database instance."""
-    global _db, clients, tasks, contacts
+    global _db, clients, tasks, contacts, artifacts
     _db = Database(db_path)
     clients = ClientsDB(_db)
     tasks = TasksDB(_db)
     contacts = ContactsDB(_db)
+    artifacts = AIArtifactsDB(_db)
     return _db
 
 
