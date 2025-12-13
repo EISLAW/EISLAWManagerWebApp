@@ -648,6 +648,20 @@ def remove_from_meilisearch(item_id: str):
         return False
 
 
+
+
+def _escape_meili_filter_value(value: str) -> str:
+    """Escape user-provided values used inside single-quoted Meilisearch filter strings."""
+    if value is None:
+        raise ValueError('filter value is None')
+    if not isinstance(value, str):
+        value = str(value)
+    # Disallow control characters/newlines in filter values
+    if any(ord(ch) < 32 for ch in value):
+        raise ValueError('filter value contains control characters')
+    # Escape backslash and single-quote for Meilisearch filter strings
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
 def search_meilisearch(q: str, client_id: Optional[str] = None, domain: Optional[str] = None, limit: int = 20) -> Dict:
     """Search transcripts using Meilisearch (for published content)."""
     try:
@@ -659,9 +673,9 @@ def search_meilisearch(q: str, client_id: Optional[str] = None, domain: Optional
 
         filters = []
         if client_id:
-            filters.append(f"client_id = '{client_id}'")
+            filters.append(f"client_id = '{_escape_meili_filter_value(client_id)}'")
         if domain:
-            filters.append(f"domain = '{domain}'")
+            filters.append(f"domain = '{_escape_meili_filter_value(domain)}'")
 
         if filters:
             search_params["filter"] = " AND ".join(filters)

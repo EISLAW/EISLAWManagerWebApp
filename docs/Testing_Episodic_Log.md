@@ -1,80 +1,21 @@
-<!-- Projec
+<!-- Projec## 2025-11-07 - Backend tests + UI smoke after Dashboard/Tasks changes
 
----
 
-## 2025-12-11: Chat Integration Reliability - Root Cause & Permanent Fix
-
-**MEMORIZE THIS - IT FAILED 3+ TIMES BEFORE WE GOT IT RIGHT**
-
-### Problem
-Chat integration was completely unreliable:
-- Sometimes agents post, sometimes don't
-- Sometimes only start messages, sometimes only completion
-- Sometimes emojis, sometimes no emojis
-- Different behavior for different agents (Alex vs Jane vs David)
-
-### Why Previous Fixes Failed
-1. **Jacob's analysis was correct** (spawn command inconsistency) but implementation was incomplete
-2. **Only updated examples** in CLAUDE.md, didn't mandate usage
-3. **No verification testing** - assumed it worked without spawning 10+ real agents
-4. **Bash helper issues ignored** - didn't realize it fails in Windows CMD (no `jq`) and WSL (wrong path)
-
-### Root Causes (Definitive - from CHAT-DEBUG-001)
-1. **Bash helper fails silently:**
-   - Windows CMD: `jq` not installed → silent failure with warning
-   - WSL: Hardcoded Windows path doesn't work → file not found
-   - Python helper works 100% everywhere
-
-2. **Spawn templates lack enforcement:**
-   - Templates were optional examples, not requirements
-   - No ═══ boxes or MANDATORY language
-   - Agents could skip chat instructions if spawn command omitted them
-
-### The Fix (100% Success Rate - 20/20 Tests)
-1. **Fixed bash helper** - Added environment detection for Windows/WSL paths (lines 16-28 in tools/agent_chat.sh)
-2. **Created FOOLPROOF spawn templates** in CLAUDE.md §1a:
-   - ═══ visual boxes around MANDATORY steps
-   - "DO NOT SKIP" language
-   - Numbered steps (1-POST START, 2-EXECUTE, 3-POST COMPLETION, 4-UPDATE TEAM_INBOX)
-   - Python helper standardized (works everywhere, no `jq` dependency)
-3. **Verified with 20 real spawns** - 10 start messages + 10 completion messages = 100% success
-
-### Critical Implementation Details
-- **Template 1 (Claude CLI):** Uses Python helper directly via `from tools.agent_chat import post_start`
-- **Template 2 (Codex CLI):** Uses Python helper via subprocess (NOT bash helper - `jq` issues)
-- **Verification:** Every agent MUST post 🚀 start + ✅ completion to #agent-tasks
-- **Monitoring:** Check http://localhost:8065 within 2 minutes of spawn
-
-### How to Use
-**Joe (or any spawning agent):**
-1. Copy template from CLAUDE.md §1a (Claude or Codex variant)
-2. Replace {NAME}, {TASK-ID}, {DESCRIPTION}, {BRANCH}, {ESTIMATED}
-3. Spawn agent
-4. Verify start message appears in #agent-tasks within 2 minutes
-5. If no start message → respawn using same template (spawn command was too long or garbled)
-
-### Never Do This Again
-❌ Don't spawn agents without chat posting instructions
-❌ Don't assume "agents will figure it out"
-❌ Don't use bash helper in Windows CMD (use Python)
-❌ Don't update templates without verification testing (need 10+ real spawns)
-❌ Don't declare fix complete until 100% success rate verified
-
-### Files Modified
-- `tools/agent_chat.sh` - Lines 16-28: Environment detection
-- `CLAUDE.md` - Lines 432-516: FOOLPROOF SPAWN COMMAND TEMPLATES section
-
-### Evidence
-- **Task doc:** `docs/TASK_ELI_CHAT_RELIABILITY_INVESTIGATION.md`
-- **Verification:** 20/20 tests passed (Phase 7)
-- **Investigation:** 7 phases, ~2.5 hours, systematic methodology
-- **Agent:** Eli (Haiku 4.5) - cost-efficient, excellent for systematic testing
-
-**MEMORIZE:** Use foolproof templates from CLAUDE.md §1a for EVERY spawn. No exceptions.
-
----
-
-## 2025-11-07 - Backend tests + UI smoke after Dashboard/Tasks changes
+## 2025-12-13 – RAG Security Hardening Lessons (MEMORIZE)
+- **Symptom:** Security fixes landed for RAG, but review still blocked because the *lesson* and *Data Bible* weren’t updated.
+- **Root causes:**
+  - **SQL injection footgun:** building `UPDATE transcripts SET {column}=...` without a strict allowlist lets attackers inject via *column names* (even if values are parameterized).
+  - **Path traversal footgun:** serving `/api/rag/audio/{item_id}` without an allowlist can allow `../` path escapes (or crash on missing paths).
+  - **Search filter injection footgun:** Meilisearch filters like `client_id = '{client_id}'` need escaping/validation; otherwise quotes can break filter syntax.
+- **Fix pattern:**
+  1. **Allowlist dynamic identifiers** (columns/paths) via constant maps.
+  2. **Escape/validate filter values** before composing Meilisearch `filter` strings.
+  3. **Always update docs** when schema/security changes ship.
+- **Lesson (MEMORIZE - RAG Security + Docs Gate):**
+  - **If you fix a non-trivial security issue, you MUST also:**
+    - Update `docs/Testing_Episodic_Log.md` with the lesson.
+    - Update `docs/DATA_STORES.md` if DB schema/indexes changed.
+  - CTO review should block if either doc is missing.
 - Scope: Post-implementation tests for Dashboard filters, Tasks/Owners local stores, FE/BE version badge.
 - Backend pytest: fixed two issues breaking collection and one legacy DB schema incompatibility.
   - Syntax error in `_http_put_bytes` except block (indentation) — fixed.

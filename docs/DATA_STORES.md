@@ -286,12 +286,14 @@ CREATE INDEX IF NOT EXISTS idx_transcripts_recording ON transcripts(recording_id
 CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts(status);
 CREATE INDEX IF NOT EXISTS idx_transcripts_client ON transcripts(client_id);
 CREATE INDEX IF NOT EXISTS idx_transcripts_hash ON transcripts(hash);
+CREATE INDEX IF NOT EXISTS idx_transcripts_domain ON transcripts(domain);
+CREATE INDEX IF NOT EXISTS idx_transcripts_created_at ON transcripts(created_at);
 ```
 
-#### 12. rag_documents (0 rows)
+#### 12. rag_documents (populated on publish)
 Stores chunked text for Meilisearch indexing.
-- Created when transcript is published
-- Links to Meilisearch document IDs
+- Created when transcript is published (chunk-per-transcript)
+- Mirrors Meilisearch doc IDs for `/indexes/transcripts`
 
 ```sql
 CREATE TABLE IF NOT EXISTS rag_documents (
@@ -369,6 +371,142 @@ CREATE TABLE IF NOT EXISTS activity_log (
     success BOOLEAN
 );
 ```
+
+#### privacy_reviews
+Stores manual review decisions for privacy submissions.
+
+```sql
+CREATE TABLE IF NOT EXISTS privacy_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id TEXT,               -- FK to privacy_submissions.submission_id
+    reviewer TEXT,                    -- Reviewer name/email
+    status TEXT,                      -- pending, approved, rejected
+    notes TEXT,                       -- Review notes
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT
+);
+```
+
+---
+
+### Marketing Database: `marketing.db`
+**Location:** `data/marketing.db` (Docker: `/app/data/marketing.db`)
+**Tables:** 4 total
+**Created by:** `backend/marketing_db.py`
+
+> **Note:** Marketing data is stored in a SEPARATE database for lead tracking,
+> campaign attribution, and scoring from Fillout form submissions.
+
+#### marketing_leads
+Stores leads captured from Fillout forms with UTM attribution and scoring.
+
+```sql
+CREATE TABLE IF NOT EXISTS marketing_leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    full_name TEXT,
+    email TEXT,
+    phone TEXT,
+    company_name TEXT,
+    utm_source TEXT,
+    utm_medium TEXT,
+    utm_campaign TEXT,
+    utm_content TEXT,
+    utm_term TEXT,
+    source_type TEXT,                 -- fillout, manual, import
+    source_form_id TEXT,
+    source_form_name TEXT,
+    landing_page TEXT,
+    referrer TEXT,
+    parsed_source TEXT,
+    service_type TEXT,                -- privacy, appointment, general
+    lead_score INTEGER DEFAULT 50,
+    lead_score_factors TEXT,          -- JSON array of scoring factors
+    score_level TEXT DEFAULT 'medium', -- low, medium, high
+    status TEXT DEFAULT 'new',        -- new, contacted, qualified, converted, lost
+    assigned_to TEXT,
+    notes TEXT,
+    attributed_campaign_id INTEGER,
+    consent_given INTEGER DEFAULT 0,
+    consent_timestamp TEXT,
+    raw_submission TEXT,              -- Full Fillout submission JSON
+    fillout_submission_id TEXT UNIQUE,
+    duplicate_of_id INTEGER,
+    client_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_leads_email ON marketing_leads(email);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON marketing_leads(status);
+CREATE INDEX IF NOT EXISTS idx_leads_source ON marketing_leads(utm_source);
+```
+
+#### marketing_campaigns
+Stores marketing campaign definitions for attribution tracking.
+
+```sql
+CREATE TABLE IF NOT EXISTS marketing_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    name TEXT NOT NULL,
+    utm_campaign TEXT NOT NULL UNIQUE,
+    description TEXT,
+    channel TEXT NOT NULL,            -- facebook, google, linkedin, organic
+    target_service TEXT,
+    target_audience TEXT,
+    budget REAL,
+    currency TEXT DEFAULT 'ILS',
+    start_date TEXT,
+    end_date TEXT,
+    status TEXT DEFAULT 'draft',      -- draft, active, paused, completed
+    destination_url TEXT,
+    tracking_url TEXT,
+    facebook_campaign_id TEXT,
+    google_campaign_id TEXT
+);
+```
+
+#### marketing_form_mapping
+Maps Fillout form IDs to service types for automatic classification.
+
+```sql
+CREATE TABLE IF NOT EXISTS marketing_form_mapping (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fillout_form_id TEXT NOT NULL UNIQUE,
+    form_name TEXT,
+    service_type TEXT,                -- privacy, appointment, contact
+    is_active INTEGER DEFAULT 1,
+    webhook_enabled INTEGER DEFAULT 0,
+    scoring_bonus INTEGER DEFAULT 0
+);
+```
+
+#### lead_scoring_rules
+Configurable rules for calculating lead scores.
+
+```sql
+CREATE TABLE IF NOT EXISTS lead_scoring_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signal TEXT NOT NULL UNIQUE,      -- business_email, phone_provided, etc.
+    points INTEGER NOT NULL,
+    name TEXT,                        -- Hebrew display name
+    name_en TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Default Scoring Rules:**
+| Signal | Points | Description |
+|--------|--------|-------------|
+| privacy_questionnaire_completed | +25 | Completed privacy assessment |
+| appointment_form | +20 | Submitted meeting request |
+| paid_ad_click | +15 | Arrived from paid ad |
+| business_email | +10 | Uses company email domain |
+| company_provided | +10 | Provided company name |
+| phone_provided | +5 | Left phone number |
+| generic_email | -5 | Uses gmail/yahoo/etc |
+| no_phone | -10 | No phone provided |
 
 ---
 
@@ -1029,6 +1167,7 @@ The sync flow should be bidirectional but backend endpoints are missing.
 | 2025-12-06 | **MIGRATION COMPLETE:** JSON → SQLite migration done by Joseph. Backend now reads from SQLite. Updated Migration Notes section to reflect completed status. Verified by CTO skeptical review. | Joseph (Database) + Joe (CTO) |
 | 2025-12-07 | **RAG SCHEMA ADDED:** Added 3 new tables for RAG module (recordings, transcripts, rag_documents). Migrated 32 recordings from `recordings_cache.json` and 32 transcripts from `RAG_Pilot/transcripts/*.txt` to SQLite. Total database tables: 11 → 14. | Joseph (Database) |
 | 2025-12-07 | **PRIVACY DATABASE CONSOLIDATED:** Privacy data now stored in separate `privacy.db` (not eislaw.db). Single `privacy_submissions` table with embedded scores (no separate privacy_reviews). Webhook writes to privacy.db, API reads from privacy.db. Fixed database mismatch bug during stress testing. eislaw.db tables: 16 → 14. | Joe (CTO) |
+| 2025-12-12 | **MARKETING DATABASE DOCUMENTED:** Added `marketing.db` documentation (4 tables: marketing_leads, marketing_campaigns, marketing_form_mapping, lead_scoring_rules). Added `privacy_reviews` table to privacy.db docs. Fixed docker-compose.yml to include `./data:/app/data` volume mount. Deleted stale `backend/eislaw.db` (0-byte file). | Jacob (CTO Review) |
 
 ---
 
